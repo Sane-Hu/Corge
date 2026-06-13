@@ -1,2 +1,0 @@
-"""Prompt assembler package placeholder."""
-

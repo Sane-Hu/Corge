@@ -1,2 +1,0 @@
-"""Artifact store package placeholder."""
-

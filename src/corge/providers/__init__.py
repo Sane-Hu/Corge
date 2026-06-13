@@ -1,2 +1,0 @@
-"""Provider adapter package placeholder."""
-

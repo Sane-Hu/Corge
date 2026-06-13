@@ -1,2 +1,0 @@
-"""Audit logging package placeholder."""
-

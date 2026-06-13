@@ -1,2 +1,0 @@
-"""Tool runtime package placeholder."""
-

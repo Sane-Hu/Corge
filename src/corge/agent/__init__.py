@@ -1,2 +1,0 @@
-"""Agent layer package placeholder."""
-
