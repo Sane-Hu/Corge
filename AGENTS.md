@@ -42,394 +42,229 @@ Higher-priority documents win.
 
 # Core Principles
 
-## Principle 1: No Vibe Coding
-
-The system must never generate implementation directly from vague requests.
-
-All implementation must originate from:
-
-* Functional Requirements
-* Acceptance Criteria
-* Approved Plan
-
-Any workflow that bypasses these artifacts is considered incorrect.
-
----
-
-## Principle 2: Specification First
-
-The workflow is:
-
-Requirements
-→ Acceptance Criteria
-→ Specification
-→ Plan
-→ Approval
-→ Execution
-→ Verification
-→ Completion
-
-Do not reverse this order.
-
-Do not collapse stages.
-
-Do not skip stages.
+1. Specifications are the source of truth.
+2. Never implement behavior that contradicts approved specifications.
+3. Requirements are discovered from repository documents, not inferred from assumptions.
+4. Prefer deterministic behavior over heuristic behavior.
+5. Prefer explicit contracts over implicit coupling.
+6. Prefer verification over confidence.
+7. Every change must be traceable to a documented requirement.
+8. Every modification must preserve repository consistency.
+9. Architectural boundaries must be respected.
+10. Temporary shortcuts become permanent defects; avoid them.
+11. Minimize complexity whenever possible.
+12. Avoid introducing hidden state.
+13. Avoid introducing undocumented behavior.
+14. Avoid introducing speculative abstractions.
+15. Do not optimize for future requirements that do not exist.
+16. Do not add features that are not requested by specifications.
+17. Favor maintainability over cleverness.
+18. Favor clarity over brevity.
+19. Favor correctness over implementation speed.
+20. Favor reproducibility over convenience.
 
 ---
 
-## Principle 3: Human-Agent Contract
+# Required Operating Model
 
-The human engineer and AI engineer operate through progressively refined artifacts.
+Before writing code:
 
-Every stage must reduce ambiguity.
+1. Read all relevant specifications.
+2. Identify affected modules.
+3. Identify affected contracts.
+4. Identify dependencies.
+5. Create an implementation plan.
+6. Validate the plan against repository architecture.
 
-Every stage must increase executability.
+During implementation:
 
-The system exists to compress natural language requirements into verified software changes.
+1. Make the smallest valid change.
+2. Preserve existing interfaces unless specifications require changes.
+3. Keep changes localized.
+4. Maintain module responsibilities.
+5. Avoid unrelated refactoring.
+6. Avoid opportunistic feature additions.
+7. Keep behavior aligned with specifications.
 
----
+After implementation:
 
-## Principle 4: Repository Awareness
-
-The agent must never operate as if the repository were empty.
-
-Before implementation:
-
-* inspect repository structure
-* inspect repository conventions
-* inspect repository architecture
-
-Repository context is mandatory.
-
----
-
-## Principle 5: Incremental Understanding
-
-Repository understanding must evolve incrementally.
-
-Avoid rebuilding repository understanding from scratch whenever possible.
-
-Prefer:
-
-* graph updates
-* targeted re-analysis
-* incremental indexing
-
-over full rescans.
+1. Verify requirements are satisfied.
+2. Verify contracts remain valid.
+3. Verify no architectural violations were introduced.
+4. Verify no unrelated behavior changed.
+5. Verify tests still pass.
+6. Verify documentation remains accurate.
 
 ---
 
-## Principle 6: Context Discipline
+# Repository Awareness Requirements
 
-Context quality is a first-class concern.
+You are not operating on isolated files.
 
-Avoid:
+You are operating on a connected system.
 
-* repeated file reads
-* duplicated content
-* large unfiltered logs
-* prompt bloat
-* unnecessary transcript history
+Before modifying code, identify:
 
-Assume context window space is scarce.
+- Which module owns the behavior.
+- Which specifications define the behavior.
+- Which interfaces expose the behavior.
+- Which components consume the behavior.
+- Which tests validate the behavior.
 
-Treat tokens as a limited resource.
-
----
-
-## Principle 7: Test-Based Completion
-
-Tasks are not complete because the model says they are complete.
-
-Tasks are complete when:
-
-* Acceptance Criteria are satisfied
-* Relevant tests exist
-* Tests pass
-* Human approval is granted
+Do not make changes until system impact is understood.
 
 ---
 
-## Principle 8: Human Authority
+# Specification Traceability
 
-The human engineer is always the final authority.
+Every significant implementation decision should be traceable to:
 
-The system may recommend.
+- A PRD requirement.
+- A FRD requirement.
+- A module contract.
+- An architecture constraint.
+- An approved specification.
 
-The system may automate.
+If traceability cannot be established:
 
-The system may plan.
+Stop and request clarification.
 
-The system may implement.
-
-The system may not override human approval.
-
----
-
-# Architectural Rules
-
-## UI Layer
-
-Responsibilities:
-
-* collect specifications
-* display plans
-* display execution
-* request approvals
-
-The UI must not contain business logic.
+Do not invent requirements.
 
 ---
 
-## Agent Layer
+# Architecture Preservation Rules
 
-Responsibilities:
+Do not:
 
-* planning
-* reasoning
-* execution decisions
-* completion evaluation
+- Collapse architectural layers.
+- Bypass defined interfaces.
+- Introduce hidden dependencies.
+- Create circular dependencies.
+- Mix infrastructure and business logic.
+- Move logic across ownership boundaries without specification approval.
+- Replace existing patterns without justification.
+- Introduce framework-specific coupling into domain logic.
 
-The agent must not directly execute tools.
-
----
-
-## Tool Layer
-
-Responsibilities:
-
-* read
-* write
-* edit
-* bash
-
-Tools must remain stateless.
-
-Tools must not construct prompts.
-
-Tools must not store memory.
-
----
-
-## Context Layer
-
-Responsibilities:
-
-* repository analysis
-* context retrieval
-* memory retrieval
-* prompt assembly support
-
-The context layer must remain independent from providers.
-
----
-
-## Provider Layer
-
-Responsibilities:
-
-* model communication
-
-Providers must not:
-
-* modify memory
-* execute tools
-* perform orchestration
-
-Providers are adapters.
-
-Nothing more.
-
----
-
-# Memory Architecture
-
-The project uses a memory pyramid.
-
-## L0 — Session Events
-
-Stores:
-
-* tool calls
-* approvals
-* execution history
-
-Raw event store.
-
-Not directly loaded into prompts.
-
----
-
-## L1 — Engineering Facts
-
-Stores:
-
-* repository facts
-* framework facts
-* discovered conventions
-
-Examples:
-
-* Uses Laravel
-* Uses Pest
-* Uses DTO Pattern
-
----
-
-## L2 — Scenario Memory
-
-Stores:
-
-* feature-specific memory
-* implementation progress
-* blockers
-* decisions
-
----
-
-## L3 — Engineering Profile
-
-Stores:
-
-* team conventions
-* architectural patterns
-* coding preferences
-* repository standards
-
-This layer is extremely important.
-
-The system should learn how the team builds software.
+Maintain the architectural intent described in the repository documentation.
 
 ---
 
 # Context Engineering Rules
 
-Always prefer:
+Context is a managed resource.
 
-Current Spec
-→ Current Acceptance Criteria
-→ Current Plan
-→ Engineering Profile
-→ Relevant Repository Context
+When performing work:
 
-over:
+1. Load only relevant context.
+2. Prefer authoritative sources.
+3. Resolve conflicts using repository precedence rules.
+4. Avoid relying on stale assumptions.
+5. Re-read specifications when uncertainty exists.
+6. Validate implementation decisions against current repository state.
 
-Large transcripts
-Large logs
-Entire repositories
-
-Prompts should contain only information necessary for the current task.
+Do not treat previous assumptions as facts.
 
 ---
 
-# Repository Knowledge Graph
+# Code Quality Expectations
 
-Repository understanding is a first-class subsystem.
+Generated code must be:
 
-The graph should eventually represent:
-
-* files
-* modules
-* imports
-* dependencies
-* architectural relationships
-
-Do not treat repository analysis as a temporary preprocessing step.
-
-Treat it as persistent knowledge.
-
----
-
-# Approval Rules
-
-Approval required:
-
-* write
-* edit
-* delete
-* bash
-
-Approval not required:
-
-* read
-* inspect
-* summarize
-* search
-
-Never bypass approval requirements.
-
----
-
-# Logging Rules
-
-All significant actions should be auditable.
-
-Prefer structured logs.
-
-Capture:
-
-* plan generation
-* approvals
-* tool execution
-* completion decisions
-
-Logs should support future replay and debugging.
-
----
-
-# Coding Standards
-
-General standards:
-
-* Python 3.12+
-* Strict typing
-* Small modules
-* Dependency injection
-* Explicit interfaces
-* Clear ownership boundaries
-
-Prefer:
-
-* composition over inheritance
-* immutable data structures where practical
-* dataclasses for simple domain objects
+- Correct.
+- Readable.
+- Testable.
+- Deterministic.
+- Maintainable.
+- Consistent with repository conventions.
 
 Avoid:
 
-* hidden side effects
-* global mutable state
-* tightly coupled modules
+- Dead code.
+- Placeholder implementations.
+- Silent failures.
+- Magic values.
+- Unused abstractions.
+- Unnecessary complexity.
 
 ---
 
-# POC Scope Protection
+# Testing Requirements
 
-The following are intentionally out of scope for v0.1:
+Changes are incomplete until verified.
 
-* Multi-agent systems
-* Vector databases
-* Embedding pipelines
-* IDE integrations
-* Git integrations
-* Autonomous background execution
-* Cloud collaboration
+When applicable:
 
-Do not introduce these unless explicitly requested.
+1. Add tests for new behavior.
+2. Update tests affected by requirement changes.
+3. Preserve existing test coverage.
+4. Verify regression risk.
+5. Verify edge cases.
+6. Verify failure paths.
+
+Never claim code works without verification evidence.
 
 ---
 
-# Definition of Success
+# Documentation Requirements
 
-A successful implementation enables the following workflow:
+Update documentation when:
 
-1. Analyze repository
-2. Collect specification
-3. Collect acceptance criteria
-4. Generate plan
-5. Obtain approval
-6. Execute implementation
-7. Run verification
-8. Pass tests
-9. Obtain completion approval
+- Behavior changes.
+- Interfaces change.
+- Contracts change.
+- Architectural decisions change.
+- Configuration changes.
 
-If a proposed change does not improve this workflow, reconsider whether it belongs in the project.
+Documentation must remain aligned with implementation.
+
+---
+
+# Prohibited Behaviors
+
+Do not:
+
+- Invent requirements.
+- Invent APIs.
+- Invent module responsibilities.
+- Invent architecture.
+- Invent specifications.
+- Ignore repository documents.
+- Ignore contract violations.
+- Ignore failing tests.
+- Hide uncertainty.
+- Claim verification that was not performed.
+- Modify unrelated systems.
+- Introduce speculative functionality.
+- Bypass established workflows.
+
+---
+
+# Decision-Making Under Uncertainty
+
+If requirements are unclear:
+
+1. Stop implementation.
+2. Identify the ambiguity.
+3. Identify affected specifications.
+4. Explain available interpretations.
+5. Request clarification.
+
+Do not resolve ambiguous requirements independently.
+
+---
+
+# Definition of Done
+
+Work is complete only when:
+
+- Requirements are satisfied.
+- Specifications remain consistent.
+- Architecture remains valid.
+- Contracts remain valid.
+- Tests pass.
+- Documentation is updated.
+- No unintended changes were introduced.
+- Traceability can be demonstrated.
+
+Anything less is incomplete work.
