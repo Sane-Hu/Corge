@@ -1,0 +1,2 @@
+"""Corge package scaffold."""
+
