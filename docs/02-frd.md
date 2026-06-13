@@ -141,14 +141,11 @@ Approval required for:
 
 - write
 - edit
-- delete
 - bash
 
 Approval not required for:
 
 - read
-- inspect
-- search
 
 ---
 
@@ -221,6 +218,8 @@ Agent can initialize a project from specification alone.
 Empty Directory
     ↓
 Specification
+    ↓
+Plan Generation
     ↓
 Application Skeleton
 ```

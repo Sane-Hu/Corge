@@ -12,6 +12,11 @@ show_plan()
 show_execution()
 show_logs()
 request_approval()
+show_repository_analysis()
+show_repository_understanding()
+show_engineering_profile()
+show_memory()
+show_completion_review()
 ```
 
 No business logic.
@@ -53,7 +58,6 @@ Responsibilities:
 
 ```python
 collect_context()
-rank_context()
 assemble_prompt()
 ```
 
@@ -67,6 +71,7 @@ Responsibilities:
 
 ```python
 estimate_tokens()
+rank_context()
 clip()
 deduplicate()
 summarize()

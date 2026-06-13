@@ -2,6 +2,9 @@
 
 # Execution Roadmap
 
+> [!IMPORTANT]
+> For the authoritative implementation order sequence, please refer to `11-agent-onboarding-guide.md`. This roadmap defines logical feature grouping rather than strict implementation sequence.
+
 ## Milestone 1
 
 Foundation

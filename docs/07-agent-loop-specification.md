@@ -23,7 +23,7 @@ Reason
     ↓
 Select Action
     ↓
-Request Approval
+Approval Required?
     ↓
 Execute
     ↓
