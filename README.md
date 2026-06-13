@@ -23,6 +23,7 @@ Before contributing, read the project documents in this order:
 6. `docs/07-agent-loop-specification.md`
 7. `docs/09-context-engineering-spec.md`
 8. `docs/11-agent-onboarding-guide.md`
+9. `docs/12-web-llm-contributor-prompt.md`
 
 If documents conflict, higher-priority documents win:
 
@@ -270,6 +271,16 @@ Keep changes small, specified, and module-owned.
 
 Do not add feature behavior just because the skeleton makes it easy to do so.
 Behavior belongs behind the specification gate.
+
+## Contributing with Web-Based LLMs
+
+If you are using a web-based AI assistant (like ChatGPT, Claude, or Gemini) without an integrated agentic IDE, you must align the AI with our strict, specification-driven rules.
+
+Before asking your LLM to write code, provide it with the dedicated prompt template found in:
+
+- `docs/12-web-llm-contributor-prompt.md`
+
+This prompt ensures the AI respects architectural boundaries, avoids speculative abstraction, and adheres to the document hierarchy (PRD > FRD > Architecture). Do not let an LLM invent requirements or bypass the module contracts.
 
 ## Avoiding Git Conflicts
 
