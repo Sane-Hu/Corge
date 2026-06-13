@@ -26,6 +26,7 @@ Before implementing architectural changes, read:
 4. docs/04-module-contracts.md
 5. docs/07-agent-loop-specification.md
 6. docs/09-context-engineering-spec.md
+7. docs/11-agent-onboarding-guide
 
 If there is a conflict:
 
