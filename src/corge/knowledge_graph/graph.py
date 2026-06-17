@@ -1,10 +1,10 @@
-"""Repository knowledge graph boundaries."""
+"""Repository knowledge graph — satisfies ``contracts.KnowledgeGraphPort``."""
 
 from corge.contracts import GraphQuery, GraphUpdate, RepositoryContext
 
 
 class KnowledgeGraph:
-    """Knowledge graph responsibilities from docs/04-module-contracts.md."""
+    """Concrete knowledge graph stub.  Satisfies ``contracts.KnowledgeGraphPort``."""
 
     def build_graph(self, repository_context: RepositoryContext) -> None:
         raise NotImplementedError
@@ -14,4 +14,3 @@ class KnowledgeGraph:
 
     def query_graph(self, query: GraphQuery) -> object:
         raise NotImplementedError
-

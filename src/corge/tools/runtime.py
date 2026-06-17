@@ -1,4 +1,4 @@
-"""Stateless execution primitive boundaries."""
+"""Stateless execution primitives — satisfies ``contracts.ToolRuntimePort``."""
 
 from pathlib import Path
 
@@ -6,7 +6,7 @@ from corge.contracts import ToolResult
 
 
 class ToolRuntime:
-    """Tool responsibilities from docs/04-module-contracts.md."""
+    """Concrete tool runtime stub.  Satisfies ``contracts.ToolRuntimePort``."""
 
     def read(self, path: Path) -> ToolResult:
         raise NotImplementedError
@@ -19,4 +19,3 @@ class ToolRuntime:
 
     def bash(self, command: str, cwd: Path) -> ToolResult:
         raise NotImplementedError
-

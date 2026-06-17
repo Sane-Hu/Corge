@@ -11,7 +11,6 @@ from corge.contracts import (
     RepositoryContext,
     Specification,
 )
-from corge.ui.port import UiPort
 
 ANVIL_ART = r"""
 
@@ -32,7 +31,7 @@ def _print_box(lines: list[str], width: int = 30) -> None:
     print(f"└{'─' * width}┘")
 
 
-class CliUi(UiPort):
+class CliUi:
     """CLI implementation of the UI port using pure print/input."""
 
     def show_spec_wizard(self) -> Specification:

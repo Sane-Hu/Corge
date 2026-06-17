@@ -1,4 +1,8 @@
-"""Textual UI boundary with no business logic."""
+"""Textual UI boundary — satisfies ``contracts.UiPort`` protocol.
+
+This module contains only the protocol-satisfying stub.  The concrete
+CLI implementation lives in ``cli.py``.
+"""
 
 from corge.contracts import (
     ApprovalDecision,
@@ -12,8 +16,13 @@ from corge.contracts import (
 )
 
 
-class UiPort:
-    """UI responsibilities from docs/04-module-contracts.md."""
+class UiPortStub:
+    """Stub UI that raises on every call.
+
+    Concrete implementations (e.g. ``CliUi``) override all methods.
+    Kept as a reference skeleton; production code type-hints against
+    ``contracts.UiPort`` protocol, not this class.
+    """
 
     def show_spec_wizard(self) -> Specification:
         raise NotImplementedError
@@ -46,4 +55,3 @@ class UiPort:
 
     def show_completion_review(self, plan: Plan) -> None:
         raise NotImplementedError
-

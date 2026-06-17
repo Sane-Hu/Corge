@@ -1,10 +1,10 @@
-"""Planning and execution orchestration boundaries."""
+"""Planning and execution orchestration — satisfies ``contracts.AgentPort``."""
 
 from corge.contracts import ContextBundle, MemoryEvent, Plan, PlanStep, Specification
 
 
 class AgentService:
-    """Agent responsibilities from docs/04-module-contracts.md."""
+    """Concrete agent stub.  Satisfies ``contracts.AgentPort`` protocol."""
 
     def generate_plan(self, specification: Specification) -> Plan:
         raise NotImplementedError
@@ -17,4 +17,3 @@ class AgentService:
 
     def update_memory(self, event: MemoryEvent) -> None:
         raise NotImplementedError
-

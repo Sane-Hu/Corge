@@ -1,10 +1,10 @@
-"""Memory pyramid storage boundaries."""
+"""Memory pyramid storage — satisfies ``contracts.MemoryStorePort``."""
 
 from corge.contracts import EngineeringProfile, MemoryEvent
 
 
 class MemoryStore:
-    """Memory responsibilities from docs/04-module-contracts.md."""
+    """Concrete memory store stub.  Satisfies ``contracts.MemoryStorePort``."""
 
     def store_event(self, event: MemoryEvent) -> None:
         raise NotImplementedError
@@ -17,4 +17,3 @@ class MemoryStore:
 
     def update_profile(self, profile: EngineeringProfile) -> None:
         raise NotImplementedError
-

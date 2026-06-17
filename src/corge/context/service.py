@@ -1,10 +1,10 @@
-"""Context retrieval and refresh boundaries."""
+"""Context retrieval and refresh — satisfies ``contracts.ContextPort``."""
 
 from corge.contracts import ContextBundle, PlanStep, RepositoryContext, Specification
 
 
 class ContextService:
-    """Context responsibilities from docs/04-module-contracts.md."""
+    """Concrete context stub.  Satisfies ``contracts.ContextPort`` protocol."""
 
     def load_context(self, repository_context: RepositoryContext) -> ContextBundle:
         raise NotImplementedError
@@ -16,4 +16,3 @@ class ContextService:
         self, specification: Specification, step: PlanStep
     ) -> ContextBundle:
         raise NotImplementedError
-

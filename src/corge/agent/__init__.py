@@ -1,6 +1,6 @@
-"""Agent layer contract."""
+"""Agent layer."""
 
 from corge.agent.service import AgentService
+from corge.contracts import AgentPort
 
-__all__ = ["AgentService"]
-
+__all__ = ["AgentPort", "AgentService"]

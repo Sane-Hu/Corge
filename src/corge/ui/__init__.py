@@ -1,6 +1,6 @@
-"""UI layer contract."""
+"""UI layer — presentation with no business logic."""
 
+from corge.contracts import UiPort
 from corge.ui.cli import CliUi
-from corge.ui.port import UiPort
 
 __all__ = ["CliUi", "UiPort"]

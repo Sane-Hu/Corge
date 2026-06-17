@@ -1,10 +1,10 @@
-"""Context budget enforcement boundaries."""
+"""Context budget enforcement — satisfies ``contracts.BudgetManagerPort``."""
 
 from corge.contracts import ContextBundle
 
 
 class BudgetManager:
-    """Budget manager responsibilities from docs/04-module-contracts.md."""
+    """Concrete budget manager stub.  Satisfies ``contracts.BudgetManagerPort``."""
 
     def estimate_tokens(self, context: ContextBundle) -> int:
         raise NotImplementedError
@@ -23,4 +23,3 @@ class BudgetManager:
 
     def compact(self, context: ContextBundle) -> ContextBundle:
         raise NotImplementedError
-

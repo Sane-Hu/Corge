@@ -1,11 +1,10 @@
-"""External model provider boundary."""
+"""External model provider — satisfies ``contracts.ProviderPort``."""
 
 from corge.contracts import ChatResponse, ProviderMessage
 
 
 class Provider:
-    """Provider responsibilities from docs/04-module-contracts.md."""
+    """Concrete provider stub.  Satisfies ``contracts.ProviderPort``."""
 
     def chat(self, messages: tuple[ProviderMessage, ...]) -> ChatResponse:
         raise NotImplementedError
-

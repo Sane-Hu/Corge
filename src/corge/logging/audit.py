@@ -1,10 +1,10 @@
-"""Audit logging boundaries."""
+"""Audit logging — satisfies ``contracts.AuditLoggerPort``."""
 
 from corge.contracts import ApprovalDecision, ApprovalRequest, AuditEvent, ToolResult
 
 
 class AuditLogger:
-    """Logging responsibilities from docs/04-module-contracts.md."""
+    """Concrete audit logger stub.  Satisfies ``contracts.AuditLoggerPort``."""
 
     def record_prompt(self, prompt: str) -> None:
         raise NotImplementedError
@@ -19,4 +19,3 @@ class AuditLogger:
 
     def record_completion(self, event: AuditEvent) -> None:
         raise NotImplementedError
-

@@ -1,6 +1,6 @@
-"""Context layer contract."""
+"""Context layer."""
 
 from corge.context.service import ContextService
+from corge.contracts import ContextPort
 
-__all__ = ["ContextService"]
-
+__all__ = ["ContextPort", "ContextService"]
