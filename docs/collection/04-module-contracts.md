@@ -2,6 +2,8 @@
 
 # Module Contracts
 
+Note: The responsibilities below are formally defined as `typing.Protocol` ports in `src/corge/contracts/ports.py` to enable decoupled dependency injection.
+
 ## ui
 
 Responsibilities:
@@ -178,12 +180,21 @@ record_completion()
 
 Provides auditability.
 
+## contracts
+
+Responsibilities:
+
+- Defines all shared boundary data structures (e.g., `Specification`, `Plan`, `ContextBundle`, `ApprovalRequest`, `ToolResult`).
+- Defines `typing.Protocol` port interfaces for all 12 modules to enforce strict decoupling.
+
+No business logic, state, or external calls. Only frozen dataclasses and protocol definitions.
+
 ---
 
 ## Suggested Source Layout
 
 ```text
-src/
+src/corge/
 ├── ui/
 ├── agent/
 ├── context/
@@ -195,5 +206,6 @@ src/
 ├── approval/
 ├── tools/
 ├── providers/
-└── logging/
+├── logging/
+└── contracts/
 ```

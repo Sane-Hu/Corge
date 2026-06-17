@@ -169,5 +169,5 @@ To maintain the modular monolith, cross-communication is heavily restricted. Eac
 - **Components**: The `Approval Gateway` intercepts tool requests and guarantees nothing runs without consent. The `Tool Runtime` blindly runs `read`, `write`, `edit`, and `bash` commands once authorized.
 
 ### 6. Shared Contracts Layer (Grey)
-- **Role**: Defines the strict boundary objects that traverse modules. 
-- **Rule**: Modules communicate by passing models (e.g., `Specification`, `ApprovalRequest`) to interface ports, completely preventing hidden tight coupling.
+- **Role**: Defines the strict boundary objects and interfaces that traverse modules. 
+- **Rule**: Modules communicate by passing models (e.g., `Specification`, `ApprovalRequest`) to interface ports (`typing.Protocol`), completely preventing hidden tight coupling.

@@ -49,7 +49,6 @@ from corge.providers import Provider
 from corge.tools import ToolRuntime
 from corge.ui import CliUi
 
-
 # -- Fixtures for reuse across tests ------------------------------------------
 
 
