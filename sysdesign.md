@@ -92,6 +92,58 @@ graph TD
 
 ---
 
+```mermaid
+sequenceDiagram
+    autonumber
+    
+    actor User
+    participant UI as ui.UiPort
+    participant PE as agent.PlanningEngine
+    participant AL as agent.AgentLoop
+    participant PA as prompt_assembler
+    participant GW as approval.Gateway
+    participant TR as tools.ToolRuntime
+
+    %% Phase 1: Planning
+    User->>UI: Interacts with Spec Wizard
+    UI-->>PE: Yields `Specification` (title, body, criteria)
+    
+    PE->>PE: Analyzes requirements
+    PE-->>AL: Yields `Plan` (tuple of `PlanStep`)
+    
+    %% Phase 2: Agent Loop (Execution)
+    loop For each `PlanStep`
+        AL->>PA: Requests context for current step
+        PA-->>AL: Yields `ContextBundle` (Repo, Memory, Profile)
+        
+        AL->>AL: Evaluates `PlanStep` + `ContextBundle`
+        
+        %% Proposing Action
+        AL->>GW: Submits `ApprovalRequest` (ToolAction, target)
+        
+        %% Human in the Loop
+        GW->>UI: Delegates `request_approval`
+        UI->>User: Displays requested action
+        User-->>UI: Approves / Rejects
+        UI-->>GW: Yields `ApprovalDecision`
+        
+        %% Resolution
+        alt is APPROVED
+            GW->>TR: Authorizes tool execution
+            TR-->>AL: Yields `ToolResult`
+        else is REJECTED
+            GW-->>AL: Interrupts execution / requests pivot
+        end
+        
+        AL->>AL: Evaluates `ToolResult` against `AcceptanceCriteria`
+    end
+    
+    %% Phase 3: Completion
+    AL->>UI: Triggers `show_completion_review(Plan)`
+    UI->>User: Displays results
+```
+---
+
 ## Tactical Module Breakdown
 
 To maintain the modular monolith, cross-communication is heavily restricted. Each module handles a precise slice of the architecture:
