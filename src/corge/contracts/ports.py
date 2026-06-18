@@ -22,7 +22,9 @@ from corge.contracts.models import (
     ChatResponse,
     ContextBundle,
     EngineeringProfile,
+    GraphNode,
     GraphQuery,
+    GraphResult,
     GraphUpdate,
     MemoryEvent,
     Plan,
@@ -154,7 +156,7 @@ class KnowledgeGraphPort(Protocol):
 
     def update_graph(self, update: GraphUpdate) -> None: ...
 
-    def query_graph(self, query: GraphQuery) -> object: ...
+    def query_graph(self, query: GraphQuery) -> GraphResult: ...
 
 
 # ---------------------------------------------------------------------------

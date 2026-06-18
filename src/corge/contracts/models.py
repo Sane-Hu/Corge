@@ -207,6 +207,37 @@ class GraphUpdate:
     paths: tuple[Path, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class GraphNode:
+    """Single node returned by a knowledge graph query (FRD FR-005).
+
+    ``kind`` is one of the spec-defined node types: file, directory, class,
+    function, service, controller, model, test, config.
+    ``node_id`` is a stable string key (e.g. a relative path or
+    ``<path>::<name>`` for classes and functions).
+    ``path`` holds the containing file path for non-directory nodes; empty
+    string for directory nodes that have no single owning file.
+    ``name`` holds the symbol name for class/function nodes; empty string for
+    file/directory nodes.
+    """
+
+    kind: str
+    node_id: str
+    path: str = ""
+    name: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class GraphResult:
+    """Structured result returned by ``query_graph()`` (FRD FR-005).
+
+    Wraps a tuple of ``GraphNode`` objects so callers receive a typed,
+    frozen boundary object instead of a raw collection.
+    """
+
+    nodes: tuple[GraphNode, ...]
+
+
 # ---------------------------------------------------------------------------
 # Approval gateway (FRD FR-009)
 # ---------------------------------------------------------------------------
