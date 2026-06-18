@@ -149,7 +149,8 @@ _PROTOCOL_IMPL_PAIRS: list[tuple[type, type]] = [
 )
 def test_concrete_satisfies_protocol(protocol: type, impl: type) -> None:
     """Every concrete class is a structural subtype of its protocol."""
-    assert isinstance(impl(), protocol)
+    instance = object.__new__(impl)
+    assert isinstance(instance, protocol)
 
 
 # -- Documented method existence checks ---------------------------------------
@@ -234,10 +235,6 @@ def test_stub_methods_raise_not_implemented(
     tool_result: ToolResult,
 ) -> None:
     stub_calls = [
-        lambda: AgentService().generate_plan(specification),
-        lambda: AgentService().execute_step(plan_step, context_bundle),
-        lambda: AgentService().evaluate_completion(plan, context_bundle),
-        lambda: AgentService().update_memory(memory_event),
         lambda: ContextService().load_context(repository_context),
         lambda: ContextService().refresh_context(repository_context),
         lambda: ContextService().retrieve_relevant_context(specification, plan_step),

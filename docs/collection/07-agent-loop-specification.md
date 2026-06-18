@@ -232,3 +232,15 @@ Request Human Guidance
 
 Resume
 ```
+
+---
+
+# Tool Execution Failure
+
+If a tool call fails during execution (e.g., syntax error, non-zero exit code):
+
+The `agent` module must not silently retry or go astray.
+
+It must immediately raise a `ToolExecutionError`.
+
+The orchestrator catches this error and transitions to the **Failure Handling** workflow to ensure recovery is driven by explicit specification and human guidance rather than invisible loops.
