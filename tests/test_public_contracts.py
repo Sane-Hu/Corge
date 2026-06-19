@@ -253,8 +253,6 @@ def test_stub_methods_raise_not_implemented(
         lambda: ArtifactStore().store_artifact(Path("log.txt"), "summary"),
         lambda: ArtifactStore().retrieve_artifact(artifact_reference),
         lambda: ArtifactStore().summarize_artifact(artifact_reference),
-        lambda: ApprovalGateway().approve(approval_request),
-        lambda: ApprovalGateway().reject(approval_request),
         lambda: ToolRuntime().read(Path("AGENTS.md")),
         lambda: ToolRuntime().write(Path("file.txt"), "content"),
         lambda: ToolRuntime().edit(Path("file.txt"), "old", "new"),
