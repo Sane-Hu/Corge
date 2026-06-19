@@ -11,7 +11,7 @@ def test_cli_ui_show_plan_renders_without_crashing() -> None:
     ui = CliUi()
     plan = Plan(steps=(PlanStep(identifier="test", description="Test step"),))
     
-    with patch("builtins.print") as mock_print:
+    with patch("rich.console.Console.print") as mock_print:
         ui.show_plan(plan)
         
     assert mock_print.called

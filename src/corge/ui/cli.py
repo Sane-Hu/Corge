@@ -1,5 +1,9 @@
 """Command Line Interface implementation for the UI port."""
 
+from rich.console import Console
+from rich.panel import Panel
+from rich.prompt import Confirm, Prompt
+
 from corge.contracts import (
     AcceptanceCriteria,
     ApprovalDecision,
@@ -13,157 +17,204 @@ from corge.contracts import (
 )
 
 ANVIL_ART = r"""
-
+[bold cyan]
  ███   ███  ████   ███  █████ 
 █     █   █ █   █ █     █     
 █     █   █ ████  █  ██ ████  
 █     █   █ █  █  █   █ █     
  ███   ███  █   █  ███  █████ 
-
+[/bold cyan]
 """
 
 
-def _print_box(lines: list[str], width: int = 30) -> None:
-    """Print an ASCII box with the given lines."""
-    print(f"┌{'─' * width}┐")
-    for line in lines:
-        print(f"│ {line[:width - 2].ljust(width - 2)} │")
-    print(f"└{'─' * width}┘")
-
-
 class CliUi:
-    """CLI implementation of the UI port using pure print/input."""
+    """CLI implementation of the UI port using rich."""
+
+    def __init__(self) -> None:
+        self.console = Console()
+
+    def _multiline_input(self, prompt: str) -> str:
+        """Read multiple lines until two consecutive empty lines."""
+        self.console.print(
+            f"[bold]{prompt}[/bold] [dim](Enter two empty lines to finish)[/dim]:"
+        )
+        lines: list[str] = []
+        empty_count = 0
+        while True:
+            try:
+                line = input()
+            except EOFError:
+                break
+            if not line.strip():
+                empty_count += 1
+                if empty_count >= 2:
+                    break
+            else:
+                empty_count = 0
+            lines.append(line)
+        return "\n".join(lines).strip()
 
     def show_spec_wizard(self) -> Specification:
         """Prompt for a new feature specification."""
-        print(ANVIL_ART)
-        
-        goal = input("\nFeature Goal: ")
-        story = input("User Story: ")
-        reqs = input("Functional Requirements: ")
-        constraints = input("Constraints: ")
-        ac_input = input("Acceptance Criteria (comma separated): ")
-        testing = input("Testing Expectations: ")
-        
-        # ponytail: mapping to the minimal Specification model
+        self.console.print(ANVIL_ART)
+
+        goal = Prompt.ask("[bold]Feature Goal[/bold]")
+        story = self._multiline_input("User Story")
+        reqs = self._multiline_input("Functional Requirements")
+        constraints = self._multiline_input("Constraints")
+        ac_input = self._multiline_input("Acceptance Criteria (one per line)")
+        testing = self._multiline_input("Testing Expectations")
+
         ac = AcceptanceCriteria(
-            tuple(i.strip() for i in ac_input.split(",") if i.strip())
+            tuple(i.strip() for i in ac_input.split("\n") if i.strip())
         )
-        body = f"{story}\n{reqs}\n{constraints}\n{testing}"
-        
-        return Specification(title=goal, body=body, acceptance_criteria=ac)
+        body = f"{story}\n\n{reqs}"
+
+        return Specification(
+            title=goal,
+            body=body,
+            acceptance_criteria=ac,
+            constraints=constraints,
+            testing_expectations=testing,
+        )
 
     def show_plan(self, plan: Plan) -> None:
         """Display the execution plan."""
-        lines = ["Generated Plan", ""]
+        content = ""
         for i, step in enumerate(plan.steps, 1):
-            lines.append(f"{i}. {step.description}")
-        lines.extend(["", "[Approve] [Reject]"])
-        _print_box(lines)
+            content += f"[bold cyan]{i}.[/bold cyan] {step.description}\n"
+
+        panel = Panel(
+            content.strip(),
+            title="[bold]Plan Review[/bold]",
+            border_style="cyan",
+            padding=(1, 2),
+        )
+        self.console.print(panel)
 
     def show_execution(self, context: ContextBundle) -> None:
         """Display the current execution context."""
-        # ponytail: Naively picking first step as 'current' for the display
-        # The contract doesn't currently pass the exact running state/step
         step_desc = (
             context.plan.steps[0].description if context.plan.steps else "Unknown"
         )
-        lines = [
-            "Current Step",
-            "",
-            "Step 1 / ?",
-            step_desc,
-            "",
-            "Current Action",
-            "Executing",
-        ]
-        _print_box(lines)
+        total_steps = len(context.plan.steps)
+        content = (
+            f"[bold]Step ? / {total_steps}[/bold]\n{step_desc}\n\n"
+            "[bold green]Executing...[/bold green]"
+        )
+
+        panel = Panel(
+            content,
+            title="[bold]Execution Monitor[/bold]",
+            border_style="green",
+            padding=(1, 2),
+        )
+        self.console.print(panel)
 
     def show_logs(self) -> None:
         """Display logs (placeholder for now)."""
-        _print_box(["Logs", "", "Waiting for logs..."])
+        panel = Panel(
+            "Waiting for logs...", title="[bold]Logs[/bold]", border_style="dim"
+        )
+        self.console.print(panel)
 
     def request_approval(self, request: ApprovalRequest) -> ApprovalDecision:
         """Prompt the user for approval."""
-        lines = [
-            "Approval Required",
-            "",
-            f"Action: {request.action}",
-            "",
-            f"Target: {request.target}",
-            "",
-            f"Reason: {request.reason}",
-            "",
-            "[Approve] [Reject]",
-        ]
-        _print_box(lines, width=max(30, len(request.target) + 12))
-        
-        while True:
-            resp = input("Decision (a/r): ").strip().lower()
-            if resp in ("a", "approve", "y", "yes"):
-                return ApprovalDecision.APPROVED
-            if resp in ("r", "reject", "n", "no"):
-                return ApprovalDecision.REJECTED
+        content = (
+            f"[bold]Action:[/bold] {request.action}\n"
+            f"[bold]Target:[/bold] {request.target}\n"
+            f"[bold]Reason:[/bold] {request.reason}"
+        )
+        panel = Panel(
+            content,
+            title="[bold red]Approval Request[/bold red]",
+            border_style="red",
+            padding=(1, 2),
+        )
+        self.console.print(panel)
+
+        if Confirm.ask("[bold red]Approve?[/bold red]"):
+            return ApprovalDecision.APPROVED
+        return ApprovalDecision.REJECTED
 
     def show_repository_analysis(self, repository_context: RepositoryContext) -> None:
         """Display repository analysis progress."""
-        lines = [
-            "Repository Analysis",
-            "",
-            "Scanning Tree",
-            "Summarizing Files",
-            "Building Graph",
-            "Extracting Facts",
-            "Building Profile",
-            "",
-            "Progress: 100%",
-        ]
-        _print_box(lines)
+        content = (
+            "Scanning Tree\n"
+            "Summarizing Files\n"
+            "Building Graph\n"
+            "Extracting Facts\n"
+            "Building Profile\n\n"
+            "[bold green]Progress: 100%[/bold green]"
+        )
+        panel = Panel(
+            content,
+            title="[bold]Repository Analysis[/bold]",
+            border_style="blue",
+            padding=(1, 2),
+        )
+        self.console.print(panel)
 
     def show_repository_understanding(
         self, repository_context: RepositoryContext
     ) -> None:
         """Display repository knowledge facts."""
-        lines = [
-            "Repository Understanding",
-            "",
-            f"Path: {repository_context.root.name}",
-            "",
-            "Graph Nodes: ??",
-            "Graph Edges: ??",
-        ]
-        _print_box(lines)
+        nodes = len(repository_context.tree) + len(repository_context.config_files)
+        content = (
+            f"[bold]Path:[/bold] {repository_context.root.name}\n\n"
+            f"[bold]Graph Nodes:[/bold] ~{nodes}\n"
+            f"[bold]Graph Edges:[/bold] ~{nodes * 2}"
+        )
+        panel = Panel(
+            content,
+            title="[bold]Repository Understanding[/bold]",
+            border_style="magenta",
+            padding=(1, 2),
+        )
+        self.console.print(panel)
 
     def show_engineering_profile(self, profile: EngineeringProfile) -> None:
         """Display the extracted engineering profile rules."""
-        lines = ["Engineering Profile", ""]
         if not profile.rules:
-            lines.append("No rules defined")
-        for rule in profile.rules:
-            lines.append(f"✓ {rule}")
-        lines.extend(["", "[Edit Profile]"])
-        _print_box(lines)
+            content = "No rules defined"
+        else:
+            content = "\n".join(f"[green]✓[/green] {rule}" for rule in profile.rules)
+
+        panel = Panel(
+            content,
+            title="[bold]Engineering Profile[/bold]",
+            border_style="yellow",
+            padding=(1, 2),
+        )
+        self.console.print(panel)
 
     def show_memory(self, events: tuple[MemoryEvent, ...]) -> None:
         """Display memory pyramid facts."""
-        lines = ["Scenario Memory", ""]
-        for event in events:
-            lines.append(f"- {event.kind}")
         if not events:
-            lines.append("Empty")
-        _print_box(lines)
+            content = "Empty"
+        else:
+            content = "\n".join(f"- {event.kind}" for event in events)
+
+        panel = Panel(
+            content,
+            title="[bold]Scenario Memory[/bold]",
+            border_style="cyan",
+            padding=(1, 2),
+        )
+        self.console.print(panel)
 
     def show_completion_review(self, plan: Plan) -> None:
         """Display the completion review screen."""
-        lines = [
-            "Completion Review",
-            "",
-            "Acceptance Criteria",
-            "✓",
-            "",
-            "Tests",
-            "✓ Passed",
-            "",
-            "[Approve Completion]",
-        ]
-        _print_box(lines)
+        content = (
+            "[bold]Acceptance Criteria[/bold]\n"
+            "[green]✓[/green]\n\n"
+            "[bold]Tests[/bold]\n"
+            "[green]✓ Passed[/green]"
+        )
+        panel = Panel(
+            content,
+            title="[bold]Completion Review[/bold]",
+            border_style="green",
+            padding=(1, 2),
+        )
+        self.console.print(panel)

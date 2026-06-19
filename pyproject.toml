@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Specification-driven repository-aware engineering system."
 readme = "AGENTS.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["rich"]
 
 [dependency-groups]
 dev = [

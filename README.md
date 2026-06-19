@@ -330,9 +330,9 @@ The repository contains the foundation skeleton, with the following implementati
 - **Knowledge Graph** ([knowledge_graph](src/corge/knowledge_graph))
 - **Agent State Machine & Planning Engine** ([agent](src/corge/agent))
 - **Approval Gateway** ([approval](src/corge/approval))
+- **UI & Presentation Layer** ([ui](src/corge/ui))
 
 ### Pending Implementation (Stub Modules)
-- **UI & Presentation Layer** ([ui](src/corge/ui))
 - **Context Engine** ([context](src/corge/context))
 - **Prompt Assembler** ([prompt_assembler](src/corge/prompt_assembler))
 - **Token Budget Manager** ([budget_manager](src/corge/budget_manager))
