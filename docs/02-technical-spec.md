@@ -46,7 +46,7 @@ src/corge/
 └── contracts/          # Dataclasses and Typing Ports (protocols)
 ```
 
-The concrete services implement decoupled ports defined as `typing.Protocol` interfaces in [ports.py](file:///home/sane/1-MY_DATA/Projects/AAI_NTI/Corge_PLAN/Corge/src/corge/contracts/ports.py).
+The concrete services implement decoupled ports defined as `typing.Protocol` interfaces in [ports.py](src/corge/contracts/ports.py).
 
 ---
 
@@ -140,9 +140,6 @@ PRD → Technical Spec → Code Implementation
 - **Human Authority**: All destructive actions (`write`, `edit`, `bash`) require human verification.
 - **No Global Mutable State**: Maintain strict modular encapsulation; modules pass boundary models (dataclasses) via ports.
 - **Standardized Storage**: Never write databases or logs directly to the repository root. Always use `.agent/`.
-
-### Recommended Implementation Order
-1. Core Project Skeleton → 2. Provider Layer → 3. Repository Scanner → 4. Knowledge Graph → 5. Context Engine → 6. Specification Wizard → 7. Planning Engine → 8. Approval Layer → 9. Tool Runtime → 10. Agent Loop → 11. Verification System → 12. Audit Logging.
 
 ---
 
