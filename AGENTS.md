@@ -59,32 +59,6 @@ PRD
 
 Higher-priority documents win.
 
-
----
-
-# Core Principles
-
-1. Specifications are the source of truth.
-2. Never implement behavior that contradicts approved specifications.
-3. Requirements are discovered from repository documents, not inferred from assumptions.
-4. Prefer deterministic behavior over heuristic behavior.
-5. Prefer explicit contracts over implicit coupling.
-6. Prefer verification over confidence.
-7. Every change must be traceable to a documented requirement.
-8. Every modification must preserve repository consistency.
-9. Architectural boundaries must be respected.
-10. Temporary shortcuts become permanent defects; avoid them.
-11. Minimize complexity whenever possible.
-12. Avoid introducing hidden state.
-13. Avoid introducing undocumented behavior.
-14. Avoid introducing speculative abstractions.
-15. Do not optimize for future requirements that do not exist.
-16. Do not add features that are not requested by specifications.
-17. Favor maintainability over cleverness.
-18. Favor clarity over brevity.
-19. Favor correctness over implementation speed.
-20. Favor reproducibility over convenience.
-
 ---
 
 # Required Operating Model
@@ -273,6 +247,19 @@ If requirements are unclear:
 5. Request clarification.
 
 Do not resolve ambiguous requirements independently.
+
+---
+
+# Tool & Environment Discipline
+
+### 1. Execution Environment
+- Always run python scripts, tests, and formatting tools using the project's virtual environment or package manager (e.g., prefixing with `uv run` or using `.venv/bin/`). Avoid global system tools.
+
+### 2. Search & Context Boundary
+- Ignore `.agent/` databases, state directories, and logs when performing general codebase searches or scans. Do not read binary databases (`.db` files) as text.
+
+### 3. File Link Formatting
+- When creating markdown links to files or code symbols, use the raw filename as link text without wrapping it in backticks (e.g., use `[main.py](file:///path/to/main.py)`, NOT `[`main.py`](file:///path/to/main.py)`).
 
 ---
 
