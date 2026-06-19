@@ -49,22 +49,16 @@ The primary optimization target is specification-constrained software delivery.
 Before implementing architectural changes, read:
 
 1. docs/01-prd.md
-2. docs/02-frd.md
-3. docs/03-system-architecture.md
-4. docs/04-module-contracts.md
-5. docs/07-agent-loop-specification.md
-6. docs/09-context-engineering-spec.md
-7. docs/11-agent-onboarding-guide
+2. docs/02-technical-spec.md
 
 If there is a conflict:
 
 PRD
-→ FRD
-→ Architecture
-→ Module Contracts
+→ Technical Spec
 → Implementation
 
 Higher-priority documents win.
+
 
 ---
 

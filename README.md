@@ -17,18 +17,12 @@ Before contributing, read the project documents in this order:
 
 1. `AGENTS.md`
 2. `docs/01-prd.md`
-3. `docs/02-frd.md`
-4. `docs/03-system-architecture.md`
-5. `docs/04-module-contracts.md`
-6. `docs/07-agent-loop-specification.md`
-7. `docs/09-context-engineering-spec.md`
-8. `docs/11-agent-onboarding-guide.md`
-9. `docs/12-web-llm-contributor-prompt.md`
+3. `docs/02-technical-spec.md`
 
 If documents conflict, higher-priority documents win:
 
 ```text
-PRD -> FRD -> Architecture -> Module Contracts -> Implementation
+PRD -> Technical Spec -> Implementation
 ```
 
 Do not resolve unclear requirements by guessing. Open an issue or discussion and
@@ -56,7 +50,7 @@ src/corge/
 ```
 
 Each module owns the responsibilities documented in
-`docs/04-module-contracts.md`. Keep behavior inside the module that owns it.
+`docs/02-technical-spec.md`. Keep behavior inside the module that owns it.
 Do not bypass module boundaries for convenience.
 
 Important boundaries:
@@ -263,7 +257,7 @@ into new work.
 Keep changes small, specified, and module-owned.
 
 1. Start from an approved requirement or open an issue to define one.
-2. Identify the owning module in `docs/04-module-contracts.md`.
+2. Identify the owning module in `docs/02-technical-spec.md`.
 3. Update or add tests for the behavior before claiming completion.
 4. Keep changes scoped to one subsystem whenever possible.
 5. Run `pytest`, `ruff`, and `mypy` before opening a pull request.
@@ -276,9 +270,7 @@ Behavior belongs behind the specification gate.
 
 If you are using a web-based AI assistant (like ChatGPT, Claude, or Gemini) without an integrated agentic IDE, you must align the AI with our strict, specification-driven rules.
 
-Before asking your LLM to write code, provide it with the dedicated prompt template found in:
-
-- `docs/12-web-llm-contributor-prompt.md`
+Before asking your LLM to write code, provide it with the prompt template found in the Web LLM Contributor Prompt section of `docs/02-technical-spec.md`.
 
 This prompt ensures the AI respects architectural boundaries, avoids speculative abstraction, and adheres to the document hierarchy (PRD > FRD > Architecture). Do not let an LLM invent requirements or bypass the module contracts.
 
@@ -308,8 +300,7 @@ Files that are more conflict-prone require extra care:
 - `pyproject.toml`
 - `uv.lock`
 - `src/corge/contracts/*`
-- `docs/04-module-contracts.md`
-- `docs/03-system-architecture.md`
+- `docs/02-technical-spec.md`
 
 Coordinate before editing those files.
 
@@ -340,5 +331,5 @@ The repository currently contains the foundation skeleton only:
 - Public service/port classes matching the documented module contracts.
 - Tests that verify imports, public contract surfaces, and stub behavior.
 
-Feature implementation should proceed in the order recommended by
-`docs/11-agent-onboarding-guide.md`.
+Feature implementation should proceed in the order recommended by the
+Onboarding and Developer Rules section of `docs/02-technical-spec.md`.

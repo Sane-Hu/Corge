@@ -4,7 +4,7 @@ from enum import StrEnum
 
 
 class LifecycleState(StrEnum):
-    """Primary lifecycle states documented in docs/05-state-machine.md."""
+    """Primary lifecycle states documented in docs/02-technical-spec.md."""
 
     START = "START"
     REPOSITORY_SELECTION = "REPOSITORY_SELECTION"
