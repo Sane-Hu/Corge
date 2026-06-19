@@ -323,13 +323,21 @@ Use this checklist in every pull request:
 
 ## Current Status
 
-The repository currently contains the foundation skeleton only:
+The repository contains the foundation skeleton, with the following implementation progress:
 
-- Python package metadata and tooling configuration.
-- Modular package layout under `src/corge/`.
-- Shared typed contracts under `src/corge/contracts/`.
-- Public service/port classes matching the documented module contracts.
-- Tests that verify imports, public contract surfaces, and stub behavior.
+### Implemented Modules
+- **Contracts & Port Definitions** ([contracts](src/corge/contracts))
+- **Knowledge Graph** ([knowledge_graph](src/corge/knowledge_graph))
+- **Agent State Machine & Planning Engine** ([agent](src/corge/agent))
+- **Approval Gateway** ([approval](src/corge/approval))
 
-Feature implementation should proceed in the order recommended by the
-Onboarding and Developer Rules section of `docs/02-technical-spec.md`.
+### Pending Implementation (Stub Modules)
+- **UI & Presentation Layer** ([ui](src/corge/ui))
+- **Context Engine** ([context](src/corge/context))
+- **Prompt Assembler** ([prompt_assembler](src/corge/prompt_assembler))
+- **Token Budget Manager** ([budget_manager](src/corge/budget_manager))
+- **Memory Store** ([memory](src/corge/memory))
+- **Artifact Store** ([artifacts](src/corge/artifacts))
+- **Tool Runtime** ([tools](src/corge/tools))
+- **Provider Adapter** ([providers](src/corge/providers))
+- **Audit Logging** ([logging](src/corge/logging))
