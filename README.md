@@ -331,6 +331,7 @@ The repository contains the foundation skeleton, with the following implementati
 - **Agent State Machine & Planning Engine** ([agent](src/corge/agent))
 - **Approval Gateway** ([approval](src/corge/approval))
 - **UI & Presentation Layer** ([ui](src/corge/ui))
+- **Provider Adapter** ([providers](src/corge/providers)): Concrete OpenAI-compatible model integration adapter. Supports OpenAI (automatic prompt caching), DeepSeek (explicit prefix caching), and local Ollama (keep-alive management). Automatically handles reasoning models by stripping `<think>...</think>` tags and populating standard token usage details (`prompt_tokens`, `completion_tokens`, `cache_read_tokens`, `cache_write_tokens`).
 
 ### Pending Implementation (Stub Modules)
 - **Context Engine** ([context](src/corge/context))
@@ -339,5 +340,5 @@ The repository contains the foundation skeleton, with the following implementati
 - **Memory Store** ([memory](src/corge/memory))
 - **Artifact Store** ([artifacts](src/corge/artifacts))
 - **Tool Runtime** ([tools](src/corge/tools))
-- **Provider Adapter** ([providers](src/corge/providers))
 - **Audit Logging** ([logging](src/corge/logging))
+

@@ -171,3 +171,8 @@ To maintain the modular monolith, cross-communication is heavily restricted. Eac
 ### 6. Shared Contracts Layer (Grey)
 - **Role**: Defines the strict boundary objects and interfaces that traverse modules. 
 - **Rule**: Modules communicate by passing models (e.g., `Specification`, `ApprovalRequest`) to interface ports (`typing.Protocol`), completely preventing hidden tight coupling.
+
+### 7. Providers Module
+- **Role**: Model API adapter and integration point.
+- **Components**: The `Provider` class implements an OpenAI-compatible adapter supporting OpenAI (with automatic prompt caching), DeepSeek (with prefix caching), and Ollama (with keep-alive support). It automatically handles reasoning/thinking models by stripping `<think>...</think>` tags from content and populating standardized usage fields.
+

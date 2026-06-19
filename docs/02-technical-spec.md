@@ -21,7 +21,7 @@ This document consolidates the functional requirements, architectural subsystems
 - **FR-011 Context Budget Manager**: Enforces token budgets using clipping, deduplication, aging, summarization, and offloading.
 - **FR-012 Test-Based Completion**: Delivery requires all acceptance criteria to be satisfied, tests to exist and pass, and human approval.
 - **FR-013 Audit Logging**: Records prompts, plans, tools, approvals, and completions for accountability.
-- **FR-014 Provider Abstraction**: Single integration point for models (DeepSeek, Ollama, OpenAI-compat).
+- **FR-014 Provider Abstraction**: Single integration point for models (DeepSeek, Ollama, OpenAI-compat). *[Status: Implemented]*
 - **FR-015 Empty Repository Bootstrapping**: Allows complete project scaffolding starting from specification.
 
 ---

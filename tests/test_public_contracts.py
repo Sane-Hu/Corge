@@ -43,7 +43,7 @@ from corge.knowledge_graph import KnowledgeGraph
 from corge.logging import AuditLogger
 from corge.memory import MemoryStore
 from corge.prompt_assembler import PromptAssembler
-from corge.providers import Provider
+from corge.providers import Provider, ProviderConfig
 from corge.tools import ToolRuntime
 from corge.ui import CliUi
 
@@ -257,7 +257,7 @@ def test_stub_methods_raise_not_implemented(
         lambda: ToolRuntime().write(Path("file.txt"), "content"),
         lambda: ToolRuntime().edit(Path("file.txt"), "old", "new"),
         lambda: ToolRuntime().bash("pytest", Path(".")),
-        lambda: Provider().chat((ProviderMessage(role="user", content="hello"),)),
+        # Provider() now requires a ProviderConfig — tested in tests/providers/.
         lambda: AuditLogger().record_prompt("prompt"),
         lambda: AuditLogger().record_tool_call(tool_result),
         lambda: AuditLogger().record_approval(
