@@ -17,7 +17,7 @@ class SpecificationAgent:
             "You are a strict system architect.\n"
             "Analyze the following drafted specification for semantic gaps, "
             "missing logic, or undefined edge cases.\n"
-            "Return ONLY a JSON array of objects with keys 'topic' and 'description'.\n\n"
+            "Return ONLY a JSON array of objects with a 'topic' key.\n\n"
             f"Draft:\n{canvas_text}"
         )
         msg = ProviderMessage(role="user", content=prompt)
@@ -28,7 +28,7 @@ class SpecificationAgent:
             try:
                 gaps = json.loads(match.group(0))
                 return tuple(
-                    SemanticGap(topic=g["topic"], description=g["description"])
+                    SemanticGap(topic=g["topic"])
                     for g in gaps
                 )
             except Exception:
