@@ -53,7 +53,7 @@ class AgentService:
         try:
             return json.loads(text)
         except json.JSONDecodeError as e:
-            raise ToolExecutionError(f"Failed to parse provider response: {e}")
+            raise ToolExecutionError(f"Failed to parse provider response: {e}") from e
 
     def generate_plan(self, specification: Specification) -> Plan:
         prompt = (
@@ -82,8 +82,8 @@ class AgentService:
         prompt += (
             "\n\nReturn a JSON object representing the tool action to take. "
             "It must include 'action' (string, e.g. 'read', 'write', 'edit', 'bash'), "
-            "'target' (string), and 'content' (string, for write), 'old' and 'new' (for edit), "
-            "or 'command' (string, for bash)."
+            "'target' (string), and 'content' (string, for write), "
+            "'old' and 'new' (for edit), or 'command' (string, for bash)."
         )
         response = self._provider.chat((ProviderMessage(role="user", content=prompt),))
         data = self._parse_json(response.content)
@@ -91,8 +91,8 @@ class AgentService:
         action_str = data.get("action")
         try:
             action = ToolAction(action_str)
-        except ValueError:
-            raise ToolExecutionError(f"Invalid tool action: {action_str}")
+        except ValueError as e:
+            raise ToolExecutionError(f"Invalid tool action: {action_str}") from e
 
         target = data.get("target", "")
 
@@ -113,7 +113,9 @@ class AgentService:
         elif action == ToolAction.WRITE:
             result = self._tool_runtime.write(path, data.get("content", ""))
         elif action == ToolAction.EDIT:
-            result = self._tool_runtime.edit(path, data.get("old", ""), data.get("new", ""))
+            result = self._tool_runtime.edit(
+                path, data.get("old", ""), data.get("new", "")
+            )
         elif action == ToolAction.BASH:
             result = self._tool_runtime.bash(
                 data.get("command", ""), context.repository_context.root

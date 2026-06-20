@@ -12,11 +12,11 @@ import pytest
 from corge.contracts import (
     CanvasSnapshot,
     GraphQuery,
+    RepositoryContext,
     StickyNote,
     StickyNoteStatus,
 )
 from corge.knowledge_graph import KnowledgeGraph
-from corge.contracts import RepositoryContext
 
 
 @pytest.fixture()

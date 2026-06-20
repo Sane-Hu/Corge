@@ -1,11 +1,15 @@
 """Tests for the schema tailor (Argument of Specs RD § 2, Layer 1)."""
 
-from pathlib import Path
 
-import pytest
 
 from corge.agent.schema_tailor import SchemaTailor
-from corge.contracts import GraphNode, GraphQuery, GraphResult, GraphUpdate, RepositoryContext
+from corge.contracts import (
+    GraphNode,
+    GraphQuery,
+    GraphResult,
+    GraphUpdate,
+    RepositoryContext,
+)
 
 
 class _MockKnowledgeGraph:

@@ -30,7 +30,6 @@ from corge.contracts import (
     Plan,
     PlanStep,
     PromptAssemblerPort,
-    ProviderMessage,
     ProviderPort,
     RepositoryContext,
     Specification,
@@ -43,7 +42,7 @@ from corge.knowledge_graph import KnowledgeGraph
 from corge.logging import AuditLogger
 from corge.memory import MemoryStore
 from corge.prompt_assembler import PromptAssembler
-from corge.providers import Provider, ProviderConfig
+from corge.providers import Provider
 from corge.tools import ToolRuntime
 from corge.ui import CliUi
 

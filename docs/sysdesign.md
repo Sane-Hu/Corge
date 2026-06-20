@@ -8,7 +8,6 @@ The diagram below separates the system into distinct color-coded modules. Rather
 
 ```mermaid
 flowchart TD
-    %% Styling Classes for distinct module coloring
     classDef uiStyle fill:#E1BEE7,stroke:#8E24AA,stroke-width:2px,color:#000,rx:5,ry:5;
     classDef agentStyle fill:#FFF9C4,stroke:#FBC02D,stroke-width:2px,color:#000,rx:5,ry:5;
     classDef contextStyle fill:#C8E6C9,stroke:#388E3C,stroke-width:2px,color:#000,rx:5,ry:5;
@@ -18,7 +17,6 @@ flowchart TD
     classDef contractStyle fill:#ECEFF1,stroke:#607D8B,stroke-width:2px,stroke-dasharray: 5 5,color:#000,rx:10,ry:10;
     classDef providerStyle fill:#E0F7FA,stroke:#0097A7,stroke-width:2px,color:#000,rx:5,ry:5;
 
-    %% Modules separated by Subgraphs
     subgraph mod_contracts [Shared Contracts Layer]
         direction LR
         SharedModels((Data Models: Specification, Plan, ContextBundle))
@@ -70,7 +68,6 @@ flowchart TD
         PRV_ADAPT[Model API Adapter]
     end
 
-    %% High-level Tactical Flow (numbered for readability)
     UI_WIZ -->|1. Spec Interactions| AG_SPEC
     AG_SPEC -->|2. Generate Spec| AG_CTRL
     AG_CTRL -.->|Batch Update| AG_LEARN
@@ -98,7 +95,6 @@ flowchart TD
 
     KN_MEM -->|Offload Cold Storage| KN_ART
 
-    %% Apply Colors
     class UI_TUI,UI_WIZ uiStyle;
     class AG_CTRL,AG_SPEC,AG_PLAN,AG_CODE,AG_LEARN agentStyle;
     class CTX_ENG,CTX_ASM,CTX_BUD contextStyle;
@@ -127,7 +123,6 @@ sequenceDiagram
     participant KN as knowledge.Persistence
     participant LG as logging.ArgumentationLog
 
-    %% Phase 1: Specification
     User->>UI: Interacts with Spec Wizard & Canvas
     UI->>LG: Logs Socratic Q&A and Canvas Snapshots
     UI-->>SA: Submits interactive input
@@ -136,12 +131,10 @@ sequenceDiagram
     SA->>SA: Applies Heuristics
     SA-->>PE: Yields `Specification` (title, body, criteria)
     
-    %% Phase 2: Planning
     PE->>PRV: Analyzes requirements
     PRV-->>PE: Yields Draft Plan
     PE-->>CA: Yields `Plan` (tuple of `PlanStep`)
     
-    %% Phase 3: Coding (Execution)
     loop For each `PlanStep`
         CA->>CTX: Requests context for current step
         CTX->>KN: Queries structure and facts
@@ -151,16 +144,13 @@ sequenceDiagram
         CA->>PRV: Evaluates `PlanStep` + `ContextBundle`
         PRV-->>CA: Yields Tool Action decision
         
-        %% Proposing Action
         CA->>GW: Submits `ApprovalRequest` (ToolAction, target)
         
-        %% Human in the Loop
         GW->>UI: Delegates `request_approval`
         UI->>User: Displays requested action
         User-->>UI: Approves / Rejects
         UI-->>GW: Yields `ApprovalDecision`
         
-        %% Resolution
         alt is APPROVED
             GW->>TR: Authorizes tool execution
             TR-->>CA: Yields `ToolResult`
@@ -172,7 +162,6 @@ sequenceDiagram
         CA->>KN: Extracts facts, updates graph & scenario memory
     end
     
-    %% Phase 4: Completion
     CA->>UI: Triggers `show_completion_review(Plan)`
     UI->>User: Displays results
 ```

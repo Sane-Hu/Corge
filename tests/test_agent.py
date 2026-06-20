@@ -1,6 +1,5 @@
 """Unit tests for the agent module."""
 
-import json
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -10,13 +9,11 @@ from corge.agent import AgentService, ToolExecutionError
 from corge.contracts import (
     AcceptanceCriteria,
     ApprovalDecision,
-    ApprovalRequest,
     ContextBundle,
     EngineeringProfile,
     MemoryEvent,
     Plan,
     PlanStep,
-    ProviderMessage,
     RepositoryContext,
     Specification,
     ToolAction,
@@ -75,7 +72,9 @@ def test_generate_plan_parses_json_steps(
         acceptance_criteria=AcceptanceCriteria(items=("Works",)),
     )
     mock_response = Mock()
-    mock_response.content = '```json\n{"steps": [{"identifier": "1", "description": "do it"}]}\n```'
+    mock_response.content = (
+        '```json\n{"steps": [{"identifier": "1", "description": "do it"}]}\n```'
+    )
     mock_provider.chat.return_value = mock_response
 
     plan = agent_service.generate_plan(spec)
@@ -106,11 +105,15 @@ def test_execute_step_requires_approval_and_executes_write(
     mock_prompt_assembler.assemble_prompt.return_value = "prompt"
     
     mock_response = Mock()
-    mock_response.content = '{"action": "write", "target": "test.txt", "content": "hello"}'
+    mock_response.content = (
+        '{"action": "write", "target": "test.txt", "content": "hello"}'
+    )
     mock_provider.chat.return_value = mock_response
 
     mock_approval_gateway.approve.return_value = ApprovalDecision.APPROVED
-    mock_tool_runtime.write.return_value = ToolResult(action=ToolAction.WRITE, output="ok", success=True)
+    mock_tool_runtime.write.return_value = ToolResult(
+        action=ToolAction.WRITE, output="ok", success=True
+    )
 
     agent_service.execute_step(step, context)
 
@@ -138,7 +141,9 @@ def test_execute_step_raises_on_rejection(
     mock_prompt_assembler.assemble_prompt.return_value = "prompt"
     
     mock_response = Mock()
-    mock_response.content = '{"action": "write", "target": "test.txt", "content": "hello"}'
+    mock_response.content = (
+        '{"action": "write", "target": "test.txt", "content": "hello"}'
+    )
     mock_provider.chat.return_value = mock_response
 
     mock_approval_gateway.approve.return_value = ApprovalDecision.REJECTED
@@ -170,7 +175,9 @@ def test_execute_step_raises_on_tool_failure(
     mock_provider.chat.return_value = mock_response
 
     # READ does not require approval
-    mock_tool_runtime.read.return_value = ToolResult(action=ToolAction.READ, output="", success=False, stderr="not found")
+    mock_tool_runtime.read.return_value = ToolResult(
+        action=ToolAction.READ, output="", success=False, stderr="not found"
+    )
 
     with pytest.raises(ToolExecutionError, match="not found"):
         agent_service.execute_step(step, context)
