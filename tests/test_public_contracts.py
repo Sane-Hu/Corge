@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from corge.agent import AgentService
+from corge.agent import SessionController
 from corge.approval import ApprovalGateway
 from corge.artifacts import ArtifactStore
 from corge.budget_manager import BudgetManager
@@ -127,7 +127,7 @@ def tool_result() -> ToolResult:
 
 _PROTOCOL_IMPL_PAIRS: list[tuple[type, type]] = [
     (UiPort, CliUi),
-    (AgentPort, AgentService),
+    (AgentPort, SessionController),
     (ContextPort, ContextService),
     (PromptAssemblerPort, PromptAssembler),
     (BudgetManagerPort, BudgetManager),
@@ -157,7 +157,7 @@ def test_concrete_satisfies_protocol(protocol: type, impl: type) -> None:
 
 def test_documented_public_classes_exist() -> None:
     expected_methods = {
-        AgentService: {
+        SessionController: {
             "analyze_specification_gaps",
             "generate_technical_plan",
             "generate_procedural_steps",
