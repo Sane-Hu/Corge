@@ -329,15 +329,16 @@ The repository contains the foundation skeleton, with the following implementati
 ### Implemented Modules
 - **Contracts & Port Definitions** ([contracts](src/corge/contracts))
 - **Knowledge Graph** ([knowledge_graph](src/corge/knowledge_graph)): Includes Discovery Mode fuzzy search.
-- **Agent Planning Engine** ([agent](src/corge/agent)): `AgentService` implements `generate_plan`, `execute_step`, and `evaluate_completion` (wired, not stubs). Also contains `HeuristicUpdater` (Bayesian spec-wizard learning) and `SchemaTailor` (framework-aware schema loading from `schemas/stack/`).
-- **Approval Gateway** ([approval](src/corge/approval))
-- **UI & Presentation Layer** ([ui](src/corge/ui))
+- **Context Engine** ([context](src/corge/context)): Implements Markov Context Chaining (N-1 injection) and layer isolation, ensuring Layer 1 Argumentation metadata does not leak into execution.
+- **Approval Gateway** ([approval](src/corge/approval)): Contains logic for UI delegation, audit logging delegation, and auto-approval for read actions.
+- **UI & Presentation Layer** ([ui](src/corge/ui)): Uses `rich`-based console panels and interactive prompts. Supports the Socratic Spec-Wizard, Freestyle Canvas, and execution monitoring.
 - **Provider Adapter** ([providers](src/corge/providers)): Concrete OpenAI-compatible model integration adapter. Supports OpenAI (automatic prompt caching), DeepSeek (explicit prefix caching), and local Ollama (keep-alive management). Automatically handles reasoning models by stripping `<think>...</think>` tags and populating standard token usage details (`prompt_tokens`, `completion_tokens`, `cache_read_tokens`, `cache_write_tokens`).
 - **Logging** ([logging](src/corge/logging)): Includes Argumentation Logging for Socratic Q&A and canvas snapshots.
-- **Tech-Stack Schemas** ([schemas](src/corge/schemas)): Generic and framework-specific schemas for tailoring prompts.
+- **Tech-Stack Schemas** ([schemas](src/corge/schemas)): Generic and framework-specific schemas (e.g., Laravel) for tailoring prompts.
+- **Agent Subsystems** ([agent](src/corge/agent)): Contains `HeuristicUpdater` (Bayesian spec-wizard learning) and `SchemaTailor` (framework-aware schema loading).
 
 ### Pending Implementation (Stub Modules)
-- **Context Engine** ([context](src/corge/context)): Stub — all methods raise `NotImplementedError`.
+- **Agent Core** ([agent](src/corge/agent)): `SessionController`, `SpecificationAgent`, `PlanningAgent`, and `CodingAgent` remain as structural stubs.
 - **Prompt Assembler** ([prompt_assembler](src/corge/prompt_assembler))
 - **Token Budget Manager** ([budget_manager](src/corge/budget_manager))
 - **Memory Store** ([memory](src/corge/memory))
