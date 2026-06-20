@@ -66,7 +66,7 @@ A user must be able to:
 
 - IDE Integration
 - GitHub Integration
-- Multi-Agent Systems
+- Decentralized Multi-Agent Swarms
 - Vector Databases & Embedding Search
 - Autonomous Background Tasks
 - Cloud Collaboration

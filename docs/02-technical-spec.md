@@ -21,7 +21,7 @@ This document consolidates the functional requirements, architectural subsystems
 - **FR-011 Context Budget Manager**: Enforces token budgets using clipping, deduplication, aging, summarization, and offloading.
 - **FR-012 Test-Based Completion**: Delivery requires all acceptance criteria to be satisfied, tests to exist and pass, and human approval.
 - **FR-013 Audit Logging**: Records prompts, plans, tools, approvals, and completions for accountability.
-- **FR-014 Provider Abstraction**: Single integration point for models (DeepSeek, Ollama, OpenAI-compat).
+- **FR-014 Provider Abstraction**: Single integration point for models (DeepSeek, Ollama, OpenAI-compat) that automatically strips `<think>` tags and populates standardized usage fields.
 - **FR-015 Empty Repository Bootstrapping**: Allows complete project scaffolding starting from specification.
 - **FR-016 Argument of Specs (Wizard)**: Interactive Socratic specification wizard with schema tailoring based on framework.
 - **FR-017 Heuristic Learning**: Bayesian self-improvement via `spec_wizard_heuristics.json` to optimize spec generation based on user overrides and abandonment.
@@ -35,7 +35,7 @@ The codebase is organized as a modular monolith:
 ```text
 src/corge/
 ├── ui/                 # CLI presentation layer
-├── agent/              # Planning engine, Schema Tailor, and Heuristic Updater
+├── agent/              # Session Controller, Specification Agent, Planning Agent, Coding Agent, Schema Tailor, and Heuristic Updater
 ├── context/            # Context retrieval coordination
 ├── prompt_assembler/   # EPC prompt generation
 ├── budget_manager/     # Token budgeting and compaction
@@ -101,6 +101,10 @@ All databases and persistent files reside under the `.agent/` directory:
 - **Argumentation Log**: `.agent/argumentation_log.json` (Stores Socratic Q&A and canvas snapshots)
 - **Heuristic Weights**: `.agent/spec_wizard_heuristics.json` (Stores probabilities for the Spec-Wizard)
 
+### Context Service & Isolation
+- **Markov Context Chaining**: Injects the active state from step N-1 into step N.
+- **3-Layer Isolation**: Strips argumentation and planning metadata from the coding context to prevent distraction.
+
 ### Ephemeral Prompt Tiers
 1. **Tier 1 (Always Present)**: Current Spec, Acceptance Criteria, Current Plan Step, Engineering Profile.
 2. **Tier 2 (Repository)**: Engineering Facts, Graph Queries, Relevant File Summaries.
@@ -114,30 +118,30 @@ All databases and persistent files reside under the `.agent/` directory:
 
 ```text
 ┌──────────────────────────────┐  ┌──────────────────────────────┐
-│ Select Repository            │  │ Repository Analysis          │
+│ Specification Wizard         │  │ Repository Analysis          │
 │                              │  │                              │
-│ /projects/my-app             │  │ Scanning... [83%]            │
-│ [Enter] Continue             │  │                              │
+│ Feature Goal: [            ] │  │ Scanning Tree                │
+│ User Story: [              ] │  │ Building Graph               │
+│ Func Reqs: [               ] │  │ Progress: 100%               │
 └──────────────────────────────┘  └──────────────────────────────┘
 ┌──────────────────────────────┐  ┌──────────────────────────────┐
-│ Specification Wizard         │  │ Repository Understanding     │
+│ Argumentation Diff           │  │ Repository Understanding     │
 │                              │  │                              │
-│ Goal: [                      ] │  │ Framework: Laravel 12        │
-│ Criteria: [                  ] │  │ Graph Nodes: 1234            │
+│ [Canvas]      [Spec]         │  │ Path: my-app                 │
+│ Semantic Gaps: [           ] │  │ Graph Nodes: ~1234           │
 └──────────────────────────────┘  └──────────────────────────────┘
 ┌──────────────────────────────┐  ┌──────────────────────────────┐
-│ Plan Review                  │  │ Execution Monitor            │
+│ Plan Review (Tech / Proced)  │  │ Execution Monitor            │
 │                              │  │                              │
-│ 1. Create Service            │  │ Step 2/4: Create DTO         │
-│ 2. Create DTO                │  │ Proposing write...           │
-│ [Approve] [Reject]           │  │                              │
+│ 1. [step-1] Create Service   │  │ Step 1 / 4                   │
+│ Edit Procedural Steps? [y/n] │  │ Executing...                 │
 └──────────────────────────────┘  └──────────────────────────────┘
 ┌──────────────────────────────┐  ┌──────────────────────────────┐
-│ Approval Request             │  │ Completion Screen            │
+│ Approval Request             │  │ Completion Review            │
 │                              │  │                              │
-│ Action: write                │  │ Criteria: [x] [x] [x]        │
-│ Target: app/DTO/LoginDTO.php │  │ Tests: [x] Passed            │
-│ [Approve] [Reject]           │  │ [Approve Completion]         │
+│ Action: write                │  │ Acceptance Criteria [v]      │
+│ Target: file.py              │  │ Tests [v] Passed             │
+│ Approve? [y/n]               │  │                              │
 └──────────────────────────────┘  └──────────────────────────────┘
 ```
 
