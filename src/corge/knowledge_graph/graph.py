@@ -15,7 +15,7 @@ Node types (09-context § Node Types):
 Edge types (09-context § Edge Types):
     contains, imports
 
-ponytail: Level B only — cross-file extends/implements/tests edges deferred.
+todo: Level B only — cross-file extends/implements/tests edges deferred.
           Upgrade path: walk ``ast.ClassDef.bases`` across the node table and
           resolve names to file-qualified node IDs.
 """
@@ -107,7 +107,7 @@ def _parse_python(
             edges.append((rel, "contains", nid))
         elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             # Only top-level functions (parent is Module) to avoid noise.
-            # ponytail: nested functions skipped; upgrade: track parent scope.
+            # todo: nested functions skipped; upgrade: track parent scope.
             nid = f"{rel}::{node.name}"
             nodes.append((nid, "function", rel, node.name))
             edges.append((rel, "contains", nid))
@@ -240,7 +240,7 @@ class KnowledgeGraph:
                 "SELECT value FROM meta WHERE key = 'root'"
             ).fetchone()
 
-        # ponytail: if DB is empty (build_graph never called), noop.
+        # todo: if DB is empty (build_graph never called), noop.
         # Upgrade: raise a descriptive error or accept root as a parameter.
         if row is None:
             return
@@ -272,7 +272,7 @@ class KnowledgeGraph:
 
         Returns an empty ``GraphResult`` if no nodes match.
 
-        ponytail: linear table scans; upgrade path: add B-tree indexes on
+        todo: linear table scans; upgrade path: add B-tree indexes on
         (kind), (path), (src, rel) once query volume grows.
         """
         expr = query.expression.strip()
