@@ -73,6 +73,7 @@ class SchemaTailor:
             "go.mod": "go",
             "build.gradle": "gradle",
             "pom.xml": "maven",
+            "artisan": "laravel",
         }
 
         for node in result.nodes:

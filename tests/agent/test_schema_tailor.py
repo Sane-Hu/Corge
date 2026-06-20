@@ -62,3 +62,21 @@ def test_fetch_django_schema() -> None:
     tailor = SchemaTailor(_MockKnowledgeGraph())
     schema = tailor.fetch_schema("django")
     assert schema.get("name") == "Django"
+
+
+def test_detect_laravel_framework() -> None:
+    """Detects Laravel via artisan in the graph."""
+    nodes = (
+        GraphNode(kind="file", node_id="src/main.py"),
+        GraphNode(kind="file", node_id="artisan"),
+    )
+    tailor = SchemaTailor(_MockKnowledgeGraph(nodes))
+    assert tailor.detect_framework() == "laravel"
+
+
+def test_fetch_laravel_schema() -> None:
+    """Loads laravel.yaml when framework is laravel."""
+    tailor = SchemaTailor(_MockKnowledgeGraph())
+    schema = tailor.fetch_schema("laravel")
+    assert schema.get("name") == "Laravel"
+
