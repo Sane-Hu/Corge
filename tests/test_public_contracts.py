@@ -158,7 +158,9 @@ def test_concrete_satisfies_protocol(protocol: type, impl: type) -> None:
 def test_documented_public_classes_exist() -> None:
     expected_methods = {
         AgentService: {
-            "generate_plan",
+            "analyze_specification_gaps",
+            "generate_technical_plan",
+            "generate_procedural_steps",
             "execute_step",
             "evaluate_completion",
             "update_memory",
@@ -234,9 +236,6 @@ def test_stub_methods_raise_not_implemented(
     tool_result: ToolResult,
 ) -> None:
     stub_calls = [
-        lambda: ContextService().load_context(repository_context),
-        lambda: ContextService().refresh_context(repository_context),
-        lambda: ContextService().retrieve_relevant_context(specification, plan_step),
         lambda: PromptAssembler().collect_context(plan_step),
         lambda: PromptAssembler().assemble_prompt(context_bundle),
         lambda: BudgetManager().estimate_tokens(context_bundle),

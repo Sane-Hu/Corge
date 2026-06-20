@@ -186,6 +186,7 @@ class ContextBundle:
     relevant_files: tuple[str, ...] = ()
     recent_actions: tuple[str, ...] = ()
     artifact_refs: tuple[ArtifactReference, ...] = ()
+    markov_context: MarkovStepContext | None = None
 
 
 # ---------------------------------------------------------------------------

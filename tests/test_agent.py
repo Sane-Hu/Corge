@@ -47,12 +47,18 @@ def mock_memory_store() -> Mock:
 
 
 @pytest.fixture()
+def mock_schema_tailor() -> Mock:
+    return Mock()
+
+
+@pytest.fixture()
 def agent_service(
     mock_provider: Mock,
     mock_prompt_assembler: Mock,
     mock_tool_runtime: Mock,
     mock_approval_gateway: Mock,
     mock_memory_store: Mock,
+    mock_schema_tailor: Mock,
 ) -> AgentService:
     return AgentService(
         provider=mock_provider,
@@ -60,10 +66,11 @@ def agent_service(
         tool_runtime=mock_tool_runtime,
         approval_gateway=mock_approval_gateway,
         memory_store=mock_memory_store,
+        schema_tailor=mock_schema_tailor,
     )
 
 
-def test_generate_plan_parses_json_steps(
+def test_generate_technical_plan_parses_json(
     agent_service: AgentService, mock_provider: Mock
 ) -> None:
     spec = Specification(
@@ -73,16 +80,33 @@ def test_generate_plan_parses_json_steps(
     )
     mock_response = Mock()
     mock_response.content = (
+        '```json\n{"content": "Architecture plan."}\n```'
+    )
+    mock_provider.chat.return_value = mock_response
+
+    plan = agent_service.generate_technical_plan(spec)
+
+    assert plan.specification_ref == "Test Feature"
+    assert plan.content == "Architecture plan."
+
+
+def test_generate_procedural_steps_parses_json(
+    agent_service: AgentService, mock_provider: Mock
+) -> None:
+    from corge.contracts import TechnicalPlan
+    plan = TechnicalPlan(content="Plan", specification_ref="Test")
+    
+    mock_response = Mock()
+    mock_response.content = (
         '```json\n{"steps": [{"identifier": "1", "description": "do it"}]}\n```'
     )
     mock_provider.chat.return_value = mock_response
 
-    plan = agent_service.generate_plan(spec)
+    steps = agent_service.generate_procedural_steps(plan)
 
-    assert plan.specification_ref == "Test Feature"
-    assert len(plan.steps) == 1
-    assert plan.steps[0].identifier == "1"
-    assert plan.steps[0].description == "do it"
+    assert len(steps) == 1
+    assert steps[0].identifier == "1"
+    assert steps[0].description == "do it"
 
 
 def test_execute_step_requires_approval_and_executes_write(

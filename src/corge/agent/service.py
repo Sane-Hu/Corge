@@ -13,10 +13,14 @@ from corge.contracts import (
     MemoryStorePort,
     Plan,
     PlanStep,
+    ProceduralStep,
     PromptAssemblerPort,
     ProviderMessage,
     ProviderPort,
+    SchemaTailorPort,
+    SemanticGap,
     Specification,
+    TechnicalPlan,
     ToolAction,
     ToolRuntimePort,
 )
@@ -37,12 +41,14 @@ class AgentService:
         tool_runtime: ToolRuntimePort,
         approval_gateway: ApprovalGatewayPort,
         memory_store: MemoryStorePort,
+        schema_tailor: SchemaTailorPort,
     ) -> None:
         self._provider = provider
         self._prompt_assembler = prompt_assembler
         self._tool_runtime = tool_runtime
         self._approval_gateway = approval_gateway
         self._memory_store = memory_store
+        self._schema_tailor = schema_tailor
 
     def _parse_json(self, text: str) -> Any:
         text = text.strip()
@@ -55,12 +61,47 @@ class AgentService:
         except json.JSONDecodeError as e:
             raise ToolExecutionError(f"Failed to parse provider response: {e}") from e
 
-    def generate_plan(self, specification: Specification) -> Plan:
+    def analyze_specification_gaps(self, canvas_text: str) -> tuple[SemanticGap, ...]:
+        framework = self._schema_tailor.detect_framework()
+        schema = self._schema_tailor.fetch_schema(framework)
+        
         prompt = (
-            f"Create an execution plan for the following specification.\n"
+            f"Analyze the following freestyle canvas text for missing requirements.\n"
+            f"Context framework: {framework or 'generic'}\n"
+            f"Schema expected structure: {json.dumps(schema)}\n"
+            f"Canvas Text: {canvas_text}\n\n"
+            f"Return a JSON object with a 'gaps' array. Each gap should be an object "
+            f"with a 'topic' (string) indicating what is missing (e.g. 'Database Schema', "
+            f"'Auth Middleware')."
+        )
+        response = self._provider.chat((ProviderMessage(role="user", content=prompt),))
+        try:
+            data = self._parse_json(response.content)
+            gaps = [SemanticGap(topic=g["topic"]) for g in data.get("gaps", [])]
+            return tuple(gaps)
+        except Exception:
+            return ()
+
+    def generate_technical_plan(self, specification: Specification) -> TechnicalPlan:
+        prompt = (
+            f"Create a technical architecture plan for the following specification.\n"
             f"Title: {specification.title}\n"
             f"Body: {specification.body}\n"
             f"Acceptance Criteria: {specification.acceptance_criteria.items}\n\n"
+            f"Return a JSON object with a 'content' string that outlines module boundaries, "
+            f"interfaces, and high-level architecture decisions."
+        )
+        response = self._provider.chat((ProviderMessage(role="user", content=prompt),))
+        data = self._parse_json(response.content)
+        content = data.get("content", "No technical plan generated.")
+        return TechnicalPlan(content=content, specification_ref=specification.title)
+
+    def generate_procedural_steps(
+        self, technical_plan: TechnicalPlan
+    ) -> tuple[ProceduralStep, ...]:
+        prompt = (
+            f"Based on the following technical plan, create granular procedural execution steps.\n"
+            f"Technical Plan:\n{technical_plan.content}\n\n"
             f"Return a JSON object with a 'steps' array. Each step should be an object "
             f"with 'identifier' (string) and 'description' (string)."
         )
@@ -70,12 +111,12 @@ class AgentService:
         steps = []
         for step_data in data.get("steps", []):
             steps.append(
-                PlanStep(
-                    identifier=step_data["identifier"],
-                    description=step_data["description"],
+                ProceduralStep(
+                    identifier=step_data.get("identifier", "unknown"),
+                    description=step_data.get("description", "No description"),
                 )
             )
-        return Plan(steps=tuple(steps), specification_ref=specification.title)
+        return tuple(steps)
 
     def execute_step(self, step: PlanStep, context: ContextBundle) -> None:
         prompt = self._prompt_assembler.assemble_prompt(context)

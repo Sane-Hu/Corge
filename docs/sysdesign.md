@@ -131,15 +131,18 @@ sequenceDiagram
     SA->>SA: Applies Heuristics
     SA-->>PE: Yields `Specification` (title, body, criteria)
     
-    PE->>PRV: Analyzes requirements
-    PRV-->>PE: Yields Draft Plan
-    PE-->>CA: Yields `Plan` (tuple of `PlanStep`)
+    PE->>PRV: Analyzes requirements for Technical Architecture
+    PRV-->>PE: Yields Technical Plan
+    PE->>PRV: Translates Architecture into Procedural Steps
+    PRV-->>PE: Yields Procedural Steps
+    PE-->>CA: Yields `Plan` (tuple of `PlanStep` / `ProceduralStep`)
     
     loop For each `PlanStep`
         CA->>CTX: Requests context for current step
         CTX->>KN: Queries structure and facts
         KN-->>CTX: Yields graph & memory data
-        CTX-->>CA: Yields `ContextBundle` (Repo, Memory, Profile)
+        CTX->>CTX: Applies Markov Context Chaining (N-1 injection, layer isolation)
+        CTX-->>CA: Yields `ContextBundle` (Repo, Memory, Profile, MarkovState)
         
         CA->>PRV: Evaluates `PlanStep` + `ContextBundle`
         PRV-->>CA: Yields Tool Action decision
@@ -181,7 +184,7 @@ To maintain the modular monolith, cross-communication is heavily restricted. Eac
 
 ### 3. Context Engineering Modules (Green)
 - **Role**: Gathering and optimizing data to ensure LLM interactions are precise and under token limits.
-- **Components**: The `Prompt Assembler` gathers raw inputs. The `Budget Manager` aggressively clips, deduplicates, and condenses them to fit strict context windows.
+- **Components**: The `Context Service` retrieves relevant context, enforcing 3-Layer Isolation (stripping Argumentation logic from coding) and applying Markov Context Chaining (injecting N-1 active state into the Nth step). The `Prompt Assembler` gathers raw inputs. The `Budget Manager` aggressively clips, deduplicates, and condenses them to fit strict context windows.
 
 ### 4. Knowledge & Persistence Modules (Blue)
 - **Role**: The source of long-term and short-term facts.

@@ -31,9 +31,12 @@ from corge.contracts.models import (
     MemoryEvent,
     Plan,
     PlanStep,
+    ProceduralStep,
     ProviderMessage,
     RepositoryContext,
+    SemanticGap,
     Specification,
+    TechnicalPlan,
     ToolResult,
 )
 
@@ -48,7 +51,17 @@ class UiPort(Protocol):
 
     def show_spec_wizard(self) -> Specification: ...
 
+    def show_argumentation_diff(
+        self, canvas: CanvasSnapshot, spec: Specification, gaps: tuple[SemanticGap, ...]
+    ) -> Specification: ...
+
     def show_plan(self, plan: Plan) -> None: ...
+
+    def show_tech_plan_editor(self, plan: TechnicalPlan) -> TechnicalPlan: ...
+
+    def show_procedural_steps_editor(
+        self, steps: tuple[ProceduralStep, ...]
+    ) -> tuple[ProceduralStep, ...]: ...
 
     def show_execution(self, context: ContextBundle) -> None: ...
 
@@ -80,7 +93,13 @@ class UiPort(Protocol):
 class AgentPort(Protocol):
     """Planning and execution orchestration boundary."""
 
-    def generate_plan(self, specification: Specification) -> Plan: ...
+    def analyze_specification_gaps(self, canvas_text: str) -> tuple[SemanticGap, ...]: ...
+
+    def generate_technical_plan(self, specification: Specification) -> TechnicalPlan: ...
+
+    def generate_procedural_steps(
+        self, technical_plan: TechnicalPlan
+    ) -> tuple[ProceduralStep, ...]: ...
 
     def execute_step(self, step: PlanStep, context: ContextBundle) -> None: ...
 
