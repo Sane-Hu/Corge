@@ -82,7 +82,9 @@ def _classify_file(rel: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _parse_python(path: Path, rel: str) -> tuple[list[tuple], list[tuple]]:
+def _parse_python(
+    path: Path, rel: str
+) -> tuple[list[tuple[str, str, str, str]], list[tuple[str, str, str]]]:
     """Return (nodes_rows, edges_rows) extracted from a Python source file.
 
     Returns empty lists on parse error so a bad file never aborts a build.
@@ -95,8 +97,8 @@ def _parse_python(path: Path, rel: str) -> tuple[list[tuple], list[tuple]]:
     except SyntaxError:
         return [], []
 
-    nodes: list[tuple] = []
-    edges: list[tuple] = []
+    nodes: list[tuple[str, str, str, str]] = []
+    edges: list[tuple[str, str, str]] = []
 
     for node in ast.walk(tree):
         if isinstance(node, ast.ClassDef):
