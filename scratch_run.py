@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 from textual.app import App
-from textual.worker import work
+from textual import work
 
 from corge.contracts import (
     ApprovalRequest,
@@ -37,7 +37,7 @@ class ScratchApp(CorgeApp):
             text="Brainstorming...\nWe need a database.",
             timestamp="2026-06-20T12:00:00Z"
         )
-        gaps = (SemanticGap(topic="Database Engine", description="Missing db"),)
+        gaps = (SemanticGap(topic="Database Engine"),)
 
         # 2. Argumentation Diff
         spec = ui.show_argumentation_diff(canvas, spec, gaps)
