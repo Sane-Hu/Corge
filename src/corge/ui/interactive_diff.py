@@ -15,18 +15,20 @@ class InteractiveDiffScreen(Screen):
     }
     .panes {
         height: 1fr;
+        margin: 1 2;
     }
     .pane {
         width: 1fr;
         height: 1fr;
-        border: solid green;
-        margin: 1;
+        border: round $primary;
+        padding: 1;
+        margin: 0 1;
     }
     .pane-title {
         text-align: center;
-        background: $boost;
-        color: $text;
+        color: $accent;
         text-style: bold;
+        margin-bottom: 1;
     }
     .footer {
         height: 3;

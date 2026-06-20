@@ -55,14 +55,16 @@ class CorgeApp(App):
         align: center middle;
     }
     MessageScreen > Vertical {
-        width: 60%;
-        height: 60%;
-        border: solid green;
+        width: 80%;
+        height: auto;
+        border: round $primary;
+        padding: 1 2;
     }
     .title {
-        background: $boost;
         text-align: center;
         text-style: bold;
+        color: $accent;
+        margin-bottom: 1;
     }
     """
 

@@ -17,14 +17,15 @@ class CanvasScreen(Screen):
     .container {
         width: 80%;
         height: 80%;
-        border: solid blue;
+        border: round $accent;
+        padding: 1 2;
         margin: 1;
     }
     .header {
         text-align: center;
-        background: $boost;
-        color: $text;
+        color: $accent;
         text-style: bold;
+        margin-bottom: 1;
     }
     """
 
