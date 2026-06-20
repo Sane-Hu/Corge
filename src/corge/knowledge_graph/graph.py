@@ -284,6 +284,35 @@ class KnowledgeGraph:
         )
         return GraphResult(nodes=nodes)
 
+    def fuzzy_search(self, keyword: str) -> GraphResult:
+        """Return nodes whose node_id or name contains ``keyword`` (case-insensitive).
+
+        Used by Discovery Mode (Argument of Specs RD § 2) to let users
+        explore the codebase without knowing exact node names.
+
+        todo: simple LIKE scan; upgrade path: embeddings or NL-to-graph
+              traversal when vector DB support is added.
+        """
+        if not keyword.strip():
+            return GraphResult(nodes=())
+
+        pattern = f"%{keyword.strip()}%"
+
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT node_id, kind, path, name FROM nodes"
+                " WHERE node_id LIKE ? COLLATE NOCASE"
+                "    OR name LIKE ? COLLATE NOCASE"
+                " ORDER BY node_id",
+                (pattern, pattern),
+            ).fetchall()
+
+        nodes = tuple(
+            GraphNode(kind=r[1], node_id=r[0], path=r[2], name=r[3])
+            for r in rows
+        )
+        return GraphResult(nodes=nodes)
+
 
 # ---------------------------------------------------------------------------
 # Walk helper (skips hidden dirs and __pycache__)

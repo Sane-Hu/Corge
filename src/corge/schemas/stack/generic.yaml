@@ -1,0 +1,15 @@
+# Generic tech-stack schema — fallback when framework is unrecognised.
+#
+# Used by the Spec-Wizard to generate tech-stack-agnostic Socratic questions.
+# Each key maps to a prompt instruction the Spec agent uses during
+# the CONCRETIZATION sub-state.
+
+name: Generic
+description: Framework-agnostic specification schema
+entry_point: Ask the user to describe the main entry point of their application
+routing: Ask about URL routing or request dispatch patterns
+data_model: Ask about the core data entities and their relationships
+persistence: Ask about storage strategy (database, file, API)
+authentication: Ask if authentication or authorization is required
+testing: Ask about testing strategy and preferred test framework
+deployment: Ask about deployment target and environment constraints
