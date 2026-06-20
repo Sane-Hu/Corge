@@ -331,14 +331,13 @@ The repository contains the foundation skeleton, with the following implementati
 - **Knowledge Graph** ([knowledge_graph](src/corge/knowledge_graph)): Includes Discovery Mode fuzzy search.
 - **Context Engine** ([context](src/corge/context)): Implements Markov Context Chaining (N-1 injection) and layer isolation, ensuring Layer 1 Argumentation metadata does not leak into execution.
 - **Approval Gateway** ([approval](src/corge/approval)): Contains logic for UI delegation, audit logging delegation, and auto-approval for read actions.
-- **UI & Presentation Layer** ([ui](src/corge/ui)): Uses `rich`-based console panels and interactive prompts. Supports the Socratic Spec-Wizard, Freestyle Canvas, and execution monitoring.
+- **UI & Presentation Layer** ([ui](src/corge/ui)): Uses an asynchronous `textual`-based Terminal UI (TUI). Integrates cleanly with `tmux` and manages synchronous Agent execution in background threads via `@work`. Supports the Freestyle Canvas brainstorming and side-by-side Interactive Diff editors.
 - **Provider Adapter** ([providers](src/corge/providers)): Concrete OpenAI-compatible model integration adapter. Supports OpenAI (automatic prompt caching), DeepSeek (explicit prefix caching), and local Ollama (keep-alive management). Automatically handles reasoning models by stripping `<think>...</think>` tags and populating standard token usage details (`prompt_tokens`, `completion_tokens`, `cache_read_tokens`, `cache_write_tokens`).
 - **Logging** ([logging](src/corge/logging)): Includes Argumentation Logging for Socratic Q&A and canvas snapshots.
 - **Tech-Stack Schemas** ([schemas](src/corge/schemas)): Generic and framework-specific schemas (e.g., Laravel) for tailoring prompts.
-- **Agent Subsystems** ([agent](src/corge/agent)): Contains `HeuristicUpdater` (Bayesian spec-wizard learning) and `SchemaTailor` (framework-aware schema loading).
+- **Agent Subsystems** ([agent](src/corge/agent)): Fully implemented `SessionController` orchestration across specialized `SpecificationAgent`, `PlanningAgent`, and `CodingAgent`. Includes LLM instruction logic for JSON gap parsing, procedural step chunking, and Markov chain execution. Also contains `HeuristicUpdater` (Bayesian spec-wizard learning) and `SchemaTailor` (framework-aware schema loading).
 
 ### Pending Implementation (Stub Modules)
-- **Agent Core** ([agent](src/corge/agent)): `SessionController`, `SpecificationAgent`, `PlanningAgent`, and `CodingAgent` remain as structural stubs.
 - **Prompt Assembler** ([prompt_assembler](src/corge/prompt_assembler))
 - **Token Budget Manager** ([budget_manager](src/corge/budget_manager))
 - **Memory Store** ([memory](src/corge/memory))
