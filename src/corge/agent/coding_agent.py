@@ -52,7 +52,7 @@ class CodingAgent:
         for line in response.content.split("\n"):
             if line.strip().startswith("BASH:"):
                 cmd = line.replace("BASH:", "").strip()
-                req = ApprovalRequest(action="bash", target=cmd, reason=step.description)
+                req = ApprovalRequest(action=ToolAction.BASH, target=cmd, reason=step.description)
                 
                 if self.approval_gateway.approve(req) == ApprovalDecision.APPROVED:
                     result = self.tool_runtime.bash(cmd, Path("."))
