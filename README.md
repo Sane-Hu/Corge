@@ -329,18 +329,18 @@ The repository contains the foundation skeleton, with the following implementati
 ### Implemented Modules
 - **Contracts & Port Definitions** ([contracts](src/corge/contracts))
 - **Knowledge Graph** ([knowledge_graph](src/corge/knowledge_graph)): Includes Discovery Mode fuzzy search.
-- **Context Engine** ([context](src/corge/context)): Implements Markov Context Chaining (N-1 injection) and layer isolation, ensuring Layer 1 Argumentation metadata does not leak into execution.
+- **Context Engine** ([context](src/corge/context)): Integrates with `KnowledgeGraphPort` and `MemoryStorePort` to construct the layered `ContextBundle`. Enforces the strict 3-Layer isolation strategy (shielding the coding phase from argumentation context pollution) and implements the N-1 Markov state trajectory compression system.
 - **Approval Gateway** ([approval](src/corge/approval)): Contains logic for UI delegation, audit logging delegation, and auto-approval for read actions.
-- **UI & Presentation Layer** ([ui](src/corge/ui)): Uses an asynchronous `textual`-based Terminal UI (TUI). Integrates cleanly with `tmux` and manages synchronous Agent execution in background threads via `@work`. Supports the Freestyle Canvas brainstorming and side-by-side Interactive Diff editors.
+- **UI & Presentation Layer** ([ui](src/corge/ui)): Uses an asynchronous `textual`-based Terminal UI (TUI). Integrates cleanly with `tmux` and manages synchronous Agent execution in background threads via `@work`. Supports Freestyle Canvas brainstorming with ghost text and active-validated sticky notes (`@node:<id>`), side-by-side Interactive Diff editors with a dedicated "Reject" button, and fully functioning readouts for repository context, execution state, engineering profile, and memory logs.
 - **Provider Adapter** ([providers](src/corge/providers)): Concrete OpenAI-compatible model integration adapter. Supports OpenAI (automatic prompt caching), DeepSeek (explicit prefix caching), and local Ollama (keep-alive management). Automatically handles reasoning models by stripping `<think>...</think>` tags and populating standard token usage details (`prompt_tokens`, `completion_tokens`, `cache_read_tokens`, `cache_write_tokens`).
 - **Logging** ([logging](src/corge/logging)): Includes Argumentation Logging for Socratic Q&A and canvas snapshots.
 - **Tech-Stack Schemas** ([schemas](src/corge/schemas)): Generic and framework-specific schemas (e.g., Laravel) for tailoring prompts.
-- **Agent Subsystems** ([agent](src/corge/agent)): Fully implemented `SessionController` orchestration across specialized `SpecificationAgent`, `PlanningAgent`, and `CodingAgent`. Includes LLM instruction logic for JSON gap parsing, procedural step chunking, and Markov chain execution. Also contains `HeuristicUpdater` (Bayesian spec-wizard learning) and `SchemaTailor` (framework-aware schema loading).
+- **Agent Subsystems** ([agent](src/corge/agent)): Fully implemented `SessionController` orchestration across specialized `SpecificationAgent` (with JSON gap parsing and Socratic loops), `PlanningAgent` (using sequential step identifiers), and `CodingAgent` (handling all 4 tool actions, completion evaluation, and interactive diff rejection pivots). Includes support for empty repository bootstrapping, session serialization/persistence, and standardizes learning updates via the `BayesianUpdater` implementation.
+- **Memory Store** ([memory](src/corge/memory)): Fully implemented 4-tier memory pyramid, including L0 session events (append-only JSONL), L1 engineering facts (SQLite with deduplication), L2 scenario memory per feature (JSON), and L3 engineering profile (confidence-filtered markdown).
 
 ### Pending Implementation (Stub Modules)
 - **Prompt Assembler** ([prompt_assembler](src/corge/prompt_assembler))
 - **Token Budget Manager** ([budget_manager](src/corge/budget_manager))
-- **Memory Store** ([memory](src/corge/memory))
 - **Artifact Store** ([artifacts](src/corge/artifacts))
 - **Tool Runtime** ([tools](src/corge/tools))
 - **Audit Logging** ([logging](src/corge/logging)): Audit logger remains a stub.
