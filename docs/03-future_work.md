@@ -143,3 +143,13 @@ The initial Knowledge Graph implementation (`src/corge/knowledge_graph/graph.py`
   7. **Scheduled Security Vulnerability Scans:** Periodically audits dependencies in `pyproject.toml` and lock files, generating alerts for outdated or insecure packages.
   8. **Continuous Test Suite Monitoring:** Runs verification tests at low-traffic times to verify environment changes or dependency updates don't break the system's core requirements.
 - **Reasoning for Deferral:** (MVP Scope) Manual executions of the TUI and on-session updates are adequate for early-stage development and local testing. Cron automation only becomes necessary as the repository scales or runs on remote dev servers.
+
+## 15. Self-Improving Planning Agent (Skills & Verifier Gates)
+
+- **Proposal:** Transition the Planning Agent from hardcoded templates to externalized "Skill Files", paired with a programmatic "Verifier Gate" and statistical feedback loops from user corrections.
+- **Current Implementation:** Prompts are hardcoded inside `PlanningAgent`. Validation is purely manual via the TUI split-diff editor.
+- **Upgrade Path:** 
+  1. Move instructions to `src/corge/schemas/skills/planning.yaml` containing rules and file blacklists.
+  2. Implement an automated validation gate to check step format and acceptance criteria coverage before human review.
+  3. Wire the `HeuristicUpdater` to capture user edits in `show_tech_plan_editor` and adjust planning skill selection weights using Bayesian/EWMA updates.
+- **Reasoning for Deferral:** (MVP Scope) Manual layout edits via the TUI split-pane are sufficient for POC validation. Automatic validation and self-improvement of plans can be deferred until the complexity of generated plans scales beyond human rapid review.
