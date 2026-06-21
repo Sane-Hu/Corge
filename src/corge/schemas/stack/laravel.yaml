@@ -1,0 +1,15 @@
+# Laravel tech-stack schema
+#
+# Used by the Spec-Wizard to tailor Socratic questions for Laravel projects.
+
+name: Laravel
+description: Laravel web framework specification schema
+entry_point: Ask about the Laravel entry point (e.g. routes, controllers, or console commands)
+routing: Ask about routing (web.php, api.php, console.php) and route middleware
+controllers: Ask about controller types (resourceful, invokable) and request handling
+requests: Ask if custom Form Requests or validation rules are needed
+models: Ask about Eloquent models, relationships, and attributes
+migrations: Ask about database migration strategy and schema blueprint details
+jobs: Ask if background jobs, queues, events, or listeners are required
+resources: Ask if API Resources or frontend views (Blade, Inertia) are used
+testing: Ask about Laravel feature or unit tests and preferred test assertions

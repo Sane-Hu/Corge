@@ -1,0 +1,18 @@
+# Django tech-stack schema
+#
+# Used by the Spec-Wizard to tailor Socratic questions for Django projects.
+
+name: Django
+description: Django web framework specification schema
+entry_point: Ask about the Django project structure and which app contains this feature
+middleware: Ask about any custom or third-party middleware the feature interacts with
+models: Ask about Django models and their fields, relationships, and constraints
+views: Ask whether this uses function-based or class-based views
+urls: Ask about the URL patterns and how the feature integrates into urlconf
+serializers: Ask if Django REST Framework serializers are used for API endpoints
+forms: Ask about Django forms or form validation logic
+signals: Ask if Django signals are involved in the data flow
+admin: Ask if the Django admin interface needs updates for this feature
+migrations: Ask about database migration strategy and backwards compatibility
+celery: Ask if background tasks via Celery are required
+testing: Ask about Django test client usage and preferred test patterns

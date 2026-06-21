@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from corge.agent import AgentService
+from corge.agent import SessionController
 from corge.approval import ApprovalGateway
 from corge.artifacts import ArtifactStore
 from corge.budget_manager import BudgetManager
@@ -30,7 +30,6 @@ from corge.contracts import (
     Plan,
     PlanStep,
     PromptAssemblerPort,
-    ProviderMessage,
     ProviderPort,
     RepositoryContext,
     Specification,
@@ -43,7 +42,7 @@ from corge.knowledge_graph import KnowledgeGraph
 from corge.logging import AuditLogger
 from corge.memory import MemoryStore
 from corge.prompt_assembler import PromptAssembler
-from corge.providers import Provider, ProviderConfig
+from corge.providers import Provider
 from corge.tools import ToolRuntime
 from corge.ui import CliUi
 
@@ -128,7 +127,7 @@ def tool_result() -> ToolResult:
 
 _PROTOCOL_IMPL_PAIRS: list[tuple[type, type]] = [
     (UiPort, CliUi),
-    (AgentPort, AgentService),
+    (AgentPort, SessionController),
     (ContextPort, ContextService),
     (PromptAssemblerPort, PromptAssembler),
     (BudgetManagerPort, BudgetManager),
@@ -158,8 +157,10 @@ def test_concrete_satisfies_protocol(protocol: type, impl: type) -> None:
 
 def test_documented_public_classes_exist() -> None:
     expected_methods = {
-        AgentService: {
-            "generate_plan",
+        SessionController: {
+            "analyze_specification_gaps",
+            "generate_technical_plan",
+            "generate_procedural_steps",
             "execute_step",
             "evaluate_completion",
             "update_memory",
@@ -235,9 +236,6 @@ def test_stub_methods_raise_not_implemented(
     tool_result: ToolResult,
 ) -> None:
     stub_calls = [
-        lambda: ContextService().load_context(repository_context),
-        lambda: ContextService().refresh_context(repository_context),
-        lambda: ContextService().retrieve_relevant_context(specification, plan_step),
         lambda: PromptAssembler().collect_context(plan_step),
         lambda: PromptAssembler().assemble_prompt(context_bundle),
         lambda: BudgetManager().estimate_tokens(context_bundle),

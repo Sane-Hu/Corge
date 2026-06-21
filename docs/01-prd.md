@@ -50,15 +50,15 @@ through a provider abstraction layer.
 
 A user must be able to:
 1. Load a repository or initialize from an empty directory.
-2. Create a specification and define acceptance criteria.
-3. Generate an implementation plan.
+2. Create a specification interactively using the Socratic Spec-Wizard with framework-aware schemas and interactive validation (Freestyle Canvas).
+3. Generate an architectural and procedural implementation plan through iterative refinement loops.
 4. Approve the generated plan.
 5. Observe the agent's step-by-step implementation.
 6. Approve individual tool actions (write, edit, bash).
 7. Run tests to verify the changes.
 8. Validate and complete the delivery.
 9. Save and resume/recover sessions later.
-10. Ensure the agent preserves existing repository and engineering conventions.
+10. Ensure the agent preserves existing repository and engineering conventions (aided by the Bayesian heuristic updater).
 
 ---
 
@@ -66,7 +66,7 @@ A user must be able to:
 
 - IDE Integration
 - GitHub Integration
-- Multi-Agent Systems
+- Decentralized Multi-Agent Swarms
 - Vector Databases & Embedding Search
 - Autonomous Background Tasks
 - Cloud Collaboration

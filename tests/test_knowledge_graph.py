@@ -14,9 +14,14 @@ from pathlib import Path
 
 import pytest
 
-from corge.contracts import GraphNode, GraphQuery, GraphResult, GraphUpdate, RepositoryContext
+from corge.contracts import (
+    GraphNode,
+    GraphQuery,
+    GraphResult,
+    GraphUpdate,
+    RepositoryContext,
+)
 from corge.knowledge_graph import KnowledgeGraph
-
 
 # ---------------------------------------------------------------------------
 # Helpers

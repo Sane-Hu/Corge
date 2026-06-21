@@ -17,21 +17,26 @@ from typing import Protocol, runtime_checkable
 from corge.contracts.models import (
     ApprovalDecision,
     ApprovalRequest,
+    ArgumentationEntry,
     ArtifactReference,
     AuditEvent,
+    CanvasSnapshot,
     ChatResponse,
     ContextBundle,
     EngineeringProfile,
-    GraphNode,
     GraphQuery,
     GraphResult,
     GraphUpdate,
+    HeuristicConfig,
     MemoryEvent,
     Plan,
     PlanStep,
+    ProceduralStep,
     ProviderMessage,
     RepositoryContext,
+    SemanticGap,
     Specification,
+    TechnicalPlan,
     ToolResult,
 )
 
@@ -46,7 +51,17 @@ class UiPort(Protocol):
 
     def show_spec_wizard(self) -> Specification: ...
 
+    def show_argumentation_diff(
+        self, canvas: CanvasSnapshot, spec: Specification, gaps: tuple[SemanticGap, ...]
+    ) -> Specification: ...
+
     def show_plan(self, plan: Plan) -> None: ...
+
+    def show_tech_plan_editor(self, plan: TechnicalPlan) -> TechnicalPlan: ...
+
+    def show_procedural_steps_editor(
+        self, steps: tuple[ProceduralStep, ...]
+    ) -> tuple[ProceduralStep, ...]: ...
 
     def show_execution(self, context: ContextBundle) -> None: ...
 
@@ -78,7 +93,13 @@ class UiPort(Protocol):
 class AgentPort(Protocol):
     """Planning and execution orchestration boundary."""
 
-    def generate_plan(self, specification: Specification) -> Plan: ...
+    def analyze_specification_gaps(self, canvas_text: str) -> tuple[SemanticGap, ...]: ...
+
+    def generate_technical_plan(self, specification: Specification) -> TechnicalPlan: ...
+
+    def generate_procedural_steps(
+        self, technical_plan: TechnicalPlan
+    ) -> tuple[ProceduralStep, ...]: ...
 
     def execute_step(self, step: PlanStep, context: ContextBundle) -> None: ...
 
@@ -255,3 +276,52 @@ class AuditLoggerPort(Protocol):
     ) -> None: ...
 
     def record_completion(self, event: AuditEvent) -> None: ...
+
+
+# ---------------------------------------------------------------------------
+# Argumentation log (Argument of Specs RD § 5)
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class ArgumentationLogPort(Protocol):
+    """Argumentation session recording boundary."""
+
+    def record_entry(self, entry: ArgumentationEntry) -> None: ...
+
+    def record_canvas_snapshot(self, snapshot: CanvasSnapshot) -> None: ...
+
+    def get_entries(self) -> tuple[ArgumentationEntry, ...]: ...
+
+
+# ---------------------------------------------------------------------------
+# Heuristic updater (Argument of Specs RD § 4)
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class HeuristicUpdaterPort(Protocol):
+    """Spec-wizard heuristic learning boundary.
+
+    Runs as a batch phase on spec completion or session abandonment.
+    """
+
+    def run_batch_update(self, abandoned: bool = False) -> None: ...
+
+    def get_probability(self, key: str) -> float: ...
+
+    def load_config(self) -> HeuristicConfig: ...
+
+
+# ---------------------------------------------------------------------------
+# Schema tailor (Argument of Specs RD § 2, Layer 1)
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class SchemaTailorPort(Protocol):
+    """Tech-stack schema loading boundary."""
+
+    def detect_framework(self) -> str | None: ...
+
+    def fetch_schema(self, framework_id: str | None) -> dict[str, object]: ...

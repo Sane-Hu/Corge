@@ -28,6 +28,7 @@ build/
 .coverage
 htmlcov/
 .tox/
+.agent/
 
 # IDEs / Editors
 .vscode/

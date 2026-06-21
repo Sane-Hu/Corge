@@ -186,6 +186,7 @@ class ContextBundle:
     relevant_files: tuple[str, ...] = ()
     recent_actions: tuple[str, ...] = ()
     artifact_refs: tuple[ArtifactReference, ...] = ()
+    markov_context: MarkovStepContext | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -317,3 +318,133 @@ class AuditEvent:
     kind: str
     payload: dict[str, object] = field(default_factory=dict)
     timestamp: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Argument of Specs — Sticky Notes & Canvas (Argument of Specs RD § 2, § 4)
+# ---------------------------------------------------------------------------
+
+
+class StickyNoteStatus(StrEnum):
+    """Validity state of a sticky note's graph pointer."""
+
+    ACTIVE = "active"
+    INVALID = "invalid"
+
+
+@dataclass(frozen=True, slots=True)
+class StickyNote:
+    """Dev note anchored to a Knowledge Graph node.
+
+    Maintains a live pointer (``node_id``) to a graph node.
+    If the node is deleted or heavily modified, the UI sets
+    ``status`` to ``INVALID`` and renders a red warning icon.
+    """
+
+    node_id: str
+    content: str
+    status: StickyNoteStatus = StickyNoteStatus.ACTIVE
+
+
+@dataclass(frozen=True, slots=True)
+class SemanticGap:
+    """An explicitly tracked required-but-missing property in a spec.
+
+    Transition to SPEC_METASTABLE is blocked while any gap has
+    ``resolved == False``.
+    """
+
+    topic: str
+    resolved: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class CanvasSnapshot:
+    """Immutable snapshot of the freestyle canvas at concretization time.
+
+    ``timestamp`` marks when the canvas was frozen.
+    ``concretized_ranges`` lists (start_line, end_line) tuples indicating
+    which lines the agent concretized; everything else was user-added.
+    """
+
+    text: str
+    timestamp: str
+    concretized_ranges: tuple[tuple[int, int], ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ArgumentationEntry:
+    """Single exchange in the Socratic Q&A log."""
+
+    question: str
+    answer: str
+    timestamp: str = ""
+    was_user_override: bool = False
+
+
+# ---------------------------------------------------------------------------
+# Argument of Specs — Planning (Argument of Specs RD § 2, Layer 2)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class TechnicalPlan:
+    """Architectural map produced in the TECH_PLAN_REITERATION sub-state.
+
+    Separate from the existing ``Plan`` model which holds procedural
+    execution steps.  This holds high-level module boundary changes
+    and interface definitions.
+    """
+
+    content: str
+    specification_ref: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class ProceduralStep:
+    """Single step produced in the STEPS_REITERATION sub-state.
+
+    More granular than ``PlanStep``; these are the algorithmic steps
+    derived from an approved ``TechnicalPlan``.
+    """
+
+    identifier: str
+    description: str
+    completed: bool = False
+
+
+# ---------------------------------------------------------------------------
+# Argument of Specs — Coding context (Argument of Specs RD § 2, Layer 3)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class MarkovStepContext:
+    """N-1 context payload for the Coding phase Markov chain.
+
+    Includes both the agent's original proposal and the user's manual
+    correction so the LLM can learn from inaccuracies.
+    ``compressed_trajectory`` summarises N-2 … N-Start.
+    """
+
+    agent_proposal: str
+    user_correction: str
+    compressed_trajectory: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Argument of Specs — Heuristic Updater (Argument of Specs RD § 5)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class HeuristicConfig:
+    """Configurable thresholds for the spec-wizard heuristic updater.
+
+    Loaded from ``corge_heuristics.yaml``.
+    """
+
+    delta_clip_max: float = 0.05
+    abandonment_penalty: float = -0.15
+    decay_rate: float = 0.99
+

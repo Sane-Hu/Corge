@@ -21,8 +21,11 @@ This document consolidates the functional requirements, architectural subsystems
 - **FR-011 Context Budget Manager**: Enforces token budgets using clipping, deduplication, aging, summarization, and offloading.
 - **FR-012 Test-Based Completion**: Delivery requires all acceptance criteria to be satisfied, tests to exist and pass, and human approval.
 - **FR-013 Audit Logging**: Records prompts, plans, tools, approvals, and completions for accountability.
-- **FR-014 Provider Abstraction**: Single integration point for models (DeepSeek, Ollama, OpenAI-compat). *[Status: Implemented]*
+- **FR-014 Provider Abstraction**: Single integration point for models (DeepSeek, Ollama, OpenAI-compat) that automatically strips `<think>` tags and populates standardized usage fields.
 - **FR-015 Empty Repository Bootstrapping**: Allows complete project scaffolding starting from specification.
+- **FR-016 Argument of Specs (Wizard)**: Interactive Socratic specification wizard with schema tailoring based on framework.
+- **FR-017 Heuristic Learning**: Bayesian self-improvement via `spec_wizard_heuristics.json` to optimize spec generation based on user overrides and abandonment.
+- **FR-018 Freestyle Canvas**: Immutable snapshots, sticky notes with live graph validation, and semantic gap blocking.
 
 ---
 
@@ -32,7 +35,7 @@ The codebase is organized as a modular monolith:
 ```text
 src/corge/
 ├── ui/                 # CLI presentation layer
-├── agent/              # State machine and planning engine
+├── agent/              # Session Controller, Specification Agent, Planning Agent, Coding Agent, Schema Tailor, and Heuristic Updater
 ├── context/            # Context retrieval coordination
 ├── prompt_assembler/   # EPC prompt generation
 ├── budget_manager/     # Token budgeting and compaction
@@ -42,7 +45,8 @@ src/corge/
 ├── approval/           # Human approval gateway
 ├── tools/              # Stateless execution primitives (read, write, edit, bash)
 ├── providers/          # Model API adapter
-├── logging/            # Audit logger
+├── logging/            # Audit logger and Argumentation logger
+├── schemas/            # Tech-stack YAML schemas for framework-aware prompt tailoring
 └── contracts/          # Dataclasses and Typing Ports (protocols)
 ```
 
@@ -52,11 +56,21 @@ The concrete services implement decoupled ports defined as `typing.Protocol` int
 
 ## 3. State Machine & Execution Loop
 
-### Lifecycle States
+### Lifecycle States (Master Phases)
+The execution loop operates across a 3-Layer Execution Flow (`MasterPhase`):
+1. **SPECIFICATION**: Guided by the Spec-Wizard and Freestyle Canvas.
+2. **PLANNING**: Generates architectural and procedural steps.
+3. **CODING**: Executes the procedural steps.
+
 ```text
 START → REPOSITORY_SELECTION → REPOSITORY_ANALYSIS → SPEC_ENTRY → SPEC_VALIDATION → SPEC_APPROVAL 
   → PLAN_GENERATION → PLAN_REVIEW → PLAN_APPROVAL → EXECUTION → VERIFICATION → COMPLETION_REVIEW → DONE
 ```
+
+### Nested State Machines
+During the `SPECIFICATION` and `PLANNING` phases, the agent loop uses nested state machines for iterative refinement:
+- **SpecState**: `CANVAS_FREESTYLE` → `CONCRETIZATION` → `ARGUMENTATION_DIFF` → `SPEC_METASTABLE`
+- **PlanState**: `TECH_PLAN_REITERATION` → `STEPS_REITERATION`
 
 ### The 9-Step Execution Cycle
 During the `EXECUTION` state, the agent loop runs the following synchronized loop:
@@ -84,6 +98,12 @@ All databases and persistent files reside under the `.agent/` directory:
   - *Edge Types*: `imports`, `extends`, `implements`, `depends_on`, `references`, `tests`, `contains`
 - **Memory Databases**: `.agent/memory.db`, `.agent/memory/l0/`, and `.agent/memory/scenarios/`
 - **Engineering Profile**: `.agent/engineering_profile.md`
+- **Argumentation Log**: `.agent/argumentation_log.json` (Stores Socratic Q&A and canvas snapshots)
+- **Heuristic Weights**: `.agent/spec_wizard_heuristics.json` (Stores probabilities for the Spec-Wizard)
+
+### Context Service & Isolation
+- **Markov Context Chaining**: Injects the active state from step N-1 into step N.
+- **3-Layer Isolation**: Strips argumentation and planning metadata from the coding context to prevent distraction.
 
 ### Ephemeral Prompt Tiers
 1. **Tier 1 (Always Present)**: Current Spec, Acceptance Criteria, Current Plan Step, Engineering Profile.
@@ -98,30 +118,30 @@ All databases and persistent files reside under the `.agent/` directory:
 
 ```text
 ┌──────────────────────────────┐  ┌──────────────────────────────┐
-│ Select Repository            │  │ Repository Analysis          │
+│ Specification Wizard         │  │ Repository Analysis          │
 │                              │  │                              │
-│ /projects/my-app             │  │ Scanning... [83%]            │
-│ [Enter] Continue             │  │                              │
+│ Feature Goal: [            ] │  │ Scanning Tree                │
+│ User Story: [              ] │  │ Building Graph               │
+│ Func Reqs: [               ] │  │ Progress: 100%               │
 └──────────────────────────────┘  └──────────────────────────────┘
 ┌──────────────────────────────┐  ┌──────────────────────────────┐
-│ Specification Wizard         │  │ Repository Understanding     │
+│ Argumentation Diff           │  │ Repository Understanding     │
 │                              │  │                              │
-│ Goal: [                      ] │  │ Framework: Laravel 12        │
-│ Criteria: [                  ] │  │ Graph Nodes: 1234            │
+│ [Canvas]      [Spec]         │  │ Path: my-app                 │
+│ Semantic Gaps: [           ] │  │ Graph Nodes: ~1234           │
 └──────────────────────────────┘  └──────────────────────────────┘
 ┌──────────────────────────────┐  ┌──────────────────────────────┐
-│ Plan Review                  │  │ Execution Monitor            │
+│ Plan Review (Tech / Proced)  │  │ Execution Monitor            │
 │                              │  │                              │
-│ 1. Create Service            │  │ Step 2/4: Create DTO         │
-│ 2. Create DTO                │  │ Proposing write...           │
-│ [Approve] [Reject]           │  │                              │
+│ 1. [step-1] Create Service   │  │ Step 1 / 4                   │
+│ Edit Procedural Steps? [y/n] │  │ Executing...                 │
 └──────────────────────────────┘  └──────────────────────────────┘
 ┌──────────────────────────────┐  ┌──────────────────────────────┐
-│ Approval Request             │  │ Completion Screen            │
+│ Approval Request             │  │ Completion Review            │
 │                              │  │                              │
-│ Action: write                │  │ Criteria: [x] [x] [x]        │
-│ Target: app/DTO/LoginDTO.php │  │ Tests: [x] Passed            │
-│ [Approve] [Reject]           │  │ [Approve Completion]         │
+│ Action: write                │  │ Acceptance Criteria [v]      │
+│ Target: file.py              │  │ Tests [v] Passed             │
+│ Approve? [y/n]               │  │                              │
 └──────────────────────────────┘  └──────────────────────────────┘
 ```
 

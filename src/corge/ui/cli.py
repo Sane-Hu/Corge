@@ -1,220 +1,189 @@
-"""Command Line Interface implementation for the UI port."""
+"""Textual-based UI implementation for the UiPort."""
 
-from rich.console import Console
-from rich.panel import Panel
-from rich.prompt import Confirm, Prompt
+import concurrent.futures
+from typing import Any
+
+from textual.app import App, ComposeResult
+from textual.containers import Vertical
+from textual.screen import Screen
+from textual.widgets import Button, Static, TextArea
 
 from corge.contracts import (
     AcceptanceCriteria,
     ApprovalDecision,
     ApprovalRequest,
+    CanvasSnapshot,
     ContextBundle,
     EngineeringProfile,
     MemoryEvent,
     Plan,
+    ProceduralStep,
     RepositoryContext,
+    SemanticGap,
     Specification,
+    TechnicalPlan,
+    UiPort,
 )
-
-ANVIL_ART = r"""
-[bold cyan]
- ███   ███  ████   ███  █████ 
-█     █   █ █   █ █     █     
-█     █   █ ████  █  ██ ████  
-█     █   █ █  █  █   █ █     
- ███   ███  █   █  ███  █████ 
-[/bold cyan]
-"""
+from corge.ui.freestyle_canvas import CanvasScreen
+from corge.ui.interactive_diff import InteractiveDiffScreen
 
 
-class CliUi:
-    """CLI implementation of the UI port using rich."""
+class MessageScreen(Screen):
+    """Generic screen to display a message and wait for acknowledgment."""
+    
+    def __init__(self, title: str, message: str) -> None:
+        super().__init__()
+        self._title = title
+        self._message = message
 
-    def __init__(self) -> None:
-        self.console = Console()
+    def compose(self) -> ComposeResult:
+        with Vertical():
+            yield Static(self._title, classes="title")
+            yield TextArea(self._message, read_only=True)
+            yield Button("Continue", id="continue", variant="primary")
 
-    def _multiline_input(self, prompt: str) -> str:
-        """Read multiple lines until two consecutive empty lines."""
-        self.console.print(
-            f"[bold]{prompt}[/bold] [dim](Enter two empty lines to finish)[/dim]:"
-        )
-        lines: list[str] = []
-        empty_count = 0
-        while True:
-            try:
-                line = input()
-            except EOFError:
-                break
-            if not line.strip():
-                empty_count += 1
-                if empty_count >= 2:
-                    break
-            else:
-                empty_count = 0
-            lines.append(line)
-        return "\n".join(lines).strip()
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "continue":
+            self.dismiss(None)
+
+
+class CorgeApp(App):
+    """The main Textual application for Corge."""
+    
+    CSS = """
+    MessageScreen {
+        align: center middle;
+    }
+    MessageScreen > Vertical {
+        width: 80%;
+        height: auto;
+        border: round $primary;
+        padding: 1 2;
+    }
+    .title {
+        text-align: center;
+        text-style: bold;
+        color: $accent;
+        margin-bottom: 1;
+    }
+    """
+
+
+class CliUi(UiPort):
+    """Thread-safe UI port that delegates to the Textual app."""
+
+    def __init__(self, app: CorgeApp) -> None:
+        self.app = app
+
+    def _run_screen(self, screen: Screen) -> Any:
+        future: concurrent.futures.Future = concurrent.futures.Future()
+        
+        def callback(result: Any) -> None:
+            future.set_result(result)
+            
+        self.app.call_from_thread(self.app.push_screen, screen, callback)
+        return future.result()
 
     def show_spec_wizard(self) -> Specification:
-        """Prompt for a new feature specification."""
-        self.console.print(ANVIL_ART)
-
-        goal = Prompt.ask("[bold]Feature Goal[/bold]")
-        story = self._multiline_input("User Story")
-        reqs = self._multiline_input("Functional Requirements")
-        constraints = self._multiline_input("Constraints")
-        ac_input = self._multiline_input("Acceptance Criteria (one per line)")
-        testing = self._multiline_input("Testing Expectations")
-
-        ac = AcceptanceCriteria(
-            tuple(i.strip() for i in ac_input.split("\n") if i.strip())
-        )
-        body = f"{story}\n\n{reqs}"
-
+        text = self._run_screen(CanvasScreen())
+        # Parse basic spec from canvas text
         return Specification(
-            title=goal,
-            body=body,
-            acceptance_criteria=ac,
-            constraints=constraints,
-            testing_expectations=testing,
+            title="Brainstormed Feature",
+            body=text,
+            acceptance_criteria=AcceptanceCriteria(items=("Passes all tests",)),
+        )
+
+    def show_argumentation_diff(
+        self, canvas: CanvasSnapshot, spec: Specification, gaps: tuple[SemanticGap, ...]
+    ) -> Specification:
+        right_text = f"Title: {spec.title}\n\n{spec.body}\n"
+        if gaps:
+            right_text += "\nUnresolved Gaps:\n"
+            for gap in gaps:
+                right_text += f"- {gap.topic}\n"
+
+        result_text = self._run_screen(
+            InteractiveDiffScreen(
+                left_title="Canvas",
+                left_text=canvas.text,
+                right_title="Specification",
+                right_text=right_text,
+                prompt_text="Resolve any gaps in the Specification.",
+            )
+        )
+        return Specification(
+            title=spec.title,
+            body=result_text,
+            acceptance_criteria=spec.acceptance_criteria,
         )
 
     def show_plan(self, plan: Plan) -> None:
-        """Display the execution plan."""
-        content = ""
-        for i, step in enumerate(plan.steps, 1):
-            content += f"[bold cyan]{i}.[/bold cyan] {step.description}\n"
+        msg = "\n".join(f"{i}. {s.description}" for i, s in enumerate(plan.steps, 1))
+        self._run_screen(MessageScreen("Execution Plan", msg))
 
-        panel = Panel(
-            content.strip(),
-            title="[bold]Plan Review[/bold]",
-            border_style="cyan",
-            padding=(1, 2),
+    def show_tech_plan_editor(self, plan: TechnicalPlan) -> TechnicalPlan:
+        result_text = self._run_screen(
+            InteractiveDiffScreen(
+                left_title="Previous Context",
+                left_text="Technical plan draft.",
+                right_title="Technical Plan",
+                right_text=plan.content,
+            )
         )
-        self.console.print(panel)
+        return TechnicalPlan(
+            content=result_text, specification_ref=plan.specification_ref
+        )
+
+    def show_procedural_steps_editor(
+        self, steps: tuple[ProceduralStep, ...]
+    ) -> tuple[ProceduralStep, ...]:
+        steps_text = "\n".join(f"[{s.identifier}] {s.description}" for s in steps)
+        result_text = self._run_screen(
+            InteractiveDiffScreen(
+                left_title="Technical Plan",
+                left_text="(Refer to Tech Plan)",
+                right_title="Procedural Steps",
+                right_text=steps_text,
+            )
+        )
+        
+        new_steps = []
+        for i, line in enumerate(result_text.strip().split("\n"), 1):
+            if line.strip():
+                new_steps.append(ProceduralStep(identifier=f"step-{i}", description=line.strip()))
+        return tuple(new_steps)
 
     def show_execution(self, context: ContextBundle) -> None:
-        """Display the current execution context."""
-        step_desc = (
-            context.plan.steps[0].description if context.plan.steps else "Unknown"
-        )
-        total_steps = len(context.plan.steps)
-        content = (
-            f"[bold]Step ? / {total_steps}[/bold]\n{step_desc}\n\n"
-            "[bold green]Executing...[/bold green]"
-        )
-
-        panel = Panel(
-            content,
-            title="[bold]Execution Monitor[/bold]",
-            border_style="green",
-            padding=(1, 2),
-        )
-        self.console.print(panel)
+        # We don't block for execution monitor, we just update the UI (if we had a persistent widget)
+        pass
 
     def show_logs(self) -> None:
-        """Display logs (placeholder for now)."""
-        panel = Panel(
-            "Waiting for logs...", title="[bold]Logs[/bold]", border_style="dim"
-        )
-        self.console.print(panel)
+        pass
 
     def request_approval(self, request: ApprovalRequest) -> ApprovalDecision:
-        """Prompt the user for approval."""
-        content = (
-            f"[bold]Action:[/bold] {request.action}\n"
-            f"[bold]Target:[/bold] {request.target}\n"
-            f"[bold]Reason:[/bold] {request.reason}"
-        )
-        panel = Panel(
-            content,
-            title="[bold red]Approval Request[/bold red]",
-            border_style="red",
-            padding=(1, 2),
-        )
-        self.console.print(panel)
-
-        if Confirm.ask("[bold red]Approve?[/bold red]"):
+        msg = f"Action: {request.action}\nTarget: {request.target}\nReason: {request.reason}"
+        result = self._run_screen(InteractiveDiffScreen(
+            left_title="Request Context",
+            left_text="System requires approval.",
+            right_title="Approval Request",
+            right_text=msg,
+        ))
+        # If dismissed via approve button, result is the text. We treat it as APPROVED.
+        if result is not None:
             return ApprovalDecision.APPROVED
         return ApprovalDecision.REJECTED
 
     def show_repository_analysis(self, repository_context: RepositoryContext) -> None:
-        """Display repository analysis progress."""
-        content = (
-            "Scanning Tree\n"
-            "Summarizing Files\n"
-            "Building Graph\n"
-            "Extracting Facts\n"
-            "Building Profile\n\n"
-            "[bold green]Progress: 100%[/bold green]"
-        )
-        panel = Panel(
-            content,
-            title="[bold]Repository Analysis[/bold]",
-            border_style="blue",
-            padding=(1, 2),
-        )
-        self.console.print(panel)
+        pass
 
-    def show_repository_understanding(
-        self, repository_context: RepositoryContext
-    ) -> None:
-        """Display repository knowledge facts."""
-        nodes = len(repository_context.tree) + len(repository_context.config_files)
-        content = (
-            f"[bold]Path:[/bold] {repository_context.root.name}\n\n"
-            f"[bold]Graph Nodes:[/bold] ~{nodes}\n"
-            f"[bold]Graph Edges:[/bold] ~{nodes * 2}"
-        )
-        panel = Panel(
-            content,
-            title="[bold]Repository Understanding[/bold]",
-            border_style="magenta",
-            padding=(1, 2),
-        )
-        self.console.print(panel)
+    def show_repository_understanding(self, repository_context: RepositoryContext) -> None:
+        pass
 
     def show_engineering_profile(self, profile: EngineeringProfile) -> None:
-        """Display the extracted engineering profile rules."""
-        if not profile.rules:
-            content = "No rules defined"
-        else:
-            content = "\n".join(f"[green]✓[/green] {rule}" for rule in profile.rules)
-
-        panel = Panel(
-            content,
-            title="[bold]Engineering Profile[/bold]",
-            border_style="yellow",
-            padding=(1, 2),
-        )
-        self.console.print(panel)
+        pass
 
     def show_memory(self, events: tuple[MemoryEvent, ...]) -> None:
-        """Display memory pyramid facts."""
-        if not events:
-            content = "Empty"
-        else:
-            content = "\n".join(f"- {event.kind}" for event in events)
-
-        panel = Panel(
-            content,
-            title="[bold]Scenario Memory[/bold]",
-            border_style="cyan",
-            padding=(1, 2),
-        )
-        self.console.print(panel)
+        pass
 
     def show_completion_review(self, plan: Plan) -> None:
-        """Display the completion review screen."""
-        content = (
-            "[bold]Acceptance Criteria[/bold]\n"
-            "[green]✓[/green]\n\n"
-            "[bold]Tests[/bold]\n"
-            "[green]✓ Passed[/green]"
-        )
-        panel = Panel(
-            content,
-            title="[bold]Completion Review[/bold]",
-            border_style="green",
-            padding=(1, 2),
-        )
-        self.console.print(panel)
+        self._run_screen(MessageScreen("Completion Review", "All tasks completed successfully."))

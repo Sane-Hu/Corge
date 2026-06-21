@@ -15,7 +15,7 @@ Node types (09-context § Node Types):
 Edge types (09-context § Edge Types):
     contains, imports
 
-ponytail: Level B only — cross-file extends/implements/tests edges deferred.
+todo: Level B only — cross-file extends/implements/tests edges deferred.
           Upgrade path: walk ``ast.ClassDef.bases`` across the node table and
           resolve names to file-qualified node IDs.
 """
@@ -82,7 +82,9 @@ def _classify_file(rel: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _parse_python(path: Path, rel: str) -> tuple[list[tuple], list[tuple]]:
+def _parse_python(
+    path: Path, rel: str
+) -> tuple[list[tuple[str, str, str, str]], list[tuple[str, str, str]]]:
     """Return (nodes_rows, edges_rows) extracted from a Python source file.
 
     Returns empty lists on parse error so a bad file never aborts a build.
@@ -95,8 +97,8 @@ def _parse_python(path: Path, rel: str) -> tuple[list[tuple], list[tuple]]:
     except SyntaxError:
         return [], []
 
-    nodes: list[tuple] = []
-    edges: list[tuple] = []
+    nodes: list[tuple[str, str, str, str]] = []
+    edges: list[tuple[str, str, str]] = []
 
     for node in ast.walk(tree):
         if isinstance(node, ast.ClassDef):
@@ -105,7 +107,7 @@ def _parse_python(path: Path, rel: str) -> tuple[list[tuple], list[tuple]]:
             edges.append((rel, "contains", nid))
         elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             # Only top-level functions (parent is Module) to avoid noise.
-            # ponytail: nested functions skipped; upgrade: track parent scope.
+            # todo: nested functions skipped; upgrade: track parent scope.
             nid = f"{rel}::{node.name}"
             nodes.append((nid, "function", rel, node.name))
             edges.append((rel, "contains", nid))
@@ -238,7 +240,7 @@ class KnowledgeGraph:
                 "SELECT value FROM meta WHERE key = 'root'"
             ).fetchone()
 
-        # ponytail: if DB is empty (build_graph never called), noop.
+        # todo: if DB is empty (build_graph never called), noop.
         # Upgrade: raise a descriptive error or accept root as a parameter.
         if row is None:
             return
@@ -270,13 +272,42 @@ class KnowledgeGraph:
 
         Returns an empty ``GraphResult`` if no nodes match.
 
-        ponytail: linear table scans; upgrade path: add B-tree indexes on
+        todo: linear table scans; upgrade path: add B-tree indexes on
         (kind), (path), (src, rel) once query volume grows.
         """
         expr = query.expression.strip()
 
         with self._connect() as conn:
             rows = _execute_query(expr, conn)
+
+        nodes = tuple(
+            GraphNode(kind=r[1], node_id=r[0], path=r[2], name=r[3])
+            for r in rows
+        )
+        return GraphResult(nodes=nodes)
+
+    def fuzzy_search(self, keyword: str) -> GraphResult:
+        """Return nodes whose node_id or name contains ``keyword`` (case-insensitive).
+
+        Used by Discovery Mode (Argument of Specs RD § 2) to let users
+        explore the codebase without knowing exact node names.
+
+        todo: simple LIKE scan; upgrade path: embeddings or NL-to-graph
+              traversal when vector DB support is added.
+        """
+        if not keyword.strip():
+            return GraphResult(nodes=())
+
+        pattern = f"%{keyword.strip()}%"
+
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT node_id, kind, path, name FROM nodes"
+                " WHERE node_id LIKE ? COLLATE NOCASE"
+                "    OR name LIKE ? COLLATE NOCASE"
+                " ORDER BY node_id",
+                (pattern, pattern),
+            ).fetchall()
 
         nodes = tuple(
             GraphNode(kind=r[1], node_id=r[0], path=r[2], name=r[3])

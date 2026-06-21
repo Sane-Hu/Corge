@@ -22,7 +22,9 @@ def test_approve_read_action_auto_approves() -> None:
     
     assert decision == ApprovalDecision.APPROVED
     ui.request_approval.assert_not_called()
-    audit_logger.record_approval.assert_called_once_with(request, ApprovalDecision.APPROVED)
+    audit_logger.record_approval.assert_called_once_with(
+        request, ApprovalDecision.APPROVED
+    )
 
 
 def test_approve_destructive_action_delegates_to_ui() -> None:
@@ -36,7 +38,9 @@ def test_approve_destructive_action_delegates_to_ui() -> None:
     
     assert decision == ApprovalDecision.APPROVED
     ui.request_approval.assert_called_once_with(request)
-    audit_logger.record_approval.assert_called_once_with(request, ApprovalDecision.APPROVED)
+    audit_logger.record_approval.assert_called_once_with(
+        request, ApprovalDecision.APPROVED
+    )
 
 
 def test_approve_destructive_action_handles_rejection() -> None:
@@ -50,7 +54,9 @@ def test_approve_destructive_action_handles_rejection() -> None:
     
     assert decision == ApprovalDecision.REJECTED
     ui.request_approval.assert_called_once_with(request)
-    audit_logger.record_approval.assert_called_once_with(request, ApprovalDecision.REJECTED)
+    audit_logger.record_approval.assert_called_once_with(
+        request, ApprovalDecision.REJECTED
+    )
 
 
 def test_reject_forces_rejection() -> None:
@@ -63,4 +69,6 @@ def test_reject_forces_rejection() -> None:
     
     assert decision == ApprovalDecision.REJECTED
     ui.request_approval.assert_not_called()
-    audit_logger.record_approval.assert_called_once_with(request, ApprovalDecision.REJECTED)
+    audit_logger.record_approval.assert_called_once_with(
+        request, ApprovalDecision.REJECTED
+    )

@@ -50,15 +50,9 @@ Before implementing architectural changes, read:
 
 1. docs/01-prd.md
 2. docs/02-technical-spec.md
+3. docs/sysdesign.md
 
-If there is a conflict:
-
-PRD
-→ Technical Spec
-→ Implementation
-
-Higher-priority documents win.
-
+If there is a conflict, give the diff to me and I will decide.
 ---
 
 # Required Operating Model
