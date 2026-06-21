@@ -2,20 +2,20 @@
 
 ## Product Vision
 
-A repository-aware autonomous coding agent that enforces disciplined software engineering practices through specification-driven development. The system treats software delivery as a controlled engineering workflow governed by explicit requirements, acceptance criteria, planning, verification, and human approval.
+A repository-aware coding agent that enforces disciplined software engineering practices through specification-driven development. The system treats software delivery as a controlled engineering workflow governed by explicit requirements, acceptance criteria, planning, verification, and human approval.
 
 ---
 
-## Core Philosophy: No Vibe Coding
+## Core Philosophy: Made for Programmers, by Programmers
 
-The system does not permit implementation from vague prompts. Every implementation is grounded in:
-1. **Functional Requirements** & **Acceptance Criteria**
+Corge does not permit implementation from vague prompts. Every implementation is grounded in:
+1. **User Requirements** & **Acceptance Criteria**
 2. **Approved Specification** & **Approved Execution Plan**
 3. **Verifiable Tests**
 
 ### Human-Agent Contract Flow
 ```text
-Requirements → Acceptance Criteria → Specification → Plan → Implementation → Verification → Approval
+Freestyle Canvas → Structured Specification → Execution Plan → Coding → Verification → Approval
 ```
 Each stage reduces ambiguity and increases machine executability. Neither the human nor the agent should need to infer missing requirements.
 
@@ -25,14 +25,22 @@ Each stage reduces ambiguity and increases machine executability. Neither the hu
 
 ### Context-Driven Engineering
 The quality of implementation depends on the quality of context. The system must:
+- be able to run on an existing repository or an empty directory.
+- be able to load previous session context.
+- be able to semantically transform the user freestyle canvas into a structured specification and an execution plan
+- be able to execute the execution plan step-by-step with interactive approval for each step
+- be able to ask for approval before executing any action that modify the codebase
 - Minimize context bloat.
 - Preserve architectural understanding.
 - Learn repository conventions (e.g. Service layers, DTOs, test patterns).
 - Maintain long-running coherence.
+- be able to reason about the repository structure and architecture
+- be able to learn from user feedback and correct its mistakes
+- be able to refuse to follow instructions that violate the user's intent or the system's principles
 
-### Repository Knowledge Graph & Engineering Profile
+### Repository Knowledge Graph & Memory
 The agent maintains an evolving understanding of repository structure, architecture, and coding conventions (represented via a Knowledge Graph, Facts, Engineering Profile, and Scenario Memory).
-The system supports both existing repositories and empty directories (for bootstrapping a project directly from specs).
+The system supports both existing repositories and empty directories (for bootstrapping a project directly from specs). In the last case, the agent should be able to generate a repository structure and architecture based on the user's requirements and the system's principles
 
 ---
 

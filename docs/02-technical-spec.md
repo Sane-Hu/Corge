@@ -11,12 +11,12 @@ This document consolidates the functional requirements, architectural subsystems
 - **FR-003 & FR-004 Repository Ingestion & Updates**: Analyzes repository structure, files, config, and build files. Updates are computed incrementally on file modifications.
 - **FR-005 Repository Knowledge Graph**: A queryable representation of files, directories, classes, functions, and their dependencies.
 - **FR-006 & FR-007 Memory Pyramid**:
-  - **L0 Session Events**: Raw execution logs stored under `.agent/memory/l0/`.
-  - **L1 Engineering Facts**: Repository-derived facts stored in `.agent/memory.db`.
+  - **L0 Session Events**: Raw code/actions execution logs stored under `.agent/memory/l0/`.
+  - **L1 Engineering Facts**: Repository-derived/user-derived facts stored in `.agent/memory.db`.
   - **L2 Scenario Memory**: Feature-specific progress and blockers under `.agent/memory/scenarios/`.
-  - **L3 Engineering Profile**: Coding styles/conventions stored in `.agent/engineering_profile.md`.
+  - **L3 Engineering Profile**: Coding styles/conventions/rules derived from repository and user interactions, stored in `.agent/engineering_profile.md`.
 - **FR-008 Planning Phase**: Generates a step-by-step implementation plan. Execution remains blocked until approval.
-- **FR-009 Human Approval Layer**: Intercepts destructive actions (`write`, `edit`, `bash`) for human consent. Read actions do not require approval.
+- **FR-009 Human Approval Layer**: Intercepts destructive actions (`write`, `edit`, `bash`) for human consent. (`Read`) actions do not require approval.
 - **FR-010 Artifact Offloading**: Large build/test logs are saved under `.agent/artifacts/` and referenced in prompts using the `artifact://` URI scheme.
 - **FR-011 Context Budget Manager**: Enforces token budgets using clipping, deduplication, aging, summarization, and offloading.
 - **FR-012 Test-Based Completion**: Delivery requires all acceptance criteria to be satisfied, tests to exist and pass, and human approval.
@@ -31,46 +31,68 @@ This document consolidates the functional requirements, architectural subsystems
 
 ## 2. Architecture & Subsystems
 
-The codebase is organized as a modular monolith:
-```text
-src/corge/
-├── ui/                 # CLI presentation layer
-├── agent/              # Session Controller, Specification Agent, Planning Agent, Coding Agent, Schema Tailor, and Heuristic Updater
-├── context/            # Context retrieval coordination
-├── prompt_assembler/   # EPC prompt generation
-├── budget_manager/     # Token budgeting and compaction
-├── knowledge_graph/    # Repository knowledge graph DB
-├── memory/             # Pyramid memory stores
-├── artifacts/          # Large log/output storage
-├── approval/           # Human approval gateway
-├── tools/              # Stateless execution primitives (read, write, edit, bash)
-├── providers/          # Model API adapter
-├── logging/            # Audit logger and Argumentation logger
-├── schemas/            # Tech-stack YAML schemas for framework-aware prompt tailoring
-└── contracts/          # Dataclasses and Typing Ports (protocols)
-```
+The codebase is organized as a modular monolith. To prevent tight coupling, modules are prohibited from importing concrete service classes from each other. Instead, cross-module communication is handled by passing frozen, slotted data models to interface ports defined as `typing.Protocol` classes in [ports.py](src/corge/contracts/ports.py).
 
-The concrete services implement decoupled ports defined as `typing.Protocol` interfaces in [ports.py](src/corge/contracts/ports.py).
+The directory structure maps directly to the 8 logical modules defined in the system design:
+
+*   **1. Shared Contracts Layer (`src/corge/contracts/`)**
+    *   Defines the public interfaces ([ports.py](src/corge/contracts/ports.py)), dataclasses ([models.py](src/corge/contracts/models.py)), and enum states ([lifecycle.py](src/corge/contracts/lifecycle.py)).
+*   **2. UI Module (`src/corge/ui/`)**
+    *   A pure CLI presentation layer ([cli.py](src/corge/ui/cli.py)) with zero business logic. Contains the `CanvasScreen`, `InteractiveDiffScreen`, and `MessageScreen` Textual screens.
+*   **3. Agent Modules (`src/corge/agent/`)**
+    *   Orchestration state machines (`SessionController`, `SpecificationAgent`, `PlanningAgent`, `CodingAgent`) and utility services (`SchemaTailor` for stack detection and YAML parser, `HeuristicUpdater` for spec optimization).
+*   **4. Context Engineering Modules**
+    *   `src/corge/context/`: Context retrieval coordination and N-1 context caching.
+    *   `src/corge/prompt_assembler/`: Constructing prompts for model consumption.
+    *   `src/corge/budget_manager/`: Enforcement of strict context token budgets (compaction, clipping, deduplication).
+    *   `src/corge/schemas/`: Tech-stack YAML definition templates.
+*   **5. Knowledge & Persistence Modules**
+    *   `src/corge/knowledge_graph/`: Repository structure parser and SQL database nodes/edges builder.
+    *   `src/corge/memory/`: Pyramid L0 Session, L1 Facts, L2 Scenario, and L3 Profile database operations.
+    *   `src/corge/artifacts/`: Heavy logging/execution output storage.
+*   **6. Execution & Safety Modules**
+    *   `src/corge/approval/`: Gateway logic to capture human consent decisions.
+    *   `src/corge/tools/`: Stateless execution primitives (read, write, edit, bash).
+*   **7. Providers Module (`src/corge/providers/`)**
+    *   Single model API adapter providing compatible interfaces for OpenAI, DeepSeek, and Ollama.
+*   **8. Logging Module (`src/corge/logging/`)**
+    *   Maintains audit trails and records interactive argumentation/Socratic wizard logs.
 
 ---
 
 ## 3. State Machine & Execution Loop
 
-### Lifecycle States (Master Phases)
-The execution loop operates across a 3-Layer Execution Flow (`MasterPhase`):
-1. **SPECIFICATION**: Guided by the Spec-Wizard and Freestyle Canvas.
-2. **PLANNING**: Generates architectural and procedural steps.
-3. **CODING**: Executes the procedural steps.
+### Master Phases & Lifecycle States
+The primary execution loop is managed by the `SessionController` across a 3-Layer Execution Flow (`MasterPhase`), orchestrating transitions between the `LifecycleState` states defined in [lifecycle.py](src/corge/contracts/lifecycle.py):
 
 ```text
-START → REPOSITORY_SELECTION → REPOSITORY_ANALYSIS → SPEC_ENTRY → SPEC_VALIDATION → SPEC_APPROVAL 
-  → PLAN_GENERATION → PLAN_REVIEW → PLAN_APPROVAL → EXECUTION → VERIFICATION → COMPLETION_REVIEW → DONE
+  [ MasterPhase.SPECIFICATION ]
+  START → REPOSITORY_SELECTION → REPOSITORY_ANALYSIS → SPEC_ENTRY → SPEC_VALIDATION → SPEC_APPROVAL 
+                                                                                          │
+  ┌───────────────────────────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+  [ MasterPhase.PLANNING ]
+  PLAN_GENERATION → PLAN_REVIEW → PLAN_APPROVAL 
+                                        │
+  ┌─────────────────────────────────────┘
+  │
+  ▼
+  [ MasterPhase.CODING ]
+  EXECUTION → VERIFICATION → COMPLETION_REVIEW → DONE
 ```
 
 ### Nested State Machines
-During the `SPECIFICATION` and `PLANNING` phases, the agent loop uses nested state machines for iterative refinement:
-- **SpecState**: `CANVAS_FREESTYLE` → `CONCRETIZATION` → `ARGUMENTATION_DIFF` → `SPEC_METASTABLE`
-- **PlanState**: `TECH_PLAN_REITERATION` → `STEPS_REITERATION`
+During the Spec and Plan master phases, nested loop state machines drive incremental refinement:
+
+1.  **Specification Phase (`SpecState` execution)**
+    *   `CANVAS_FREESTYLE`: User drafts freeform requirements and maps graph tags inside the TUI canvas.
+    *   `CONCRETIZATION`: The `SpecificationAgent` compiles the canvas draft into structured fields (Acceptance Criteria, Constraints, Testing expectations).
+    *   `ARGUMENTATION_DIFF`: Reconciles semantic gaps using side-by-side prompt diffing with the user.
+    *   `SPEC_METASTABLE`: All gaps are successfully resolved or approved, blocking transition until approved by the user to advance to Planning.
+2.  **Planning Phase (`PlanState` execution)**
+    *   `TECH_PLAN_REITERATION`: The `PlanningAgent` drafts and edits the architectural `TechnicalPlan` markdown.
+    *   `STEPS_REITERATION`: Translates the architecture into granular, procedural steps (`ProceduralStep`), editing and finalizing them inside the interactive TUI split-editor.
 
 ### The 9-Step Execution Cycle
 During the `EXECUTION` state, the agent loop runs the following synchronized loop:
@@ -89,21 +111,105 @@ If a tool execution fails, the orchestrator catches `ToolExecutionError`, update
 
 ---
 
-## 4. Context Engineering Details
+## 4. Context Engineering & Persistent Storage
 
-### Database Schemes & Storage
+### Database DDL & Storage Schema
 All databases and persistent files reside under the `.agent/` directory:
-- **Knowledge Graph**: `.agent/repo_graph.db`
-  - *Node Types*: `File`, `Directory`, `Class`, `Function`, `Service`, `Controller`, `Model`, `Test`, `Config`
-  - *Edge Types*: `imports`, `extends`, `implements`, `depends_on`, `references`, `tests`, `contains`
-- **Memory Databases**: `.agent/memory.db`, `.agent/memory/l0/`, and `.agent/memory/scenarios/`
-- **Engineering Profile**: `.agent/engineering_profile.md`
-- **Argumentation Log**: `.agent/argumentation_log.json` (Stores Socratic Q&A and canvas snapshots)
-- **Heuristic Weights**: `.agent/spec_wizard_heuristics.json` (Stores probabilities for the Spec-Wizard)
 
-### Context Service & Isolation
-- **Markov Context Chaining**: Injects the active state from step N-1 into step N.
-- **3-Layer Isolation**: Strips argumentation and planning metadata from the coding context to prevent distraction.
+*   **Knowledge Graph Database (`.agent/repo_graph.db`)**
+    Contains structural entities parsed from source code files (Python files parsed via stdlib `ast`).
+    ```sql
+    CREATE TABLE nodes (
+        node_id TEXT PRIMARY KEY,   -- Stable identifier (e.g., "src/main.py::MyClass")
+        kind    TEXT NOT NULL,      -- "file", "directory", "class", "function", "config", "test"
+        path    TEXT NOT NULL,      -- Containing file path or directory path
+        name    TEXT NOT NULL       -- Entity name (empty for files/directories)
+    );
+    CREATE TABLE edges (
+        src TEXT NOT NULL,          -- Source node_id
+        rel TEXT NOT NULL,          -- Relationship kind ("contains", "imports")
+        dst TEXT NOT NULL,          -- Destination node_id or target module name
+        PRIMARY KEY (src, rel, dst)
+    );
+    CREATE TABLE meta (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    );
+    ```
+
+*   **L1 Engineering Facts Database (`.agent/memory.db`)**
+    Contains facts derived dynamically during repository scan and execution loops.
+    ```sql
+    CREATE TABLE facts (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        fact      TEXT NOT NULL UNIQUE,
+        source    TEXT NOT NULL DEFAULT '',
+        timestamp TEXT NOT NULL DEFAULT ''
+    );
+    ```
+
+*   **L0 Session Event Logs (`.agent/memory/l0/`)**
+    Stored as append-only JSONL files named `<YmmddTHH>.jsonl` containing streams of L0 raw execution events:
+    `{"kind": str, "timestamp": str, "payload": dict}`
+
+*   **L2 Scenario Memory (`.agent/memory/scenarios/`)**
+    Stored as individual JSON files per scenario named `<kind>.json`, structured as lists of entries:
+    `[{"timestamp": str, "payload": dict}]`
+
+*   **L3 Engineering Profile (`.agent/engineering_profile.md`)**
+    Markdown file containing repository-derived rules filtered by a confidence threshold ($\ge 0.5$).
+
+---
+
+### Knowledge Graph Query Grammar
+The query interface `query_graph()` processes string expressions matching the following grammar:
+- `files`: Returns all nodes representing source files (`file`, `config`, `test`).
+- `directories`: Returns all nodes representing folder directories (`directory`).
+- `classes:<path>`: Returns all class nodes defined inside the specified file path.
+- `functions:<path>`: Returns all top-level function nodes defined inside the specified file path.
+- `imports:<path>`: Returns all import module targets declared within the specified file path.
+- `imported_by:<path>`: Returns all file nodes that import the specified module path.
+- `node:<node_id>`: Returns the exact node matching the unique identifier.
+- `*` or `all`: Returns all nodes in the database.
+
+---
+
+### Framework-Aware Schema Tailoring
+The `SchemaTailor` checks for signature configuration files to detect the tech stack and load specialized system prompts from `src/corge/schemas/stack/`. If no signature is matched, it defaults to `generic.yaml`.
+
+| Signature File | Detected Framework / Stack |
+| :--- | :--- |
+| `manage.py` / `settings.py` | `django` |
+| `next.config.js` / `next.config.ts` | `nextjs` |
+| `angular.json` | `angular` |
+| `Cargo.toml` | `rust` |
+| `go.mod` | `go` |
+| `build.gradle` | `gradle` |
+| `pom.xml` | `maven` |
+| `artisan` | `laravel` |
+
+---
+
+### Bayesian Heuristic Learning
+The `HeuristicUpdater` performs offline Bayesian self-improvement on spec-generation heuristics using Socratic logs from the `ArgumentationLog` after spec completion or session abandonment. It computes an Exponentially Weighted Moving Average (EWMA) to smooth probability shifts and prevent overfitting or catastrophic forgetting:
+
+$$P_{\text{new}} = (1 - \alpha) \cdot P_{\text{old}} + \alpha \cdot \text{Observation}$$
+
+Where:
+*   $\alpha = 1.0 - \text{decay\_rate}$ (decay rate is configured at `0.99` in `corge_heuristics.yaml`, yielding $\alpha = 0.01$).
+*   $\text{Observation}$: Ratio of non-overridden interaction steps ($1.0 - \frac{\text{user overrides}}{\text{total interactions}}$).
+*   **Delta Clipping safety constraint**: The change in probability is strictly capped to prevent extreme swings:
+    $$\Delta P = P_{\text{new}} - P_{\text{old}}$$
+    $$\text{If } |\Delta P| > \text{delta\_clip\_max} \ (0.05), \ \Delta P \leftarrow 0.05 \cdot \text{sign}(\Delta P)$$
+*   **Abandonment Penalty**: If the session is abandoned prior to completion, the base engagement prior is penalized:
+    $$P_{\text{engagement}} \leftarrow \max(0.0, P_{\text{engagement}} - \min(\text{delta\_clip\_max}, |\text{abandonment\_penalty}|))$$
+    Where $\text{abandonment\_penalty} = -0.15$ and $\text{delta\_clip\_max} = 0.05$.
+
+---
+
+### Context Service & Isolation Policies
+- **Markov Context Chaining**: Injects the active state from step N-1 into step N. It packages step context into the `MarkovStepContext` dataclass containing `agent_proposal`, `user_correction` for the preceding step, and a `compressed_trajectory` of previous steps (N-2 to N-Start) to allow learning from past trajectory iterations.
+- **3-Layer Isolation**: Separates the specification, planning, and coding prompt contexts. Argumentation logs, AST graph relations, and architectural plans are strictly omitted from the coding prompt layout to optimize context window space and avoid instruction pollution.
 
 ### Ephemeral Prompt Tiers
 1. **Tier 1 (Always Present)**: Current Spec, Acceptance Criteria, Current Plan Step, Engineering Profile.
@@ -116,69 +222,68 @@ All databases and persistent files reside under the `.agent/` directory:
 
 ## 5. TUI Screen Map
 
+The presentation layer utilizes three fundamental UI screens within [cli.py](src/corge/ui/cli.py) to manage the interactive user loops:
+
 ```text
-┌──────────────────────────────┐  ┌──────────────────────────────┐
-│ Specification Wizard         │  │ Repository Analysis          │
-│                              │  │                              │
-│ Feature Goal: [            ] │  │ Scanning Tree                │
-│ User Story: [              ] │  │ Building Graph               │
-│ Func Reqs: [               ] │  │ Progress: 100%               │
-└──────────────────────────────┘  └──────────────────────────────┘
-┌──────────────────────────────┐  ┌──────────────────────────────┐
-│ Argumentation Diff           │  │ Repository Understanding     │
-│                              │  │                              │
-│ [Canvas]      [Spec]         │  │ Path: my-app                 │
-│ Semantic Gaps: [           ] │  │ Graph Nodes: ~1234           │
-└──────────────────────────────┘  └──────────────────────────────┘
-┌──────────────────────────────┐  ┌──────────────────────────────┐
-│ Plan Review (Tech / Proced)  │  │ Execution Monitor            │
-│                              │  │                              │
-│ 1. [step-1] Create Service   │  │ Step 1 / 4                   │
-│ Edit Procedural Steps? [y/n] │  │ Executing...                 │
-└──────────────────────────────┘  └──────────────────────────────┘
-┌──────────────────────────────┐  ┌──────────────────────────────┐
-│ Approval Request             │  │ Completion Review            │
-│                              │  │                              │
-│ Action: write                │  │ Acceptance Criteria [v]      │
-│ Target: file.py              │  │ Tests [v] Passed             │
-│ Approve? [y/n]               │  │                              │
-└──────────────────────────────┘  └──────────────────────────────┘
+                            ┌────────────────────────────────────────┐
+                            │               Start /                  │
+                            │         Repository Selection           │
+                            └────────────────────────────────────────┘
+                                                 │
+                                                 ▼
+                            ┌────────────────────────────────────────┐
+                            │             CanvasScreen               │
+                            │   - Raw freestyle brainstorming        │
+                            │   - Anchored sticky notes & graph tags │
+                            └────────────────────────────────────────┘
+                                                 │
+                                                 ▼
+                            ┌────────────────────────────────────────┐
+                            │         InteractiveDiffScreen          │
+                            │   (Used for: Spec Gaps, Tech Plan,     │
+                            │     Procedural Steps, & Approvals)     │
+                            │                                        │
+                            │   ┌────────────────┬────────────────┐  │
+                            │   │ Left: Context  │ Right: Draft   │  │
+                            │   │ (Read-Only)    │ (Editable)     │  │
+                            │   └────────────────┴────────────────┘  │
+                            │   │           [ Approve ]           │  │
+                            │   └─────────────────────────────────┘  │
+                            └────────────────────────────────────────┘
+                                                 │
+                                                 ▼
+                            ┌────────────────────────────────────────┐
+                            │             MessageScreen              │
+                            │   (Used for: Execution Plans,          │
+                            │     Errors, and Completion reviews)    │
+                            │   ┌─────────────────────────────────┐  │
+                            │   │ Title: ...                      │  │
+                            │   │ Message: ...                    │  │
+                            │   │          [ Continue ]           │  │
+                            │   └─────────────────────────────────┘  │
+                            └────────────────────────────────────────┘
 ```
+
+### Screen Details and Transitions
+1.  **`CanvasScreen` (Freestyle Brainstorming / Spec Entry)**
+    *   **Purpose**: Captured during the `CANVAS_FREESTYLE` sub-state. Allows free-form writing of feature goals, user stories, and technical requirements.
+    *   **Key Widgets**: `TextArea` for raw text input, `Button` ("Submit to Concretization").
+    *   **Transition**: On pressing Submit, dismisses canvas text to advance the agent to the `CONCRETIZATION` state.
+2.  **`InteractiveDiffScreen` (Reused Split-Pane Editor)**
+    *   **Purpose**: Side-by-side display of context references against editable drafts. This screen is highly parameterized and reused dynamically for:
+        *   *Socratic Argumentation Diff*: Left pane displays raw Canvas text; right pane displays the Concretized Specification draft with unresolved semantic gaps. Prompt: "Resolve any gaps in the Specification."
+        *   *Technical Plan Editor*: Left pane shows previous approved 'conceretized specification'; right pane displays the draft `TechnicalPlan` in custom `Corge`'s markdown format.
+        *   *Procedural Steps Editor*: Left pane maps the `TechnicalPlan` draft; right pane renders editable `ProceduralStep` identifiers and lines.
+        *   *Human Approval Gateway*: Left pane lists approval context; right pane details the requested `ToolAction` parameter payload.
+    *   **Key Widgets**: Left `TextArea` (Read-only reference context), Right `TextArea` (Editable content), and `Button` ("Approve").
+    *   **Transition**: On pressing Approve, returning the modified content to the caller and proceeding to the next step.
+3.  **`MessageScreen` (Read-Only Dialogs / Alerts)**
+    *   **Purpose**: Simulates modal notifications or summaries to the engineer.
+    *   **Key Widgets**: Header `Static` title, Read-only `TextArea` showing messaging, and `Button` ("Continue").
+    *   **Reused Cases**:
+        *   *Execution Plan View*: Renders the plan steps layout while Corge's coding agent is executing the execution cycle.
+        *   *Completion Review*: Notifies that the implementation has successfully passed all acceptance and verification tests. (TODO: Add implementation status tracking and verification results in the message, per plan step)
+    *   **Transition**: Blocks execution until the Continue button/user input is provided. If there are pending approvals, it will display a message asking to approve or reject the pending approvals first with what the agent should realize first. If there are no pending approvals, it will proceed to the next step.
 
 ---
 
-## 6. Onboarding & Developer Rules
-
-### Priority Hierarchy
-If documents conflict:
-```text
-PRD → Technical Spec → Code Implementation
-```
-
-### Core Developer Rules
-- **No Vibe Coding**: Never implement code without requirements, acceptance criteria, and an approved plan.
-- **Human Authority**: All destructive actions (`write`, `edit`, `bash`) require human verification.
-- **No Global Mutable State**: Maintain strict modular encapsulation; modules pass boundary models (dataclasses) via ports.
-- **Standardized Storage**: Never write databases or logs directly to the repository root. Always use `.agent/`.
-
----
-
-## 7. Web LLM Contributor Prompt
-
-When using external LLMs without an integrated IDE, feed this system prompt to align the model with the project rules:
-
-***
-**Role**: You are an expert software engineer contributing to a rigorous specification-driven system. Your goal is correctness, safety, and engineering discipline. You do not write speculative or "vibe-based" code.
-
-**Directives**:
-1. **Specs as Truth**: Never implement behavior that contradicts the provided specifications. Never infer or invent requirements. If something is ambiguous, stop and ask for clarification.
-2. **Hierarchy**: PRD > Technical Spec > Implementation.
-3. **No Speculative Abstraction**: Write the smallest valid change necessary.
-4. **Human Control**: Assume all file modifications and commands require explicit human review and approval.
-5. **No Placeholders**: Never use stub or placeholder implementations.
-
-**Workflow**:
-1. Confirm you have read `docs/01-prd.md` and `docs/02-technical-spec.md`.
-2. Outline your proposed plan before generating any code changes.
-3. Provide precise, drop-in code edits and list how they are verified.
-***

@@ -4,7 +4,7 @@ This document provides a detailed, human-readable view of Corge's tactical syste
 
 ## System Architecture & Module Execution
 
-The diagram below separates the system into distinct color-coded modules. Rather than a complex web of unreadable dependencies, the arrows demonstrate a numbered, logical execution flow, illustrating how a specification is built, planned, hydrated with context, approved, and executed.
+The diagram below separates the system into distinct color-coded modules. The arrows demonstrate a numbered, logical execution flow, illustrating how a specification is built, planned, hydrated with context, approved, and executed.
 
 ```mermaid
 flowchart TD
@@ -172,31 +172,45 @@ sequenceDiagram
 
 ## Tactical Module Breakdown
 
-To maintain the modular monolith, cross-communication is heavily restricted. Each module handles a precise slice of the architecture:
+To maintain the modular monolith, cross-communication is heavily restricted. Each module handles a precise slice of the architecture.
 
 ### 1. UI Module (Purple)
 - **Role**: Pure presentation layer with zero business logic.
-- **Components**: Handles the specification wizard, the interactive Freestyle Canvas with sticky notes, formatting repository analysis for the user, and throwing human-in-the-loop approval requests.
+- **Components**: Handles the specification wizard, the interactive Freestyle Canvas with sticky notes, formatting repository analysis for the user, the step by step plan outputs side by side with structured specs output, throwing human-in-the-loop approval requests, and displaying completion review.
 
-### 2. Agent Module (Yellow)
-- **Role**: The core operational state machine and learning engine.
-- **Components**: Divided into three phase-specific agents: `Specification Agent` (handles SpecState reiterations), `Planning Agent` (handles PlanState reiterations), and `Coding Agent` (handles the tool execution loop). Includes the `Schema Tailor` for framework-aware prompts and the `Heuristic Updater` for Bayesian self-improvement. The `Session Controller` manages transitions between these three master phases. 
+### 2. Agent Modules (Yellow)
+- **Role**: The operational state machine and learning engine.
+- **Components**: Divided into three master phase-specific agents: 
+  - `Specification Agent`: handles SpecState reiterations, 
+  - `Planning Agent`: handles PlanState reiterations, 
+  - `Coding Agent`: handles the tool execution loop. 
+  - `Schema Tailor`: for framework-aware prompts 
+  - `Heuristic Updater`: for Bayesian self-improvement of the spec wizard in a subsequent, post-execution phase. 
+  - `Session Controller`: manages transitions between these three master phases. 
 
 ### 3. Context Engineering Modules (Green)
-- **Role**: Gathering and optimizing data to ensure LLM interactions are precise and under token limits.
-- **Components**: The `Context Service` retrieves relevant context, enforcing 3-Layer Isolation (stripping Argumentation logic from coding) and applying Markov Context Chaining (injecting N-1 active state into the Nth step). The `Prompt Assembler` gathers raw inputs. The `Budget Manager` aggressively clips, deduplicates, and condenses them to fit strict context windows.
+- **Role**: Gathering and optimizing context data to ensure LLM interactions are precise and under token limits.
+- **Components**: 
+  - `Context Service`: retrieves relevant context for each agent when needed, from the: repo knowledge base, user profiles, user inputs and memory pyramid, enforcing context-layer isolation and applying context-chaining policies. 
+  - `Prompt Assembler`: gathers context inputs for the current step, selects the appropriate `schema` for the current phase, and uses `schema tailoring` to generate framework-aware prompts. 
+  - `Budget Manager`: aggressively clips, deduplicates, and condenses context inputs to fit strict context windows when needed.
 
 ### 4. Knowledge & Persistence Modules (Blue)
-- **Role**: The source of long-term and short-term facts.
-- **Components**: The `Knowledge Graph` maps the structural repository state. The `Memory Pyramid` retains past execution lessons (L0-L3), and the `Artifact Store` securely offloads bulk content.
+- **Role**: The source of long-term and short-term facts of the codebase and project.
+- **Components**: 
+  - `Knowledge Graph`: maps the structural repository state.
+  - `Memory Pyramid`: retains past execution lessons (L0-L3), and 
+  - `Artifact Store`: securely offloads bulk content.
 
 ### 5. Execution & Safety Modules (Red)
 - **Role**: The only module that modifies the local environment.
-- **Components**: The `Approval Gateway` intercepts tool requests and guarantees nothing runs without consent. The `Tool Runtime` blindly runs `read`, `write`, `edit`, and `bash` commands once authorized.
+- **Components**: 
+  - `Approval Gateway`: intercepts tool requests and guarantees nothing runs without consent. 
+  - `Tool Runtime`: blindly runs `read`, `write`, `edit`, and `bash` commands once authorized.
 
 ### 6. Shared Contracts Layer (Grey)
 - **Role**: Defines the strict boundary objects and interfaces that traverse modules. 
-- **Rule**: Modules communicate by passing models (e.g., `Specification`, `ApprovalRequest`) to interface ports (`typing.Protocol`), completely preventing hidden tight coupling.
+- **Rule**: Modules communicate by passing models (e.g., `Specification`, `ApprovalRequest`) to interface ports (`typing.Protocol`), completely preventing hidden tight coupling and achieving high modularity and maintainability.
 
 ### 7. Providers Module
 - **Role**: Model API adapter and integration point.
@@ -204,5 +218,7 @@ To maintain the modular monolith, cross-communication is heavily restricted. Eac
 
 ### 8. Logging Module
 - **Role**: Accountability, audit trailing, and historical learning data.
-- **Components**: The `AuditLogger` (stub — raises `NotImplementedError`) defines the interface for recording state transitions, tool invocations, and approvals. The `ArgumentationLog` (implemented) records Socratic Q&A and canvas snapshots to `argumentation_log.json`, to be consumed by the batch-phase heuristic updater.
+- **Components**: 
+  - `AuditLogger` defines the interface for recording state transitions, tool invocations, and approvals. 
+  - `ArgumentationLog` records Socratic Q&A and canvas snapshots to `argumentation_log.json`, to be consumed by the batch-phase heuristic updater.
 
