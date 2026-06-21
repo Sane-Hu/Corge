@@ -20,8 +20,9 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from corge.contracts import EngineeringProfile, MemoryEvent
 
@@ -45,7 +46,7 @@ CREATE TABLE IF NOT EXISTS facts (
 
 def _now() -> str:
     """Return current UTC time as ISO-8601 string."""
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _stamp(event: MemoryEvent) -> MemoryEvent:
@@ -96,7 +97,7 @@ class MemoryStore:
 
         # Session file: one per process start — keyed by date+hour so
         # replays are easy to find without scanning all lines.
-        session_key = datetime.now(timezone.utc).strftime("%Y%m%dT%H")
+        session_key = datetime.now(UTC).strftime("%Y%m%dT%H")
         log_file = self._l0_dir / f"{session_key}.jsonl"
 
         line = json.dumps({
@@ -177,7 +178,7 @@ class MemoryStore:
         scenario_file = self._l2_dir / f"{safe_kind}.json"
 
         # Load existing entries (empty list if file is new or corrupt).
-        existing: list[dict] = []
+        existing: list[dict[str, Any]] = []
         if scenario_file.exists():
             try:
                 existing = json.loads(scenario_file.read_text(encoding="utf-8"))
@@ -196,7 +197,7 @@ class MemoryStore:
             encoding="utf-8",
         )
 
-    def get_scenario(self, kind: str) -> list[dict]:
+    def get_scenario(self, kind: str) -> list[dict[str, Any]]:
         """Return all entries for a scenario kind, oldest first.
 
         Returns empty list if the scenario has never been written.

@@ -1,54 +1,268 @@
-"""Session controller — orchestrates agent transitions."""
+"""Session controller — orchestrates master-phase state machine.
+
+Spec traceability:
+    Tech-spec §3  — MasterPhase, LifecycleState, SpecState, PlanState
+    Sysdesign     — AG_CTRL manages transitions; AG_CTRL → AG_LEARN batch update
+    FR-001        — spec gate: block until approved specification exists
+    FR-008        — plan gate: block execution until plan approved
+"""
+
+from __future__ import annotations
 
 from corge.agent.coding_agent import CodingAgent
 from corge.agent.planning_agent import PlanningAgent
 from corge.agent.specification_agent import SpecificationAgent
 from corge.contracts import (
     ApprovalGatewayPort,
+    ArgumentationLogPort,
     ContextBundle,
     ContextPort,
+    HeuristicUpdaterPort,
+    LifecycleState,
+    MasterPhase,
     MemoryEvent,
+    MemoryStorePort,
     Plan,
+    PlanState,
     PlanStep,
     ProceduralStep,
     ProviderPort,
     SemanticGap,
     Specification,
+    SpecState,
     TechnicalPlan,
     ToolRuntimePort,
 )
 
+# ---------------------------------------------------------------------------
+# Valid lifecycle transitions (Tech-spec §3 state diagram)
+# ---------------------------------------------------------------------------
+
+_TRANSITIONS: dict[LifecycleState, LifecycleState] = {
+    LifecycleState.START: LifecycleState.REPOSITORY_SELECTION,
+    LifecycleState.REPOSITORY_SELECTION: LifecycleState.REPOSITORY_ANALYSIS,
+    LifecycleState.REPOSITORY_ANALYSIS: LifecycleState.SPEC_ENTRY,
+    LifecycleState.SPEC_ENTRY: LifecycleState.SPEC_VALIDATION,
+    LifecycleState.SPEC_VALIDATION: LifecycleState.SPEC_APPROVAL,
+    LifecycleState.SPEC_APPROVAL: LifecycleState.PLAN_GENERATION,
+    LifecycleState.PLAN_GENERATION: LifecycleState.PLAN_REVIEW,
+    LifecycleState.PLAN_REVIEW: LifecycleState.PLAN_APPROVAL,
+    LifecycleState.PLAN_APPROVAL: LifecycleState.EXECUTION,
+    LifecycleState.EXECUTION: LifecycleState.VERIFICATION,
+    LifecycleState.VERIFICATION: LifecycleState.COMPLETION_REVIEW,
+    LifecycleState.COMPLETION_REVIEW: LifecycleState.DONE,
+}
+
+# Which lifecycle state belongs to which master phase
+_STATE_PHASE: dict[LifecycleState, MasterPhase] = {
+    LifecycleState.START: MasterPhase.SPECIFICATION,
+    LifecycleState.REPOSITORY_SELECTION: MasterPhase.SPECIFICATION,
+    LifecycleState.REPOSITORY_ANALYSIS: MasterPhase.SPECIFICATION,
+    LifecycleState.SPEC_ENTRY: MasterPhase.SPECIFICATION,
+    LifecycleState.SPEC_VALIDATION: MasterPhase.SPECIFICATION,
+    LifecycleState.SPEC_APPROVAL: MasterPhase.SPECIFICATION,
+    LifecycleState.PLAN_GENERATION: MasterPhase.PLANNING,
+    LifecycleState.PLAN_REVIEW: MasterPhase.PLANNING,
+    LifecycleState.PLAN_APPROVAL: MasterPhase.PLANNING,
+    LifecycleState.EXECUTION: MasterPhase.CODING,
+    LifecycleState.VERIFICATION: MasterPhase.CODING,
+    LifecycleState.COMPLETION_REVIEW: MasterPhase.CODING,
+    LifecycleState.DONE: MasterPhase.CODING,
+}
+
+
+class InvalidTransitionError(Exception):
+    """Raised when a requested state transition is not permitted."""
+
 
 class SessionController:
-    """Coordinates master phases: Specification, Planning, and Coding."""
-    
+    """Coordinates master phases: Specification, Planning, and Coding.
+
+    Owns the lifecycle state machine and drives sub-agent transitions.
+    Sub-agents (SpecificationAgent, PlanningAgent, CodingAgent) are
+    intra-module; their concrete classes are imported directly because
+    the modular monolith boundary governs *cross-module* coupling only.
+
+    Construction dependencies (all ports, never concrete classes):
+        provider           — LLM adapter
+        tool_runtime       — stateless execution primitives
+        approval_gateway   — human-in-the-loop gate
+        context_service    — context hydration
+        memory_store       — memory pyramid persistence
+        heuristic_updater  — post-spec Bayesian batch learning
+    """
+
     def __init__(
         self,
         provider: ProviderPort,
         tool_runtime: ToolRuntimePort,
         approval_gateway: ApprovalGatewayPort,
         context_service: ContextPort,
+        memory_store: MemoryStorePort,
+        heuristic_updater: HeuristicUpdaterPort,
     ) -> None:
-        self.spec_agent = SpecificationAgent(provider)
-        self.plan_agent = PlanningAgent(provider)
-        self.code_agent = CodingAgent(provider, tool_runtime, approval_gateway, context_service)
+        # Sub-agents (intra-module wiring)
+        self._spec_agent = SpecificationAgent(provider)
+        self._plan_agent = PlanningAgent(provider)
+        self._code_agent = CodingAgent(
+            provider, tool_runtime, approval_gateway, context_service
+        )
+
+        # External port dependencies
+        self._memory_store = memory_store
+        self._heuristic_updater = heuristic_updater
+
+        # State machine
+        self._state: LifecycleState = LifecycleState.START
+        self._phase: MasterPhase = MasterPhase.SPECIFICATION
+        self._spec_state: SpecState | None = None
+        self._plan_state: PlanState | None = None
+
+        # Repository bootstrapping flag (CC.2)
+        self._is_empty_repo: bool = False
+
+    # ------------------------------------------------------------------
+    # State machine accessors
+    # ------------------------------------------------------------------
+
+    @property
+    def state(self) -> LifecycleState:
+        """Current lifecycle state (read-only)."""
+        return self._state
+
+    @property
+    def phase(self) -> MasterPhase:
+        """Current master phase (read-only)."""
+        return self._phase
+
+    @property
+    def spec_state(self) -> SpecState | None:
+        """Active nested spec sub-state, or None outside spec phase."""
+        return self._spec_state
+
+    @property
+    def plan_state(self) -> PlanState | None:
+        """Active nested plan sub-state, or None outside plan phase."""
+        return self._plan_state
+
+    @property
+    def is_empty_repo(self) -> bool:
+        """True when the selected repository contains no source files (CC.2, FR-015).
+
+        When True, the Planning phase generates project structure from
+        the approved specification rather than analyzing existing code.
+        """
+        return self._is_empty_repo
+
+    def set_empty_repo(self, empty: bool) -> None:
+        """Set by REPOSITORY_ANALYSIS phase after scanning the selected directory."""
+        self._is_empty_repo = empty
+
+    def advance(self) -> LifecycleState:
+        """Advance to the next lifecycle state.
+
+        Raises:
+            InvalidTransitionError: If the current state has no defined
+                successor (e.g. already at DONE).
+        """
+        next_state = _TRANSITIONS.get(self._state)
+        if next_state is None:
+            raise InvalidTransitionError(
+                f"No transition defined from {self._state!r}"
+            )
+        self._state = next_state
+        self._phase = _STATE_PHASE[next_state]
+
+        # Activate/deactivate nested state machines
+        self._sync_nested_states()
+
+        return self._state
+
+    def _sync_nested_states(self) -> None:
+        """Keep nested state machines aligned with the primary lifecycle."""
+        if self._phase == MasterPhase.SPECIFICATION:
+            if self._state == LifecycleState.SPEC_ENTRY:
+                self._spec_state = SpecState.CANVAS_FREESTYLE
+            elif self._state == LifecycleState.SPEC_VALIDATION:
+                self._spec_state = SpecState.CONCRETIZATION
+            elif self._state == LifecycleState.SPEC_APPROVAL:
+                self._spec_state = SpecState.SPEC_METASTABLE
+            self._plan_state = None
+        elif self._phase == MasterPhase.PLANNING:
+            if self._state == LifecycleState.PLAN_GENERATION:
+                self._plan_state = PlanState.TECH_PLAN_REITERATION
+            elif self._state == LifecycleState.PLAN_REVIEW:
+                self._plan_state = PlanState.STEPS_REITERATION
+            self._spec_state = None
+        else:
+            self._spec_state = None
+            self._plan_state = None
+
+    def advance_spec_state(self, next_spec: SpecState) -> None:
+        """Manually advance the nested spec sub-state.
+
+        Used by the UI loop during the Socratic argumentation cycle to
+        signal gap resolution before triggering SPEC_METASTABLE.
+        """
+        self._spec_state = next_spec
+
+    # ------------------------------------------------------------------
+    # AgentPort delegation — Specification phase
+    # ------------------------------------------------------------------
 
     def analyze_specification_gaps(self, canvas_text: str) -> tuple[SemanticGap, ...]:
-        return self.spec_agent.analyze_specification_gaps(canvas_text)
+        return self._spec_agent.analyze_specification_gaps(canvas_text)
+
+    def concretize(self, canvas_text: str) -> Specification:
+        """Compile raw canvas text into a structured Specification."""
+        return self._spec_agent.concretize(canvas_text)
+
+    def run_socratic_loop(
+        self,
+        canvas_text: str,
+        argumentation_log: ArgumentationLogPort,
+    ) -> tuple[Specification, tuple[SemanticGap, ...]]:
+        """Run the iterative gap analysis → question → answer Socratic loop."""
+        return self._spec_agent.run_socratic_loop(canvas_text, argumentation_log)
+
+    # ------------------------------------------------------------------
+    # AgentPort delegation — Planning phase
+    # ------------------------------------------------------------------
 
     def generate_technical_plan(self, specification: Specification) -> TechnicalPlan:
-        return self.plan_agent.generate_technical_plan(specification)
+        return self._plan_agent.generate_technical_plan(specification)
 
     def generate_procedural_steps(
         self, technical_plan: TechnicalPlan
     ) -> tuple[ProceduralStep, ...]:
-        return self.plan_agent.generate_procedural_steps(technical_plan)
+        return self._plan_agent.generate_procedural_steps(technical_plan)
+
+    # ------------------------------------------------------------------
+    # AgentPort delegation — Coding phase
+    # ------------------------------------------------------------------
 
     def execute_step(self, step: PlanStep, context: ContextBundle) -> None:
-        self.code_agent.execute_step(step, context)
+        self._code_agent.execute_step(step, context)
 
     def evaluate_completion(self, plan: Plan, context: ContextBundle) -> bool:
-        return self.code_agent.evaluate_completion(plan, context)
+        return self._code_agent.evaluate_completion(plan, context)
+
+    # ------------------------------------------------------------------
+    # Memory persistence (AgentPort)
+    # ------------------------------------------------------------------
 
     def update_memory(self, event: MemoryEvent) -> None:
-        pass
+        """Persist a memory event to the pyramid (spec §3 step 8)."""
+        self._memory_store.store_event(event)
+
+    # ------------------------------------------------------------------
+    # Heuristic learning (sysdesign AG_CTRL → AG_LEARN)
+    # ------------------------------------------------------------------
+
+    def finalize_spec_phase(self, abandoned: bool = False) -> None:
+        """Trigger batch heuristic update after spec completion or abandonment.
+
+        Called by the orchestrating UI loop when the spec phase ends
+        (either with an approved spec or when the user abandons).
+        """
+        self._heuristic_updater.run_batch_update(abandoned=abandoned)

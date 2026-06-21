@@ -29,13 +29,15 @@ class BayesianUpdater:
     def _load_heuristics(self) -> None:
         if self._heuristics_file.exists():
             try:
-                self._probs = json.loads(self._heuristics_file.read_text(encoding="utf-8"))
+                content = self._heuristics_file.read_text(encoding="utf-8")
+                self._probs = json.loads(content)
             except Exception:
                 self._probs = {}
 
     def _save_heuristics(self) -> None:
         self._heuristics_file.parent.mkdir(parents=True, exist_ok=True)
-        self._heuristics_file.write_text(json.dumps(self._probs, indent=2), encoding="utf-8")
+        payload = json.dumps(self._probs, indent=2)
+        self._heuristics_file.write_text(payload, encoding="utf-8")
 
     def load_config(self) -> HeuristicConfig:
         # In a real implementation this would parse YAML. 
@@ -47,7 +49,7 @@ class BayesianUpdater:
         return self._probs.get(key, 0.5)
 
     def run_batch_update(self, abandoned: bool = False) -> None:
-        """Run the batch Bayesian update using Exponentially Weighted Moving Average (EWMA).
+        """Run the batch Bayesian update using EWMA.
         
         The statistical rationale:
         Instead of a complex full Bayesian network which is prone to overfitting
@@ -88,7 +90,9 @@ class BayesianUpdater:
         total_interactions = len(entries)
 
         # Observation is the ratio of non-overridden interactions
-        observation_value = 1.0 - (override_count / total_interactions) if total_interactions > 0 else 0.5
+        observation_value = 0.5
+        if total_interactions > 0:
+            observation_value = 1.0 - (override_count / total_interactions)
 
         # EWMA update for the "schema_assumption_validity" heuristic
         prior = self.get_probability("schema_assumption_validity")

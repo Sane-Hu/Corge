@@ -91,6 +91,7 @@ class PlanStep:
     description: str
     action: ToolAction | None = None
     target: str = ""
+    completed: bool = False
 
 
 @dataclass(frozen=True, slots=True)

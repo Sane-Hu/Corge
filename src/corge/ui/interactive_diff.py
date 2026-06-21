@@ -6,7 +6,7 @@ from textual.screen import Screen
 from textual.widgets import Button, Static, TextArea
 
 
-class InteractiveDiffScreen(Screen):
+class InteractiveDiffScreen(Screen[str]):
     """Side-by-side diff for review and override."""
     
     CSS = """
@@ -63,7 +63,10 @@ class InteractiveDiffScreen(Screen):
         with Horizontal(classes="footer"):
             yield Static(self._prompt_text + "  ")
             yield Button("Approve", id="approve", variant="success")
+            yield Button("Reject", id="reject", variant="error")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "approve":
             self.dismiss(self.right_area.text)
+        elif event.button.id == "reject":
+            self.dismiss(None)

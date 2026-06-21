@@ -6,7 +6,7 @@ This document consolidates the functional requirements, architectural subsystems
 
 ## 1. Functional Requirements (FRD)
 
-- **FR-001 Spec Gate**: Implementation remains blocked until functional requirements, acceptance criteria, and approved specification exist. Outputs are saved to `specs/current/spec.md` and `specs/current/spec.yaml` relative to the repository root.
+- **FR-001 Spec Gate**: Implementation remains blocked until functional requirements, acceptance criteria, and approved specification exist.
 - **FR-002 Guided Spec Wizard**: Guides the engineer through business goals, user stories, functional requirements, constraints, acceptance criteria, and testing expectations.
 - **FR-003 & FR-004 Repository Ingestion & Updates**: Analyzes repository structure, files, config, and build files. Updates are computed incrementally on file modifications.
 - **FR-005 Repository Knowledge Graph**: A queryable representation of files, directories, classes, functions, and their dependencies.

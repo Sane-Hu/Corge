@@ -93,9 +93,13 @@ class UiPort(Protocol):
 class AgentPort(Protocol):
     """Planning and execution orchestration boundary."""
 
-    def analyze_specification_gaps(self, canvas_text: str) -> tuple[SemanticGap, ...]: ...
+    def analyze_specification_gaps(
+        self, canvas_text: str
+    ) -> tuple[SemanticGap, ...]: ...
 
-    def generate_technical_plan(self, specification: Specification) -> TechnicalPlan: ...
+    def generate_technical_plan(
+        self, specification: Specification
+    ) -> TechnicalPlan: ...
 
     def generate_procedural_steps(
         self, technical_plan: TechnicalPlan
@@ -126,6 +130,8 @@ class ContextPort(Protocol):
     def retrieve_relevant_context(
         self, specification: Specification, step: PlanStep
     ) -> ContextBundle: ...
+
+    def update_markov_state(self, result: str, correction: str = "") -> None: ...
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +197,7 @@ class MemoryStorePort(Protocol):
 
     def store_event(self, event: MemoryEvent) -> None: ...
 
-    def store_fact(self, fact: str) -> None: ...
+    def store_fact(self, fact: str, source: str = "") -> None: ...
 
     def store_scenario(self, scenario: MemoryEvent) -> None: ...
 
