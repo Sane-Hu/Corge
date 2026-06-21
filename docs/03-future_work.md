@@ -127,3 +127,19 @@ The initial Knowledge Graph implementation (`src/corge/knowledge_graph/graph.py`
 - **Current Implementation:** All state databases, graphs, scenarios, logs, and artifacts are stored locally in the `.agent/` folder.
 - **Upgrade Path:** Reimplement the repository knowledge graph, memory store, and artifact storage ports to target remote cloud connections.
 - **Reasoning for Deferral:** (MVP Scope) Local disk persistence is robust and enables offline execution. Cloud infrastructure is a multi-tenant product requirement that is not needed for individual developer tool evaluation.
+
+## 14. Cron-Scheduled Background Maintenance & Optimizations
+
+- **Proposal:** Implement scheduled cron jobs to automate background repository parsing, artifact cleanup, memory compaction, and offline heuristic learning.
+- **Current Implementation:** All operations (knowledge graph indexing, heuristic updates, memory event writing, and artifact generation) run synchronously or inside active TUI user sessions.
+- **Upgrade Path:** Create CLI commands for system maintenance tasks (e.g., `corge system gc`, `corge system reindex`, `corge system learn`) and document standard crontab configurations.
+- **8 Core Benefits of Cron Scheduling:**
+  1. **Pre-Cached Knowledge Graph Indexing:** Periodically scans the repository in the background, keeping `.agent/repo_graph.db` fresh so that starting a new agent session is instantaneous.
+  2. **Aggregated Offline Heuristic Learning:** Performs Bayesian self-improvement of spec heuristics overnight, aggregating data across multiple user sessions without latency during live interaction.
+  3. **Disk Space Garbage Collection (Artifact Aging):** Automatically cleans up or compresses stale execution artifacts (older than 30 days) under `.agent/artifacts/` to control storage growth.
+  4. **Memory Tier Compaction:** Summarizes older L0 raw JSONL event logs into L1 Facts and L3 Engineering Profiles in the background, keeping the memory database optimized and reducing context token sizes.
+  5. **Continuous Codebase Lint & Convention Auditing:** Periodically runs standard analyzers (`ruff`, `mypy`) to detect convention drift and records findings in L1 Facts.
+  6. **Automated Backup & State Export:** Exports database snapshots (`.agent/memory.db`, `.agent/repo_graph.db`) to remote back-up targets to prevent data loss.
+  7. **Scheduled Security Vulnerability Scans:** Periodically audits dependencies in `pyproject.toml` and lock files, generating alerts for outdated or insecure packages.
+  8. **Continuous Test Suite Monitoring:** Runs verification tests at low-traffic times to verify environment changes or dependency updates don't break the system's core requirements.
+- **Reasoning for Deferral:** (MVP Scope) Manual executions of the TUI and on-session updates are adequate for early-stage development and local testing. Cron automation only becomes necessary as the repository scales or runs on remote dev servers.
