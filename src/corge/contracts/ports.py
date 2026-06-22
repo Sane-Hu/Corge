@@ -12,7 +12,7 @@ be verified in tests without importing concrete implementations.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from corge.contracts.models import (
     ApprovalDecision,
@@ -143,7 +143,9 @@ class ContextPort(Protocol):
 class PromptAssemblerPort(Protocol):
     """Prompt construction boundary."""
 
-    def collect_context(self, step: PlanStep) -> ContextBundle: ...
+    def collect_context(
+        self, step: PlanStep, specification: Specification
+    ) -> ContextBundle: ...
 
     def assemble_prompt(self, context: ContextBundle) -> str: ...
 
@@ -202,6 +204,10 @@ class MemoryStorePort(Protocol):
     def store_scenario(self, scenario: MemoryEvent) -> None: ...
 
     def update_profile(self, profile: EngineeringProfile) -> None: ...
+
+    def get_facts(self, limit: int = 200) -> list[str]: ...
+
+    def get_scenario(self, kind: str) -> list[dict[str, Any]]: ...
 
 
 # ---------------------------------------------------------------------------

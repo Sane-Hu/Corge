@@ -188,6 +188,8 @@ class ContextBundle:
     recent_actions: tuple[str, ...] = ()
     artifact_refs: tuple[ArtifactReference, ...] = ()
     markov_context: MarkovStepContext | None = None
+    current_step_id: str | None = None
+    engineering_facts: tuple[str, ...] = ()
 
 
 # ---------------------------------------------------------------------------

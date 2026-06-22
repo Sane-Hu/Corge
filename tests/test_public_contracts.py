@@ -197,6 +197,8 @@ def test_documented_public_classes_exist() -> None:
             "store_fact",
             "store_scenario",
             "update_profile",
+            "get_facts",
+            "get_scenario",
         },
         ArtifactStore: {
             "store_artifact",
@@ -236,8 +238,7 @@ def test_stub_methods_raise_not_implemented(
     tool_result: ToolResult,
 ) -> None:
     stub_calls = [
-        lambda: PromptAssembler().collect_context(plan_step),
-        lambda: PromptAssembler().assemble_prompt(context_bundle),
+        lambda: PromptAssembler().collect_context(plan_step, specification),
         lambda: BudgetManager().estimate_tokens(context_bundle),
         lambda: BudgetManager().rank_context(context_bundle),
         lambda: BudgetManager().clip(context_bundle, 1000),
