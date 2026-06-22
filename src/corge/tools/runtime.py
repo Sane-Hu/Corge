@@ -85,5 +85,3 @@ class ToolRuntime:
             )
         except OSError as exc:
             return ToolResult(success=False, data=None, error=f"Failed to execute command: {exc}")
-    def bash(self, command: str, cwd: Path) -> ToolResult:
-        raise NotImplementedError
