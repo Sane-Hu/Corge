@@ -18,7 +18,7 @@ This document consolidates the functional requirements, architectural subsystems
 - **FR-008 Planning Phase**: Generates a step-by-step implementation plan. Execution remains blocked until approval.
 - **FR-009 Human Approval Layer**: Intercepts destructive actions (`write`, `edit`, `bash`) for human consent. (`Read`) actions do not require approval.
 - **FR-010 Artifact Offloading**: Large build/test logs are saved under `.agent/artifacts/` and referenced in prompts using the `artifact://` URI scheme.
-- **FR-011 Context Budget Manager**: Enforces token budgets using clipping, deduplication, aging, summarization, and offloading.
+- **FR-011 Context Budget Manager**: Minimizes context bloat and token cost by unconditionally clipping, deduplicating, and compacting the transcript in multi-turn sessions, using limits only as a hard fallback ceiling.
 - **FR-012 Test-Based Completion**: Delivery requires all acceptance criteria to be satisfied, tests to exist and pass, and human approval.
 - **FR-013 Audit Logging**: Records prompts, plans, tools, approvals, and completions for accountability.
 - **FR-014 Provider Abstraction**: Single integration point for models (DeepSeek, Ollama, OpenAI-compat) that automatically strips `<think>` tags and populates standardized usage fields.
@@ -44,7 +44,7 @@ The directory structure maps directly to the 8 logical modules defined in the sy
 *   **4. Context Engineering Modules**
     *   `src/corge/context/`: Context retrieval coordination and N-1 context caching.
     *   `src/corge/prompt_assembler/`: Constructing prompts for model consumption.
-    *   `src/corge/budget_manager/`: Enforcement of strict context token budgets (compaction, clipping, deduplication).
+    *   `src/corge/budget_manager/`: Unconditional transcript compaction, duplicate removal, and large-string clipping for multi-turn cost-savings.
     *   `src/corge/schemas/`: Tech-stack YAML definition templates.
 *   **5. Knowledge & Persistence Modules**
     *   `src/corge/knowledge_graph/`: Repository structure parser and SQL database nodes/edges builder.

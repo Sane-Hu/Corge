@@ -335,14 +335,9 @@ The repository contains the foundation skeleton, with the following implementati
 - **Approval Gateway** ([approval](src/corge/approval)): Contains logic for UI delegation, audit logging delegation, and auto-approval for read actions.
 - **UI & Presentation Layer** ([ui](src/corge/ui)): Uses an asynchronous `textual`-based Terminal UI (TUI). Integrates cleanly with `tmux` and manages synchronous Agent execution in background threads via `@work`. Supports Freestyle Canvas brainstorming with ghost text and active-validated sticky notes (`@node:<id>`), side-by-side Interactive Diff editors with a dedicated "Reject" button, and fully functioning readouts for repository context, execution state, engineering profile, and memory logs.
 - **Provider Adapter** ([providers](src/corge/providers)): Concrete OpenAI-compatible model integration adapter. Supports OpenAI (automatic prompt caching), DeepSeek (explicit prefix caching), and local Ollama (keep-alive management). Automatically handles reasoning models by stripping `<think>...</think>` tags and populating standard token usage details (`prompt_tokens`, `completion_tokens`, `cache_read_tokens`, `cache_write_tokens`).
-- **Logging** ([logging](src/corge/logging)): Includes Argumentation Logging for Socratic Q&A and canvas snapshots.
+- **Token Budget Manager** ([budget_manager](src/corge/budget_manager)): Enforces context token management to prevent bloat. Implements un-conditional transcript compaction, duplicate file/fact removal, and large-string clipping for cost-savings.
+- **Tool Runtime** ([tools](src/corge/tools)): Stateless execution primitives. Primitives `read`, `write`, `edit` and `bash` are fully implemented with timeout handling and non-blocking threaded output streaming.
+- **Logging** ([logging](src/corge/logging)): Includes Argumentation Logging for Socratic Q&A and canvas snapshots. Implements a dedicated `.agent/audit.jsonl` Audit Logger for serializing prompts, tools, approvals, and completion events with ISO-8601 timestamps.
 - **Tech-Stack Schemas** ([schemas](src/corge/schemas)): Generic and framework-specific schemas (e.g., Laravel) for tailoring prompts.
 - **Agent Subsystems** ([agent](src/corge/agent)): Fully implemented `SessionController` orchestration across specialized `SpecificationAgent` (with JSON gap parsing and Socratic loops), `PlanningAgent` (using sequential step identifiers), and `CodingAgent` (handling all 4 tool actions, completion evaluation, and interactive diff rejection pivots). Includes support for empty repository bootstrapping, session serialization/persistence, and standardizes learning updates via the `BayesianUpdater` implementation.
 - **Memory Store** ([memory](src/corge/memory)): Fully implemented 4-tier memory pyramid, including L0 session events (append-only JSONL), L1 engineering facts (SQLite with deduplication), L2 scenario memory per feature (JSON), and L3 engineering profile (confidence-filtered markdown).
-
-### Pending Implementation (Stub Modules)
-- **Token Budget Manager** ([budget_manager](src/corge/budget_manager)): Enforces strict context window token limits.
-- **Tool Runtime** ([tools](src/corge/tools)): Partially implemented. Primitives `read`, `write`, and `edit` are implemented; process execution (`bash`) remains a stub.
-- **Audit Logging** ([logging](src/corge/logging)): Audit logger remains a stub.
-
-

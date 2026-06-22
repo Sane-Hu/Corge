@@ -100,6 +100,43 @@ class ToolRuntime:
         )
 
     def bash(self, command: str, cwd: Path) -> ToolResult:
-        raise NotImplementedError
-
-
+        timeout = 300  # 5 minutes default timeout
+        try:
+            import subprocess
+            
+            process = subprocess.Popen(
+                command,
+                cwd=cwd,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            
+            try:
+                stdout, stderr = process.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                # Get any partial output
+                stdout, stderr = process.communicate()
+                return ToolResult(
+                    action=ToolAction.BASH,
+                    output=stdout,
+                    success=False,
+                    stderr=f"Command timed out after {timeout} seconds\n{stderr}",
+                )
+                
+            success = process.returncode == 0
+            return ToolResult(
+                action=ToolAction.BASH,
+                output=stdout,
+                success=success,
+                stderr=stderr if not success else "",
+            )
+        except OSError as exc:
+            return ToolResult(
+                action=ToolAction.BASH,
+                output="",
+                success=False,
+                stderr=f"Failed to execute command: {exc}",
+            )
