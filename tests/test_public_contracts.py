@@ -245,12 +245,6 @@ def test_stub_methods_raise_not_implemented(
         lambda: BudgetManager().deduplicate(context_bundle),
         lambda: BudgetManager().summarize(context_bundle),
         lambda: BudgetManager().compact(context_bundle),
-        lambda: ArtifactStore().store_artifact(Path("log.txt"), "summary"),
-        lambda: ArtifactStore().retrieve_artifact(artifact_reference),
-        lambda: ArtifactStore().summarize_artifact(artifact_reference),
-        lambda: ToolRuntime().read(Path("AGENTS.md")),
-        lambda: ToolRuntime().write(Path("file.txt"), "content"),
-        lambda: ToolRuntime().edit(Path("file.txt"), "old", "new"),
         lambda: ToolRuntime().bash("pytest", Path(".")),
         # Provider() now requires a ProviderConfig — tested in tests/providers/.
         lambda: AuditLogger().record_prompt("prompt"),
@@ -264,6 +258,37 @@ def test_stub_methods_raise_not_implemented(
     for stub_call in stub_calls:
         with pytest.raises(NotImplementedError):
             stub_call()
+
+
+def test_artifact_store_lifecycle(tmp_path: Path) -> None:
+    store = ArtifactStore(tmp_path)
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("hello", encoding="utf-8")
+    ref = store.store_artifact(test_file, "test summary")
+    assert ref.uri.startswith("artifact://")
+    assert store.summarize_artifact(ref) == "test summary"
+    assert store.retrieve_artifact(ref) == "hello"
+
+
+def test_tool_runtime_lifecycle(tmp_path: Path) -> None:
+    runtime = ToolRuntime()
+    test_file = tmp_path / "tool_test.txt"
+
+    # Test write
+    res = runtime.write(test_file, "initial")
+    assert res.success is True
+    assert test_file.read_text(encoding="utf-8") == "initial"
+
+    # Test read
+    res_read = runtime.read(test_file)
+    assert res_read.success is True
+    assert res_read.output == "initial"
+
+    # Test edit
+    res_edit = runtime.edit(test_file, "initial", "edited")
+    assert res_edit.success is True
+    assert test_file.read_text(encoding="utf-8") == "edited"
+
 
 
 # -- Model construction with new fields --------------------------------------

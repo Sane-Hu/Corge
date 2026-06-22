@@ -330,6 +330,8 @@ The repository contains the foundation skeleton, with the following implementati
 - **Contracts & Port Definitions** ([contracts](src/corge/contracts))
 - **Knowledge Graph** ([knowledge_graph](src/corge/knowledge_graph)): Includes Discovery Mode fuzzy search.
 - **Context Engine** ([context](src/corge/context)): Integrates with `KnowledgeGraphPort` and `MemoryStorePort` to construct the layered `ContextBundle`. Enforces the strict 3-Layer isolation strategy (shielding the coding phase from argumentation context pollution) and implements the N-1 Markov state trajectory compression system.
+- **Prompt Assembler** ([prompt_assembler](src/corge/prompt_assembler)): Renders the five-tier ephemeral prompt structure.
+- **Artifact Store** ([artifacts](src/corge/artifacts)): Manages copying large files/logs to storage and referencing them via `artifact://` URIs.
 - **Approval Gateway** ([approval](src/corge/approval)): Contains logic for UI delegation, audit logging delegation, and auto-approval for read actions.
 - **UI & Presentation Layer** ([ui](src/corge/ui)): Uses an asynchronous `textual`-based Terminal UI (TUI). Integrates cleanly with `tmux` and manages synchronous Agent execution in background threads via `@work`. Supports Freestyle Canvas brainstorming with ghost text and active-validated sticky notes (`@node:<id>`), side-by-side Interactive Diff editors with a dedicated "Reject" button, and fully functioning readouts for repository context, execution state, engineering profile, and memory logs.
 - **Provider Adapter** ([providers](src/corge/providers)): Concrete OpenAI-compatible model integration adapter. Supports OpenAI (automatic prompt caching), DeepSeek (explicit prefix caching), and local Ollama (keep-alive management). Automatically handles reasoning models by stripping `<think>...</think>` tags and populating standard token usage details (`prompt_tokens`, `completion_tokens`, `cache_read_tokens`, `cache_write_tokens`).
@@ -339,9 +341,8 @@ The repository contains the foundation skeleton, with the following implementati
 - **Memory Store** ([memory](src/corge/memory)): Fully implemented 4-tier memory pyramid, including L0 session events (append-only JSONL), L1 engineering facts (SQLite with deduplication), L2 scenario memory per feature (JSON), and L3 engineering profile (confidence-filtered markdown).
 
 ### Pending Implementation (Stub Modules)
-- **Prompt Assembler** ([prompt_assembler](src/corge/prompt_assembler))
-- **Token Budget Manager** ([budget_manager](src/corge/budget_manager))
-- **Artifact Store** ([artifacts](src/corge/artifacts))
-- **Tool Runtime** ([tools](src/corge/tools))
+- **Token Budget Manager** ([budget_manager](src/corge/budget_manager)): Enforces strict context window token limits.
+- **Tool Runtime** ([tools](src/corge/tools)): Partially implemented. Primitives `read`, `write`, and `edit` are implemented; process execution (`bash`) remains a stub.
 - **Audit Logging** ([logging](src/corge/logging)): Audit logger remains a stub.
+
 
