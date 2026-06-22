@@ -8,11 +8,14 @@ Spec traceability:
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from corge.contracts import ChatResponse, ProviderMessage, ProviderPort
-from corge.providers import Provider, ProviderConfig
+from corge.providers import Provider, ProviderConfig, bootstrap_provider
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -65,9 +68,7 @@ def test_openai_chat_maps_response() -> None:
     cfg = _default_config()
     provider = Provider(cfg)
 
-    mock_completion = _make_completion(
-        "Hello!", prompt_tokens=50, completion_tokens=5
-    )
+    mock_completion = _make_completion("Hello!", prompt_tokens=50, completion_tokens=5)
     with patch.object(
         provider._client.chat.completions,
         "create",
@@ -93,7 +94,10 @@ def test_usage_keys_always_present() -> None:
         resp = provider.chat((ProviderMessage(role="user", content="x"),))
 
     for key in (
-        "prompt_tokens", "completion_tokens", "cache_read_tokens", "cache_write_tokens"
+        "prompt_tokens",
+        "completion_tokens",
+        "cache_read_tokens",
+        "cache_write_tokens",
     ):
         assert key in resp.usage, f"missing key: {key}"
         assert isinstance(resp.usage[key], int)
@@ -316,3 +320,130 @@ def test_max_tokens_zero_omitted() -> None:
         provider.chat((ProviderMessage(role="user", content="q"),))
         call_kwargs = mock_create.call_args.kwargs
         assert "max_completion_tokens" not in call_kwargs
+
+
+# ---------------------------------------------------------------------------
+# TOML loading
+# ---------------------------------------------------------------------------
+
+
+def test_provider_config_from_toml() -> None:
+    toml_str = """
+    model = "deepseek-chat"
+    api_key = "sk-deepseek"
+    base_url = "https://api.deepseek.com/v1"
+    max_tokens = 2048
+    enable_prefix_caching = false
+    
+    [extra_headers]
+    X-Title = "corge-test"
+    """
+    cfg = ProviderConfig.from_toml(toml_str)
+    assert cfg.model == "deepseek-chat"
+    assert cfg.api_key == "sk-deepseek"
+    assert cfg.base_url == "https://api.deepseek.com/v1"
+    assert cfg.max_tokens == 2048
+    assert cfg.enable_prefix_caching is False
+    assert cfg.extra_headers == {"X-Title": "corge-test"}
+    # default should be retained
+    assert cfg.timeout == 120.0
+
+
+def test_provider_config_from_toml_file(tmp_path: Path) -> None:
+    toml_str = """
+    model = "gpt-4o"
+    api_key = "sk-openai"
+    timeout = 60.5
+    """
+    toml_file = tmp_path / "config.toml"
+    toml_file.write_text(toml_str, encoding="utf-8")
+
+    cfg = ProviderConfig.from_toml_file(toml_file)
+    assert cfg.model == "gpt-4o"
+    assert cfg.api_key == "sk-openai"
+    assert cfg.timeout == 60.5
+    assert cfg.max_tokens == 4096  # default
+
+
+# ---------------------------------------------------------------------------
+# Connection Validation & Bootstrapping
+# ---------------------------------------------------------------------------
+
+
+def test_validate_connection_success() -> None:
+    provider = Provider(_default_config())
+    mock_completion = _make_completion("ok")
+    with patch.object(
+        provider._client.chat.completions, "create", return_value=mock_completion
+    ):
+        assert provider.validate_connection() is True
+
+
+def test_validate_connection_failure() -> None:
+    provider = Provider(_default_config())
+    with patch.object(
+        provider._client.chat.completions,
+        "create",
+        side_effect=Exception("API Error"),
+    ):
+        assert provider.validate_connection() is False
+
+
+def test_bootstrap_provider_success(tmp_path: Path) -> None:
+    toml_str = """
+    model = "deepseek-chat"
+    api_key = "sk-valid"
+    base_url = "https://api.deepseek.com/v1"
+    """
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(toml_str, encoding="utf-8")
+
+    mock_completion = _make_completion("ok")
+    with patch(
+        "openai.resources.chat.completions.Completions.create",
+        return_value=mock_completion,
+    ):
+        provider = bootstrap_provider(config_file)
+        assert isinstance(provider, Provider)
+        assert provider._config.model == "deepseek-chat"
+        assert provider._config.api_key == "sk-valid"
+        assert provider._config.base_url == "https://api.deepseek.com/v1"
+
+
+def test_bootstrap_provider_file_not_found() -> None:
+    non_existent = Path("non_existent_config.toml")
+    with pytest.raises(FileNotFoundError) as exc_info:
+        bootstrap_provider(non_existent)
+    assert "was not found" in str(exc_info.value)
+    assert "config.toml.example" in str(exc_info.value)
+
+
+def test_bootstrap_provider_placeholder_value(tmp_path: Path) -> None:
+    toml_str = """
+    model = "gpt-4o"
+    api_key = "your-api-key-here"
+    """
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(toml_str, encoding="utf-8")
+
+    with pytest.raises(ValueError) as exc_info:
+        bootstrap_provider(config_file)
+    assert "Placeholder value detected" in str(exc_info.value)
+    assert "your-api-key-here" in str(exc_info.value)
+
+
+def test_bootstrap_provider_connection_failure(tmp_path: Path) -> None:
+    toml_str = """
+    model = "gpt-4o"
+    api_key = "sk-invalid"
+    """
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(toml_str, encoding="utf-8")
+
+    with patch(
+        "openai.resources.chat.completions.Completions.create",
+        side_effect=Exception("Auth error"),
+    ):
+        with pytest.raises(ConnectionError) as exc_info:
+            bootstrap_provider(config_file)
+        assert "Failed to verify LLM API connection" in str(exc_info.value)

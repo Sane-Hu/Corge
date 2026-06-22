@@ -1,0 +1,16 @@
+# Corge LLM Provider Configuration Template
+# Copy this file to 'config.toml' and populate it with your details.
+
+model = "deepseek-chat"                  # Target model (e.g. "deepseek-chat", "gpt-4o", "ollama-model")
+api_key = "your-api-key-here"            # Your API key (can be blank or omitted for local Ollama)
+base_url = "https://api.deepseek.com/v1"   # Endpoint override (blank defaults to https://api.openai.com/v1)
+
+max_tokens = 4096                        # Max completion tokens (0 uses API default)
+reasoning_effort = "medium"              # Optional: "low", "medium", "high" for reasoning models (e.g. o1/R1)
+enable_prefix_caching = true             # Enable prompt caching (e.g. DeepSeek)
+keep_alive = "-1"                        # Ollama model load residency duration (-1 to hold in memory)
+timeout = 120.0                          # Connection/request timeout in seconds
+
+[extra_headers]
+# Verbatim custom headers to pass to every request (e.g. for OpenRouter or corporate proxies)
+# X-Title = "Corge"

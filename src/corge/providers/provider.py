@@ -14,6 +14,8 @@ Spec traceability:
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import openai
 
 from corge.contracts import ChatResponse, ProviderMessage
@@ -95,9 +97,7 @@ class Provider:
 
         create_kwargs: dict[str, object] = {
             "model": cfg.model,
-            "messages": [
-                {"role": m.role, "content": m.content} for m in messages
-            ],
+            "messages": [{"role": m.role, "content": m.content} for m in messages],
         }
 
         if cfg.max_tokens > 0:
@@ -112,6 +112,23 @@ class Provider:
 
         completion = self._client.chat.completions.create(**create_kwargs)  # type: ignore[call-overload]
         return self._parse_response(completion)
+
+    def validate_connection(self) -> bool:
+        """Verify the API connection and endpoint by sending a minimal chat request.
+
+        Returns:
+            True if the connection and credentials are valid and the API responds
+            successfully; False otherwise.
+        """
+        try:
+            self._client.chat.completions.create(
+                model=self._config.model,
+                messages=[{"role": "user", "content": "ping"}],
+                max_completion_tokens=1,
+            )
+            return True
+        except Exception:
+            return False
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -181,4 +198,49 @@ def _strip_thinking_tags(text: str) -> str:
     end = text.find(close_tag, start)
     if end == -1:
         return text
-    return (text[:start] + text[end + len(close_tag):]).strip()
+    return (text[:start] + text[end + len(close_tag) :]).strip()
+
+
+def bootstrap_provider(config_path: str | Path = "config.toml") -> Provider:
+    """Initialize the LLM Provider using the user's TOML config file.
+
+    It loads the configuration, checks for placeholder values, instantiates
+    the Provider, and validates that the endpoint is working before returning
+    the initialized provider instance.
+
+    Raises:
+        FileNotFoundError: If the config file does not exist.
+        ValueError: If placeholder values (e.g. "your-api-key-here") are found.
+        ConnectionError: If the API endpoint is unreachable or credentials are invalid.
+    """
+    path = Path(config_path)
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Configuration file '{path.name}' was not found in "
+            f"'{path.parent.absolute()}'.\n"
+            f"Please copy the template file 'config.toml.example' from the "
+            f"repository root to '{path.absolute()}' and populate it with "
+            f"your API details."
+        )
+
+    cfg = ProviderConfig.from_toml_file(path)
+
+    # Check for placeholder values
+    if cfg.api_key == "your-api-key-here":
+        raise ValueError(
+            f"Placeholder value detected for 'api_key' in '{path.absolute()}'. "
+            f"Please edit the file and replace 'your-api-key-here' with "
+            f"your actual API key."
+        )
+
+    provider = Provider(cfg)
+
+    if not provider.validate_connection():
+        raise ConnectionError(
+            f"Failed to verify LLM API connection to "
+            f"'{cfg.base_url or 'https://api.openai.com/v1'}' "
+            f"using model '{cfg.model}'. Please check your API key, base URL, "
+            f"model name, and network settings."
+        )
+
+    return provider

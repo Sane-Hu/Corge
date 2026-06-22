@@ -17,7 +17,9 @@ Spec traceability:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import tomllib
+from dataclasses import dataclass, field, fields
+from pathlib import Path
 
 
 @dataclass
@@ -58,3 +60,24 @@ class ProviderConfig:
     keep_alive: str = "-1"
     timeout: float = 120.0
     extra_headers: dict[str, str] = field(default_factory=dict)
+
+    @classmethod
+    def from_toml(cls, toml_text: str) -> ProviderConfig:
+        """Construct a ProviderConfig from a TOML string."""
+        data = tomllib.loads(toml_text)
+        kwargs = {}
+        for f in fields(cls):
+            if f.name in data:
+                kwargs[f.name] = data[f.name]
+        return cls(**kwargs)
+
+    @classmethod
+    def from_toml_file(cls, path: str | Path) -> ProviderConfig:
+        """Construct a ProviderConfig from a TOML file."""
+        with open(path, "rb") as f:
+            data = tomllib.load(f)
+        kwargs = {}
+        for fl in fields(cls):
+            if fl.name in data:
+                kwargs[fl.name] = data[fl.name]
+        return cls(**kwargs)

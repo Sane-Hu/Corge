@@ -8,6 +8,6 @@ Exports:
 
 from corge.contracts import ProviderPort
 from corge.providers.config import ProviderConfig
-from corge.providers.provider import Provider
+from corge.providers.provider import Provider, bootstrap_provider
 
-__all__ = ["Provider", "ProviderConfig", "ProviderPort"]
+__all__ = ["Provider", "ProviderConfig", "ProviderPort", "bootstrap_provider"]

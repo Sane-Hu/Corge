@@ -269,6 +269,14 @@ class ProviderPort(Protocol):
 
     def chat(self, messages: tuple[ProviderMessage, ...]) -> ChatResponse: ...
 
+    def validate_connection(self) -> bool:
+        """Verify the provider connection and credentials.
+
+        Returns:
+            True if the connection is successful, False otherwise.
+        """
+        ...
+
 
 # ---------------------------------------------------------------------------
 # Audit logging (04-module-contracts § logging)
