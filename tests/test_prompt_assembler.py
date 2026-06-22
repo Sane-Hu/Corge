@@ -195,6 +195,28 @@ def test_collect_context_without_context_port_raises() -> None:
     """No ContextPort collaborator provided -> explicit NotImplementedError."""
     assembler = PromptAssembler()
     step = PlanStep(identifier="1", description="Create login route")
+    spec = _make_spec()
 
     with pytest.raises(NotImplementedError, match="ContextPort"):
-        assembler.collect_context(step)
+        assembler.collect_context(step, spec)
+
+
+def test_assemble_prompt_includes_current_step_when_id_matches() -> None:
+    assembler = PromptAssembler()
+    bundle = _make_bundle(current_step_id="1")
+
+    prompt = assembler.assemble_prompt(bundle)
+
+    assert "Current Plan Step: 1 — Create login route" in prompt
+    assert "Action: write Target: src/routes/login.py" in prompt
+
+
+def test_assemble_prompt_includes_engineering_facts() -> None:
+    assembler = PromptAssembler()
+    bundle = _make_bundle(engineering_facts=("Always use strict typing", "No external calls in unit tests"))
+
+    prompt = assembler.assemble_prompt(bundle)
+
+    assert "Tier 2" in prompt
+    assert "Always use strict typing" in prompt
+    assert "No external calls in unit tests" in prompt

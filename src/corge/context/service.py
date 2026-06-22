@@ -131,6 +131,7 @@ class ContextService:
             repository_context=RepositoryContext(root=Path(".")),
             phase=MasterPhase.CODING,
             markov_context=markov_ctx,
+            current_step_id=step.identifier,
         )
 
     def update_markov_state(self, result: str, correction: str = "") -> None:
@@ -149,6 +150,7 @@ class ContextService:
         repository_context: RepositoryContext,
         phase: MasterPhase,
         markov_context: MarkovStepContext | None = None,
+        current_step_id: str | None = None,
     ) -> ContextBundle:
         """Assemble a ContextBundle using KG and memory for Tiers 2–3.
 
@@ -164,11 +166,13 @@ class ContextService:
             pass  # KG may not be built yet (empty repo)
 
         # Tier 2b — engineering facts from L1 memory
+        engineering_facts: tuple[str, ...] = ()
         engineering_profile = EngineeringProfile()
         try:
-            facts = self._memory.get_facts(limit=50)  # type: ignore[attr-defined]
+            facts = self._memory.get_facts(limit=50)
             if facts:
-                engineering_profile = EngineeringProfile(rules=tuple(facts))
+                engineering_facts = tuple(facts)
+                engineering_profile = EngineeringProfile(rules=engineering_facts)
         except Exception:
             pass  # memory may be empty on first run
 
@@ -176,7 +180,7 @@ class ContextService:
         scenario_memory: tuple[MemoryEvent, ...] = ()
         if phase == MasterPhase.CODING:
             try:
-                raw = self._memory.get_scenario(specification.title)  # type: ignore[attr-defined]
+                raw = self._memory.get_scenario(specification.title)
                 scenario_memory = tuple(
                     MemoryEvent(
                         kind=specification.title,
@@ -196,6 +200,8 @@ class ContextService:
             relevant_files=relevant_files,
             scenario_memory=scenario_memory,
             markov_context=markov_context,
+            current_step_id=current_step_id,
+            engineering_facts=engineering_facts,
         )
 
 

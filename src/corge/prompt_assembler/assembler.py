@@ -42,7 +42,7 @@ Open design questions (NOT silently resolved — see comments below):
 
 from __future__ import annotations
 
-from corge.contracts import ContextBundle, EngineeringProfile, PlanStep
+from corge.contracts import ContextBundle, EngineeringProfile, PlanStep, Specification
 from corge.contracts.ports import ContextPort, KnowledgeGraphPort
 
 # Rules below this confidence are excluded from Tier 1 prompt output.
@@ -78,12 +78,13 @@ class PromptAssembler:
         self._context_port = context_port
         self._knowledge_graph_port = knowledge_graph_port
 
-    def collect_context(self, step: PlanStep) -> ContextBundle:
+    def collect_context(
+        self, step: PlanStep, specification: Specification
+    ) -> ContextBundle:
         """Gather a ``ContextBundle`` for the given plan step.
 
         Delegates repository/relevant-file retrieval to ``ContextPort``
-        when available. ``scenario_memory`` is left empty — see module
-        docstring, open design question #1.
+        when available.
         """
         if self._context_port is None:
             raise NotImplementedError(
@@ -91,18 +92,7 @@ class PromptAssembler:
                 "collaborator; none was provided to the constructor."
             )
 
-        # ContextPort.retrieve_relevant_context needs a Specification,
-        # which PlanStep does not carry. PlanStep only has identifier/
-        # description/action/target (see contracts/models.py). Until
-        # the spec clarifies how the assembler obtains the active
-        # Specification for a given step, this is intentionally left
-        # unimplemented rather than guessed.
-        raise NotImplementedError(
-            "collect_context cannot resolve the active Specification "
-            "for this PlanStep — PlanStep does not carry a "
-            "specification reference and ContextPort.retrieve_relevant_context "
-            "requires one. This is an open spec question, not an oversight."
-        )
+        return self._context_port.retrieve_relevant_context(specification, step)
 
     def assemble_prompt(self, context: ContextBundle) -> str:
         """Render a ``ContextBundle`` into the ephemeral prompt string.
@@ -174,11 +164,16 @@ class PromptAssembler:
     def _render_tier2(self, context: ContextBundle) -> str:
         lines: list[str] = []
 
-        if context.relevant_files:
+        if context.engineering_facts or context.relevant_files:
             lines.append("## Tier 2: Repository")
-            lines.append("Relevant Files:")
-            for path in context.relevant_files:
-                lines.append(f"- {path}")
+            if context.engineering_facts:
+                lines.append("Engineering Facts:")
+                for fact in context.engineering_facts:
+                    lines.append(f"- {fact}")
+            if context.relevant_files:
+                lines.append("Relevant Files:")
+                for path in context.relevant_files:
+                    lines.append(f"- {path}")
 
         return "\n".join(lines)
 
@@ -212,17 +207,11 @@ class PromptAssembler:
     # -- Helpers --------------------------------------------------------
 
     def _current_step(self, context: ContextBundle) -> PlanStep | None:
-        # ContextBundle.plan carries the FULL plan (all steps), not a
-        # pointer to "the step currently being executed". There is no
-        # field anywhere in contracts/models.py that identifies which
-        # step is current. Falling back to steps[0] would silently
-        # render the wrong step's instructions once execution moves
-        # past step 1 — worse than omitting the line. Per project
-        # rules (AGENTS.md "No Placeholders" / "Never infer or invent
-        # requirements"), this is intentionally left unresolved rather
-        # than guessed or worked around by editing contracts/models.py
-        # unilaterally. Tracked as an open question; see module
-        # docstring.
+        if not context.current_step_id:
+            return None
+        for step in context.plan.steps:
+            if step.identifier == context.current_step_id:
+                return step
         return None
 
     def _confident_profile_rules(
