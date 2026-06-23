@@ -91,8 +91,7 @@ class ContextService:
     ) -> ContextBundle:
         """Refresh context for the Planning phase (Layer 2).
 
-        Same as load_context for now; prompt assembler will add
-        architectural plan to Tier 1 once it is implemented.
+        Same as load_context for now.
         """
         return self._build_bundle(
             specification=_empty_spec(),

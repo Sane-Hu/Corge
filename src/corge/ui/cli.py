@@ -249,7 +249,7 @@ class CliUi(UiPort):
         return ApprovalDecision.REJECTED
 
     def show_completion_review(self, plan: Plan) -> None:
-        """Display per-step completion status (spec §5 item 3 TODO, finding 8.9)."""
+        """Display per-step completion status (spec §5 item 3, finding 8.9)."""
         lines = ["Completion Review\n"]
         for step in plan.steps:
             status = "✓ done" if step.completed else "○ pending"
@@ -313,4 +313,11 @@ class CliUi(UiPort):
         self._run_screen(MessageScreen("Memory Events", msg))
 
     def show_logs(self) -> None:
-        self._run_screen(MessageScreen("Logs", "Audit log viewer not yet implemented."))
+        try:
+            from pathlib import Path
+            log_path = Path(".agent/audit.jsonl")
+            msg = log_path.read_text(encoding="utf-8")[-10000:] if log_path.exists() else "No logs found."
+        except Exception as e:
+            msg = f"Error loading logs: {e}"
+        # todo: simplistic raw log dump; upgrade path: parse JSONL into an interactive data table.
+        self._run_screen(MessageScreen("Logs", msg))

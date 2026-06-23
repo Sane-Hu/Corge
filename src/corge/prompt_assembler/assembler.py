@@ -1,107 +1,31 @@
 """Prompt construction — satisfies ``contracts.PromptAssemblerPort``.
 
-Spec traceability:
-    docs/02-technical-spec.md  Section 4 "Ephemeral Prompt Tiers"
-    docs/02-technical-spec.md  Section 3, step 3 "Assemble Prompt"
-    src/corge/contracts/ports.py  PromptAssemblerPort
-
-Open design questions (NOT silently resolved — see comments below):
-    1. ``MemoryStorePort`` (contracts/ports.py) exposes only write
-       methods (store_event, store_fact, store_scenario,
-       update_profile). It has no read/query method, so this module
-       cannot yet retrieve persisted scenario memory for Tier 3.
-       ``scenario_memory`` is therefore always empty until a read
-       method is added to ``MemoryStorePort`` (tracked separately;
-       do not invent one here per AGENTS.md "No Placeholders" /
-       "Never infer or invent requirements").
-    2. The technical spec's architecture diagram and sequence
-       diagram disagree on whether ``context`` module or
-       ``prompt_assembler`` itself is responsible for calling
-       ``KnowledgeGraphPort`` / ``ContextPort``. This implementation
-       assumes ``PromptAssembler`` receives those ports via
-       constructor injection (consistent with how ``agent.service``
-       receives its collaborators). This is a design assumption,
-       not a confirmed requirement — flag for review if incorrect.
-    3. ``collect_context(step)`` cannot be implemented yet: it must
-       call ``ContextPort.retrieve_relevant_context(specification, step)``,
-       but ``PlanStep`` carries no reference back to the active
-       ``Specification``, and ``PromptAssemblerPort.collect_context``
-       only receives a ``PlanStep``. Left raising ``NotImplementedError``
-       with an explanatory message rather than guessed.
-    4. ``ContextBundle`` has no field identifying which step of
-       ``plan.steps`` is "the current plan step", yet
-       docs/02-technical-spec.md Section 4 requires Tier 1 to always
-       include it. ``contracts/models.py`` was intentionally left
-       unmodified for this change (contract edits require team
-       coordination per AGENTS.md). As a result, the "Current Plan
-       Step" line in Tier 1 is always omitted for now — see
-       ``_current_step`` below. Recommend either adding
-       ``current_step_index: int`` to ``ContextBundle`` or an
-       equivalent field, via a coordinated contract change.
 """
 
 from __future__ import annotations
 
 from corge.contracts import ContextBundle, EngineeringProfile, PlanStep, Specification
-from corge.contracts.ports import ContextPort, KnowledgeGraphPort
+from corge.contracts.ports import ContextPort
 
 # Rules below this confidence are excluded from Tier 1 prompt output.
-# 02-technical-spec.md does not state a numeric threshold; this value
-# is a documented assumption, not a confirmed requirement.
+# Defined in 02-technical-spec.md Section 4 (Engineering Profile).
 _ENGINEERING_PROFILE_CONFIDENCE_THRESHOLD = 0.5
 
 
 class PromptAssembler:
-    """Concrete prompt assembler.  Satisfies ``contracts.PromptAssemblerPort``.
+    """Builds the ephemeral execution prompt from a context bundle."""
 
-    Builds the five-tier ephemeral prompt described in
-    docs/02-technical-spec.md Section 4:
-
-        Tier 1 (always present): spec, acceptance criteria, plan step,
-            engineering profile.
-        Tier 2 (repository): engineering facts, graph queries, relevant
-            file summaries.
-        Tier 3 (task memory): scenario memory.
-        Tier 4 (history): recent actions.
-        Tier 5 (artifacts): artifact URIs and summaries.
-    """
-
-    def __init__(
-        self,
-        context_port: ContextPort | None = None,
-        knowledge_graph_port: KnowledgeGraphPort | None = None,
-    ) -> None:
-        # Both collaborators are optional so this module can be unit
-        # tested (and partially used) before context/knowledge_graph
-        # are wired in by the agent loop. See open design question #2
-        # above re: who owns calling these ports.
+    def __init__(self, context_port: ContextPort) -> None:
         self._context_port = context_port
-        self._knowledge_graph_port = knowledge_graph_port
 
     def collect_context(
         self, step: PlanStep, specification: Specification
     ) -> ContextBundle:
-        """Gather a ``ContextBundle`` for the given plan step.
-
-        Delegates repository/relevant-file retrieval to ``ContextPort``
-        when available.
-        """
-        if self._context_port is None:
-            raise NotImplementedError(
-                "PromptAssembler.collect_context requires a ContextPort "
-                "collaborator; none was provided to the constructor."
-            )
-
+        """Fetch all required context layers for the current plan step."""
         return self._context_port.retrieve_relevant_context(specification, step)
 
     def assemble_prompt(self, context: ContextBundle) -> str:
-        """Render a ``ContextBundle`` into the ephemeral prompt string.
-
-        Tiers are rendered in the order defined by
-        docs/02-technical-spec.md Section 4. A tier section is omitted
-        entirely when it has no content, rather than emitted with an
-        empty body.
-        """
+        """Render the structured context bundle into the ephemeral markdown prompt."""
         sections: list[str] = []
 
         tier1 = self._render_tier1(context)

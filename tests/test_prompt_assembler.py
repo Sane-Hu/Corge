@@ -58,8 +58,19 @@ def _make_bundle(**overrides: object) -> ContextBundle:
     return ContextBundle(**defaults)  # type: ignore[arg-type]
 
 
+class DummyContextPort:
+    def load_context(self, repository_context: RepositoryContext) -> ContextBundle:
+        return _make_bundle()
+    def refresh_context(self, repository_context: RepositoryContext) -> ContextBundle:
+        return _make_bundle()
+    def retrieve_relevant_context(self, specification: Specification, step: PlanStep) -> ContextBundle:
+        return _make_bundle()
+    def update_markov_state(self, result: str, correction: str = "") -> None:
+        pass
+
+
 def test_assemble_prompt_includes_tier1_always() -> None:
-    assembler = PromptAssembler()
+    assembler = PromptAssembler(DummyContextPort())
     bundle = _make_bundle()
 
     prompt = assembler.assemble_prompt(bundle)
@@ -70,12 +81,7 @@ def test_assemble_prompt_includes_tier1_always() -> None:
 
 
 def test_assemble_prompt_omits_current_step_line() -> None:
-    """ContextBundle has no field identifying the current step, so the
-    "Current Plan Step" line is always omitted rather than guessed
-    (e.g. assuming steps[0] is current). See module docstring, open
-    design question #4.
-    """
-    assembler = PromptAssembler()
+    assembler = PromptAssembler(DummyContextPort())
     bundle = _make_bundle()
 
     prompt = assembler.assemble_prompt(bundle)
@@ -86,8 +92,8 @@ def test_assemble_prompt_omits_current_step_line() -> None:
 
 
 def test_assemble_prompt_handles_empty_plan() -> None:
-    assembler = PromptAssembler()
-    bundle = _make_bundle(plan=Plan(steps=()))
+    assembler = PromptAssembler(DummyContextPort())
+    bundle = _make_bundle(plan=Plan(steps=(), specification_ref=""))
 
     prompt = assembler.assemble_prompt(bundle)
 
@@ -96,7 +102,7 @@ def test_assemble_prompt_handles_empty_plan() -> None:
 
 
 def test_assemble_prompt_filters_low_confidence_rules() -> None:
-    assembler = PromptAssembler()
+    assembler = PromptAssembler(DummyContextPort())
     profile = EngineeringProfile(
         rules=("High confidence rule", "Low confidence rule"),
         confidence={"High confidence rule": 0.9, "Low confidence rule": 0.2},
@@ -110,7 +116,7 @@ def test_assemble_prompt_filters_low_confidence_rules() -> None:
 
 
 def test_assemble_prompt_includes_tier2_when_relevant_files_present() -> None:
-    assembler = PromptAssembler()
+    assembler = PromptAssembler(DummyContextPort())
     bundle = _make_bundle(relevant_files=("src/services/auth_service.py",))
 
     prompt = assembler.assemble_prompt(bundle)
@@ -120,7 +126,7 @@ def test_assemble_prompt_includes_tier2_when_relevant_files_present() -> None:
 
 
 def test_assemble_prompt_omits_tier2_when_no_relevant_files() -> None:
-    assembler = PromptAssembler()
+    assembler = PromptAssembler(DummyContextPort())
     bundle = _make_bundle()
 
     prompt = assembler.assemble_prompt(bundle)
@@ -129,7 +135,7 @@ def test_assemble_prompt_omits_tier2_when_no_relevant_files() -> None:
 
 
 def test_assemble_prompt_includes_tier3_when_scenario_memory_present() -> None:
-    assembler = PromptAssembler()
+    assembler = PromptAssembler(DummyContextPort())
     event = MemoryEvent(kind="blocker", payload={"detail": "AuthService not found"})
     bundle = _make_bundle(scenario_memory=(event,))
 
@@ -140,7 +146,7 @@ def test_assemble_prompt_includes_tier3_when_scenario_memory_present() -> None:
 
 
 def test_assemble_prompt_omits_tier3_when_no_scenario_memory() -> None:
-    assembler = PromptAssembler()
+    assembler = PromptAssembler(DummyContextPort())
     bundle = _make_bundle()
 
     prompt = assembler.assemble_prompt(bundle)
@@ -149,7 +155,7 @@ def test_assemble_prompt_omits_tier3_when_no_scenario_memory() -> None:
 
 
 def test_assemble_prompt_includes_tier4_when_recent_actions_present() -> None:
-    assembler = PromptAssembler()
+    assembler = PromptAssembler(DummyContextPort())
     bundle = _make_bundle(recent_actions=("read src/services/auth_service.py",))
 
     prompt = assembler.assemble_prompt(bundle)
@@ -159,7 +165,7 @@ def test_assemble_prompt_includes_tier4_when_recent_actions_present() -> None:
 
 
 def test_assemble_prompt_includes_tier5_when_artifacts_present() -> None:
-    assembler = PromptAssembler()
+    assembler = PromptAssembler(DummyContextPort())
     ref = ArtifactReference(uri="artifact://abc123", summary="Full test log, 400 lines")
     bundle = _make_bundle(artifact_refs=(ref,))
 
@@ -171,8 +177,7 @@ def test_assemble_prompt_includes_tier5_when_artifacts_present() -> None:
 
 
 def test_assemble_prompt_tier_order() -> None:
-    """Tiers must render in the spec-defined order: 1, 2, 3, 4, 5."""
-    assembler = PromptAssembler()
+    assembler = PromptAssembler(DummyContextPort())
     bundle = _make_bundle(
         relevant_files=("src/file.py",),
         scenario_memory=(MemoryEvent(kind="discovery", payload={}),),
@@ -191,18 +196,17 @@ def test_assemble_prompt_tier_order() -> None:
     assert tier1_pos < tier2_pos < tier3_pos < tier4_pos < tier5_pos
 
 
-def test_collect_context_without_context_port_raises() -> None:
-    """No ContextPort collaborator provided -> explicit NotImplementedError."""
-    assembler = PromptAssembler()
+def test_collect_context_delegates() -> None:
+    assembler = PromptAssembler(DummyContextPort())
     step = PlanStep(identifier="1", description="Create login route")
     spec = _make_spec()
 
-    with pytest.raises(NotImplementedError, match="ContextPort"):
-        assembler.collect_context(step, spec)
+    bundle = assembler.collect_context(step, spec)
+    assert bundle is not None
 
 
 def test_assemble_prompt_includes_current_step_when_id_matches() -> None:
-    assembler = PromptAssembler()
+    assembler = PromptAssembler(DummyContextPort())
     bundle = _make_bundle(current_step_id="1")
 
     prompt = assembler.assemble_prompt(bundle)
@@ -212,7 +216,7 @@ def test_assemble_prompt_includes_current_step_when_id_matches() -> None:
 
 
 def test_assemble_prompt_includes_engineering_facts() -> None:
-    assembler = PromptAssembler()
+    assembler = PromptAssembler(DummyContextPort())
     bundle = _make_bundle(engineering_facts=("Always use strict typing", "No external calls in unit tests"))
 
     prompt = assembler.assemble_prompt(bundle)
