@@ -55,12 +55,19 @@ class Provider:
 
     def __init__(self, config: ProviderConfig) -> None:
         self._config = config
+        base_url = config.base_url
+        if not base_url:
+            if config.api_key.startswith("sk-or-"):
+                base_url = "https://openrouter.ai/api/v1"
+            elif config.model.startswith("deepseek-"):
+                base_url = "https://api.deepseek.com/v1"
+
         client_kwargs: dict[str, object] = {
             "api_key": config.api_key or "not-needed",
             "timeout": config.timeout,
         }
-        if config.base_url:
-            client_kwargs["base_url"] = config.base_url
+        if base_url:
+            client_kwargs["base_url"] = base_url
         if config.extra_headers:
             client_kwargs["default_headers"] = config.extra_headers
 
@@ -236,9 +243,9 @@ def bootstrap_provider(config_path: str | Path = "config.toml") -> Provider:
     provider = Provider(cfg)
 
     if not provider.validate_connection():
+        actual_url = str(provider._client.base_url)
         raise ConnectionError(
-            f"Failed to verify LLM API connection to "
-            f"'{cfg.base_url or 'https://api.openai.com/v1'}' "
+            f"Failed to verify LLM API connection to '{actual_url}' "
             f"using model '{cfg.model}'. Please check your API key, base URL, "
             f"model name, and network settings."
         )

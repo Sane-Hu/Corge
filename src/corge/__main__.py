@@ -70,19 +70,6 @@ class RealCorgeApp(CorgeApp):
                         prefill = tomllib.load(f)
                 except Exception:
                     pass
-            else:
-                template_path = (
-                    Path(__file__).resolve().parent.parent.parent
-                    / "config.toml.example"
-                )
-                if not template_path.exists():
-                    template_path = Path("config.toml.example")
-                if template_path.exists():
-                    try:
-                        with open(template_path, "rb") as f:
-                            prefill = tomllib.load(f)
-                    except Exception:
-                        pass
 
             if prefill.get("api_key") == "your-api-key-here":
                 prefill["api_key"] = ""
@@ -335,12 +322,7 @@ def main() -> None:
         print(f"Error: Target path '{target_path}' does not exist.", file=sys.stderr)
         sys.exit(1)
 
-    config_path = target_path / ".agent" / "config.toml"
-    if not config_path.exists():
-        if (target_path / "config.toml").exists():
-            config_path = target_path / "config.toml"
-        elif Path("config.toml").exists():
-            config_path = Path("config.toml").resolve()
+    config_path = target_path / "CorgeAPIConfig.toml"
 
     try:
         app = RealCorgeApp(target_repo=target_path, config_path=config_path)

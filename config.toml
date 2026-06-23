@@ -1,7 +1,7 @@
 # Corge LLM Provider Configuration
-model = "dwnfkadlfnda"
-api_key = "fjbaefkjewbafj"
-base_url = "kjwebfkjAEWBKL'BFLAWE"
+model = "openai/gpt-oss-120b:free"
+api_key = "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"
+base_url = "https://openrouter.ai/api/v1"
 max_tokens = 4096
 reasoning_effort = "medium"
 enable_prefix_caching = true
