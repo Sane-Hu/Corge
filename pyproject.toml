@@ -10,6 +10,11 @@ dependencies = [
     "textual>=8.2.7",
 ]
 
+[project.optional-dependencies]
+tiktoken = [
+    "tiktoken>=0.7",
+]
+
 [dependency-groups]
 dev = [
     "mypy>=1.10",

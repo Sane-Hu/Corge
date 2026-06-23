@@ -11,11 +11,14 @@ Records Socratic Q&A exchanges and canvas snapshots to
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import asdict
 from pathlib import Path
 
 from corge.contracts import ArgumentationEntry, CanvasSnapshot
 
+
+_log = logging.getLogger(__name__)
 
 class ArgumentationLog:
     """Concrete argumentation log.  Satisfies ``contracts.ArgumentationLogPort``."""
@@ -29,19 +32,17 @@ class ArgumentationLog:
     def _load(self) -> None:
         if self._log_path.exists():
             data = json.loads(self._log_path.read_text(encoding="utf-8"))
-            self._entries = [
-                ArgumentationEntry(**e) for e in data.get("entries", [])
-            ]
-            self._snapshots = [
-                CanvasSnapshot(
-                    text=s["text"],
-                    timestamp=s["timestamp"],
-                    concretized_ranges=tuple(
-                        tuple(r) for r in s.get("concretized_ranges", [])
-                    ),
-                )
-                for s in data.get("snapshots", [])
-            ]
+            for e in data.get("entries", []):
+                try:
+                    self._entries.append(ArgumentationEntry(**e))
+                except (TypeError, KeyError):
+                    _log.warning("Skipping malformed ArgumentationEntry: %r", e)
+
+            for s in data.get("snapshots", []):
+                try:
+                    self._snapshots.append(CanvasSnapshot(**s))
+                except (TypeError, KeyError):
+                    _log.warning("Skipping malformed CanvasSnapshot: %r", s)
 
     def _save(self) -> None:
         self._log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -49,9 +50,7 @@ class ArgumentationLog:
             "entries": [asdict(e) for e in self._entries],
             "snapshots": [asdict(s) for s in self._snapshots],
         }
-        self._log_path.write_text(
-            json.dumps(data, indent=2), encoding="utf-8"
-        )
+        self._log_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
     def record_entry(self, entry: ArgumentationEntry) -> None:
         self._entries.append(entry)

@@ -24,7 +24,9 @@ from __future__ import annotations
 
 import ast
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Any, Iterator
 
 from corge.contracts import (
     GraphNode,
@@ -136,17 +138,34 @@ class KnowledgeGraph:
 
     def __init__(self, db_path: Path | None = None) -> None:
         self._db_path: Path | None = db_path
+        self._conn: sqlite3.Connection | None = None
+        self._schema_initialized: bool = False
+
+    def close(self) -> None:
+        if getattr(self, "_conn", None) is not None:
+            self._conn.close() # type: ignore
+            self._conn = None
+
+    def __del__(self) -> None:
+        self.close()
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _connect(self) -> sqlite3.Connection:
-        assert self._db_path is not None, "build_graph() must be called first"
-        conn = sqlite3.connect(self._db_path)
-        conn.executescript(_DDL)
-        conn.execute("PRAGMA journal_mode=WAL")
-        return conn
+    @contextmanager
+    def _get_conn(self) -> Iterator[sqlite3.Connection]:
+        if self._conn is None:
+            if self._db_path is None:
+                raise RuntimeError(
+                    "KnowledgeGraph.build_graph() must be called before querying."
+                )
+            self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
+            self._conn.execute("PRAGMA journal_mode=WAL")
+        if not self._schema_initialized:
+            self._conn.executescript(_DDL)
+            self._schema_initialized = True
+        yield self._conn
 
     def _ingest_path(
         self,
@@ -186,17 +205,14 @@ class KnowledgeGraph:
 
         if path.suffix == ".py":
             sym_nodes, sym_edges = _parse_python(path, rel)
-            conn.executemany(
-                "INSERT OR REPLACE INTO nodes VALUES (?,?,?,?)", sym_nodes
-            )
-            conn.executemany(
-                "INSERT OR REPLACE INTO edges VALUES (?,?,?)", sym_edges
-            )
+            conn.executemany("INSERT OR REPLACE INTO nodes VALUES (?,?,?,?)", sym_nodes)
+            conn.executemany("INSERT OR REPLACE INTO edges VALUES (?,?,?)", sym_edges)
 
     def _delete_path(self, rel: str, conn: sqlite3.Connection) -> None:
         """Remove all nodes and edges whose node_id starts with ``rel``."""
-        conn.execute("DELETE FROM nodes WHERE node_id = ? OR node_id LIKE ?",
-                     (rel, rel + "::%"))
+        conn.execute(
+            "DELETE FROM nodes WHERE node_id = ? OR node_id LIKE ?", (rel, rel + "::%")
+        )
         conn.execute(
             "DELETE FROM edges WHERE src = ? OR src LIKE ? OR dst = ?",
             (rel, rel + "::%", rel),
@@ -219,7 +235,7 @@ class KnowledgeGraph:
             db_dir.mkdir(parents=True, exist_ok=True)
             self._db_path = db_dir / "repo_graph.db"
 
-        with self._connect() as conn:
+        with self._get_conn() as conn:
             conn.execute("DELETE FROM nodes")
             conn.execute("DELETE FROM edges")
             conn.execute(
@@ -235,10 +251,8 @@ class KnowledgeGraph:
         if not update.paths:
             return
 
-        with self._connect() as conn:
-            row = conn.execute(
-                "SELECT value FROM meta WHERE key = 'root'"
-            ).fetchone()
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT value FROM meta WHERE key = 'root'").fetchone()
 
         # todo: if DB is empty (build_graph never called), noop.
         # Upgrade: raise a descriptive error or accept root as a parameter.
@@ -247,7 +261,7 @@ class KnowledgeGraph:
 
         root = Path(row[0])
 
-        with self._connect() as conn:
+        with self._get_conn() as conn:
             for path in update.paths:
                 try:
                     rel = str(path.relative_to(root))
@@ -277,12 +291,11 @@ class KnowledgeGraph:
         """
         expr = query.expression.strip()
 
-        with self._connect() as conn:
+        with self._get_conn() as conn:
             rows = _execute_query(expr, conn)
 
         nodes = tuple(
-            GraphNode(kind=r[1], node_id=r[0], path=r[2], name=r[3])
-            for r in rows
+            GraphNode(kind=r[1], node_id=r[0], path=r[2], name=r[3]) for r in rows
         )
         return GraphResult(nodes=nodes)
 
@@ -300,7 +313,7 @@ class KnowledgeGraph:
 
         pattern = f"%{keyword.strip()}%"
 
-        with self._connect() as conn:
+        with self._get_conn() as conn:
             rows = conn.execute(
                 "SELECT node_id, kind, path, name FROM nodes"
                 " WHERE node_id LIKE ? COLLATE NOCASE"
@@ -310,8 +323,7 @@ class KnowledgeGraph:
             ).fetchall()
 
         nodes = tuple(
-            GraphNode(kind=r[1], node_id=r[0], path=r[2], name=r[3])
-            for r in rows
+            GraphNode(kind=r[1], node_id=r[0], path=r[2], name=r[3]) for r in rows
         )
         return GraphResult(nodes=nodes)
 
@@ -323,10 +335,12 @@ class KnowledgeGraph:
 
 def _walk(root: Path) -> list[Path]:
     """Return all non-hidden files and directories under root (BFS order)."""
+    from collections import deque
+
     result: list[Path] = []
-    queue = [root]
+    queue: deque[Path] = deque([root])
     while queue:
-        current = queue.pop(0)
+        current = queue.popleft()
         for child in sorted(current.iterdir()):
             if child.name.startswith(".") or child.name == "__pycache__":
                 continue
@@ -366,7 +380,7 @@ def _execute_query(
         ).fetchall()
 
     if expr.startswith("classes:"):
-        path = expr[len("classes:"):]
+        path = expr[len("classes:") :]
         return conn.execute(
             "SELECT node_id, kind, path, name FROM nodes"
             " WHERE kind = 'class' AND path = ? ORDER BY node_id",
@@ -374,7 +388,7 @@ def _execute_query(
         ).fetchall()
 
     if expr.startswith("functions:"):
-        path = expr[len("functions:"):]
+        path = expr[len("functions:") :]
         return conn.execute(
             "SELECT node_id, kind, path, name FROM nodes"
             " WHERE kind = 'function' AND path = ? ORDER BY node_id",
@@ -382,7 +396,7 @@ def _execute_query(
         ).fetchall()
 
     if expr.startswith("imports:"):
-        src = expr[len("imports:"):]
+        src = expr[len("imports:") :]
         # Import targets are module names stored only in edges.dst — they are
         # never inserted as nodes.  Synthesise 'module' rows from the edge.
         rows = conn.execute(
@@ -392,7 +406,7 @@ def _execute_query(
         return [(r[0], "module", "", r[0]) for r in rows]
 
     if expr.startswith("imported_by:"):
-        dst = expr[len("imported_by:"):]
+        dst = expr[len("imported_by:") :]
         return conn.execute(
             "SELECT n.node_id, n.kind, n.path, n.name"
             " FROM edges e JOIN nodes n ON n.node_id = e.src"
@@ -401,7 +415,7 @@ def _execute_query(
         ).fetchall()
 
     if expr.startswith("node:"):
-        nid = expr[len("node:"):]
+        nid = expr[len("node:") :]
         return conn.execute(
             "SELECT node_id, kind, path, name FROM nodes WHERE node_id = ?",
             (nid,),

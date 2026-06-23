@@ -8,7 +8,7 @@ from textual.widgets import Button, Static, TextArea
 
 class InteractiveDiffScreen(Screen[str]):
     """Side-by-side diff for review and override."""
-    
+
     CSS = """
     InteractiveDiffScreen {
         layout: vertical;

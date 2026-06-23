@@ -15,8 +15,10 @@ from corge.contracts import (
 )
 
 
-def _make_context_service() -> ContextService:
+def _make_context_service(root: pathlib.Path | None = None) -> ContextService:
     """Return a ContextService with mocked ports that return safe empty data."""
+    if root is None:
+        root = pathlib.Path(".")
     kg = MagicMock()
     # query_graph returns an empty GraphResult by default
     kg.query_graph.return_value = GraphResult(nodes=())
@@ -26,7 +28,7 @@ def _make_context_service() -> ContextService:
     memory.get_facts.return_value = []
     memory.get_scenario.return_value = []
 
-    return ContextService(knowledge_graph=kg, memory_store=memory)
+    return ContextService(knowledge_graph=kg, memory_store=memory, root=root)
 
 
 def test_load_context_strips_layer_1() -> None:
@@ -36,6 +38,14 @@ def test_load_context_strips_layer_1() -> None:
     # Layer 1 argumentation history must never appear in a coding bundle
     bundle = svc.load_context(repo_ctx)
     assert not getattr(bundle, "argumentation_log", None)
+
+
+def test_retrieve_uses_injected_root(tmp_path: pathlib.Path) -> None:
+    svc = _make_context_service(root=tmp_path)
+    spec = Specification(title="test", body="test", acceptance_criteria=AcceptanceCriteria(()))
+    step = PlanStep(identifier="step-1", description="test")
+    bundle = svc.retrieve_relevant_context(spec, step)
+    assert bundle.repository_context.root == tmp_path
 
 
 def test_retrieve_relevant_context_markov_chaining() -> None:

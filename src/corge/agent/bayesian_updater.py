@@ -9,17 +9,21 @@ Spec traceability:
 """
 
 import json
+import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 from corge.contracts import ArgumentationLogPort, HeuristicConfig
 
+
+_log = logging.getLogger(__name__)
 
 class BayesianUpdater:
     """Concrete implementation of HeuristicUpdaterPort."""
 
     def __init__(self, agent_dir: Path, log_port: ArgumentationLogPort) -> None:
         self._heuristics_file = agent_dir / "spec_wizard_heuristics.json"
-        self._config_file = agent_dir / "corge_heuristics.yaml"
+        self._config_path = agent_dir / "corge_heuristics.toml"
         self._log_port = log_port
 
         # Default probabilities if file doesn't exist
@@ -40,9 +44,24 @@ class BayesianUpdater:
         self._heuristics_file.write_text(payload, encoding="utf-8")
 
     def load_config(self) -> HeuristicConfig:
-        # In a real implementation this would parse YAML. 
-        # For now, we return the dataclass defaults.
-        return HeuristicConfig()
+        """Load optional repo-level configuration."""
+        path = self._config_path
+        if not path.exists():
+            return HeuristicConfig()
+        try:
+            import tomllib
+            with path.open("rb") as f:
+                data = tomllib.load(f)
+            
+            default_config = HeuristicConfig()
+            return HeuristicConfig(
+                delta_clip_max=data.get("delta_clip_max", default_config.delta_clip_max),
+                abandonment_penalty=data.get("abandonment_penalty", default_config.abandonment_penalty),
+                decay_rate=data.get("decay_rate", default_config.decay_rate),
+            )
+        except Exception as exc:
+            _log.warning("Failed to load heuristics config: %s", exc)
+            return HeuristicConfig()
 
     def get_probability(self, key: str) -> float:
         """Get current probability distribution for a heuristic, default 0.5."""
@@ -50,21 +69,21 @@ class BayesianUpdater:
 
     def run_batch_update(self, abandoned: bool = False) -> None:
         """Run the batch Bayesian update using EWMA.
-        
+
         The statistical rationale:
         Instead of a complex full Bayesian network which is prone to overfitting
         on small sample sizes (a single developer session), we use an EWMA.
         This provides a "smoothed" posterior probability.
-        
+
         P_new = (1 - alpha) * P_old + alpha * Observation
-        
+
         Where:
         - P_old is the prior probability.
         - alpha (decay_rate) controls how much weight we give to the new observation.
         - Observation is 1.0 (success/valuable) or 0.0 (ignored/overwritten).
-        
-        To prevent gradient explosion (e.g., catastrophic forgetting of a good 
-        heuristic because of one bad session), we strictly clip the delta 
+
+        To prevent gradient explosion (e.g., catastrophic forgetting of a good
+        heuristic because of one bad session), we strictly clip the delta
         (change in probability) to a maximum defined in HeuristicConfig.
         """
         config = self.load_config()
@@ -84,7 +103,7 @@ class BayesianUpdater:
                 self._save_heuristics()
             return
 
-        # Example heuristic extraction: 
+        # Example heuristic extraction:
         # Evaluate how often the user manually overrode the agent's schema assumptions
         override_count = sum(1 for e in entries if e.was_user_override)
         total_interactions = len(entries)

@@ -131,7 +131,7 @@ class ArtifactStore:
     def _id_from_uri(self, uri: str) -> str:
         if not uri.startswith(_URI_PREFIX):
             raise ValueError(f"Artifact URI must start with {_URI_PREFIX!r}: {uri}")
-        artifact_id = uri[len(_URI_PREFIX):].strip()
+        artifact_id = uri[len(_URI_PREFIX) :].strip()
         if not artifact_id or any(ch in artifact_id for ch in "/\\:"):
             raise ValueError(f"Invalid artifact id in URI: {uri}")
         return artifact_id
@@ -146,9 +146,7 @@ class ArtifactStore:
         if not isinstance(data, dict):
             return {}
         return {
-            str(key): value
-            for key, value in data.items()
-            if isinstance(value, dict)
+            str(key): value for key, value in data.items() if isinstance(value, dict)
         }
 
     def _write_index(self, index: dict[str, dict[str, Any]]) -> None:

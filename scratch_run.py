@@ -15,8 +15,10 @@ from corge.contracts import (
     RepositoryContext,
     SemanticGap,
     TechnicalPlan,
+    ToolAction,
 )
 from corge.ui.cli import CliUi, CorgeApp
+from corge.context.sticky_validator import StickyNoteValidator
 
 
 class ScratchApp(CorgeApp):
@@ -27,7 +29,8 @@ class ScratchApp(CorgeApp):
 
     @work(thread=True)
     def run_scratch(self) -> None:
-        ui = CliUi(self)
+        validator = StickyNoteValidator(self.knowledge_graph) if hasattr(self, 'knowledge_graph') else None
+        ui = CliUi(self, validator)
 
         # 1. Spec Wizard
         spec = ui.show_spec_wizard()
@@ -66,7 +69,7 @@ class ScratchApp(CorgeApp):
         ui.show_plan(plan)
 
         # 6. Approval Request
-        req = ApprovalRequest(action="write", target="app/Service.py", reason="Step 1")
+        req = ApprovalRequest(action=ToolAction.WRITE, target="app/Service.py", reason="Step 1")
         decision = ui.request_approval(req)
 
         # 7-13. Other screens

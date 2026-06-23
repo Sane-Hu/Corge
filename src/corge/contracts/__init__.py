@@ -60,6 +60,7 @@ from corge.contracts.ports import (
     PromptAssemblerPort,
     ProviderPort,
     SchemaTailorPort,
+    StickyNoteValidatorPort,
     ToolRuntimePort,
     UiPort,
 )
@@ -114,6 +115,7 @@ __all__ = [
     "PromptAssemblerPort",
     "ProviderPort",
     "SchemaTailorPort",
+    "StickyNoteValidatorPort",
     "ToolRuntimePort",
     "UiPort",
 ]

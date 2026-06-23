@@ -60,6 +60,13 @@ def test_sticky_note_active_when_node_exists(
     assert validated.status == StickyNoteStatus.ACTIVE
 
 
+def test_sticky_note_validator_returns_active_for_unknown_node_when_no_validator() -> None:
+    """CanvasScreen defaults to ACTIVE when no validator is provided."""
+    from corge.ui.freestyle_canvas import CanvasScreen
+    canvas = CanvasScreen(validator=None)
+    assert canvas._validate_node("anything") == StickyNoteStatus.ACTIVE
+
+
 def test_sticky_note_invalid_when_node_deleted(
     repo_with_file: Path, tmp_path: Path
 ) -> None:

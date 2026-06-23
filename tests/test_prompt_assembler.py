@@ -69,8 +69,34 @@ class DummyContextPort:
         pass
 
 
+class DummySchemaTailor:
+    def detect_framework(self) -> str | None:
+        return None
+    def fetch_schema(self, framework_id: str | None) -> dict[str, object]:
+        return {}
+
+
+class DummyBudgetManager:
+    def estimate_tokens(self, context: ContextBundle) -> int:
+        return 10
+    def rank_context(self, context: ContextBundle) -> ContextBundle:
+        return context
+    def clip(self, context: ContextBundle, token_limit: int) -> ContextBundle:
+        return context
+    def deduplicate(self, context: ContextBundle) -> ContextBundle:
+        return context
+    def summarize(self, context: ContextBundle) -> str:
+        return ""
+    def compact(self, context: ContextBundle) -> ContextBundle:
+        return context
+
+
+def _make_assembler() -> PromptAssembler:
+    return PromptAssembler(DummyContextPort(), DummySchemaTailor(), DummyBudgetManager())
+
+
 def test_assemble_prompt_includes_tier1_always() -> None:
-    assembler = PromptAssembler(DummyContextPort())
+    assembler = _make_assembler()
     bundle = _make_bundle()
 
     prompt = assembler.assemble_prompt(bundle)
@@ -81,7 +107,7 @@ def test_assemble_prompt_includes_tier1_always() -> None:
 
 
 def test_assemble_prompt_omits_current_step_line() -> None:
-    assembler = PromptAssembler(DummyContextPort())
+    assembler = _make_assembler()
     bundle = _make_bundle()
 
     prompt = assembler.assemble_prompt(bundle)
@@ -92,7 +118,7 @@ def test_assemble_prompt_omits_current_step_line() -> None:
 
 
 def test_assemble_prompt_handles_empty_plan() -> None:
-    assembler = PromptAssembler(DummyContextPort())
+    assembler = _make_assembler()
     bundle = _make_bundle(plan=Plan(steps=(), specification_ref=""))
 
     prompt = assembler.assemble_prompt(bundle)
@@ -102,7 +128,7 @@ def test_assemble_prompt_handles_empty_plan() -> None:
 
 
 def test_assemble_prompt_filters_low_confidence_rules() -> None:
-    assembler = PromptAssembler(DummyContextPort())
+    assembler = _make_assembler()
     profile = EngineeringProfile(
         rules=("High confidence rule", "Low confidence rule"),
         confidence={"High confidence rule": 0.9, "Low confidence rule": 0.2},
@@ -116,7 +142,7 @@ def test_assemble_prompt_filters_low_confidence_rules() -> None:
 
 
 def test_assemble_prompt_includes_tier2_when_relevant_files_present() -> None:
-    assembler = PromptAssembler(DummyContextPort())
+    assembler = _make_assembler()
     bundle = _make_bundle(relevant_files=("src/services/auth_service.py",))
 
     prompt = assembler.assemble_prompt(bundle)
@@ -126,7 +152,7 @@ def test_assemble_prompt_includes_tier2_when_relevant_files_present() -> None:
 
 
 def test_assemble_prompt_omits_tier2_when_no_relevant_files() -> None:
-    assembler = PromptAssembler(DummyContextPort())
+    assembler = _make_assembler()
     bundle = _make_bundle()
 
     prompt = assembler.assemble_prompt(bundle)
@@ -135,7 +161,7 @@ def test_assemble_prompt_omits_tier2_when_no_relevant_files() -> None:
 
 
 def test_assemble_prompt_includes_tier3_when_scenario_memory_present() -> None:
-    assembler = PromptAssembler(DummyContextPort())
+    assembler = _make_assembler()
     event = MemoryEvent(kind="blocker", payload={"detail": "AuthService not found"})
     bundle = _make_bundle(scenario_memory=(event,))
 
@@ -146,7 +172,7 @@ def test_assemble_prompt_includes_tier3_when_scenario_memory_present() -> None:
 
 
 def test_assemble_prompt_omits_tier3_when_no_scenario_memory() -> None:
-    assembler = PromptAssembler(DummyContextPort())
+    assembler = _make_assembler()
     bundle = _make_bundle()
 
     prompt = assembler.assemble_prompt(bundle)
@@ -155,7 +181,7 @@ def test_assemble_prompt_omits_tier3_when_no_scenario_memory() -> None:
 
 
 def test_assemble_prompt_includes_tier4_when_recent_actions_present() -> None:
-    assembler = PromptAssembler(DummyContextPort())
+    assembler = _make_assembler()
     bundle = _make_bundle(recent_actions=("read src/services/auth_service.py",))
 
     prompt = assembler.assemble_prompt(bundle)
@@ -165,7 +191,7 @@ def test_assemble_prompt_includes_tier4_when_recent_actions_present() -> None:
 
 
 def test_assemble_prompt_includes_tier5_when_artifacts_present() -> None:
-    assembler = PromptAssembler(DummyContextPort())
+    assembler = _make_assembler()
     ref = ArtifactReference(uri="artifact://abc123", summary="Full test log, 400 lines")
     bundle = _make_bundle(artifact_refs=(ref,))
 
@@ -177,7 +203,7 @@ def test_assemble_prompt_includes_tier5_when_artifacts_present() -> None:
 
 
 def test_assemble_prompt_tier_order() -> None:
-    assembler = PromptAssembler(DummyContextPort())
+    assembler = _make_assembler()
     bundle = _make_bundle(
         relevant_files=("src/file.py",),
         scenario_memory=(MemoryEvent(kind="discovery", payload={}),),
@@ -197,7 +223,7 @@ def test_assemble_prompt_tier_order() -> None:
 
 
 def test_collect_context_delegates() -> None:
-    assembler = PromptAssembler(DummyContextPort())
+    assembler = _make_assembler()
     step = PlanStep(identifier="1", description="Create login route")
     spec = _make_spec()
 
@@ -206,7 +232,7 @@ def test_collect_context_delegates() -> None:
 
 
 def test_assemble_prompt_includes_current_step_when_id_matches() -> None:
-    assembler = PromptAssembler(DummyContextPort())
+    assembler = _make_assembler()
     bundle = _make_bundle(current_step_id="1")
 
     prompt = assembler.assemble_prompt(bundle)
@@ -216,7 +242,7 @@ def test_assemble_prompt_includes_current_step_when_id_matches() -> None:
 
 
 def test_assemble_prompt_includes_engineering_facts() -> None:
-    assembler = PromptAssembler(DummyContextPort())
+    assembler = _make_assembler()
     bundle = _make_bundle(engineering_facts=("Always use strict typing", "No external calls in unit tests"))
 
     prompt = assembler.assemble_prompt(bundle)
@@ -224,3 +250,32 @@ def test_assemble_prompt_includes_engineering_facts() -> None:
     assert "Tier 2" in prompt
     assert "Always use strict typing" in prompt
     assert "No external calls in unit tests" in prompt
+
+
+def test_assemble_prompt_calls_schema_tailor() -> None:
+    from unittest.mock import MagicMock
+    st = MagicMock(spec=DummySchemaTailor)
+    st.detect_framework.return_value = "react"
+    st.fetch_schema.return_value = {"key": "value"}
+    assembler = PromptAssembler(DummyContextPort(), st, DummyBudgetManager())
+    bundle = _make_bundle()
+
+    prompt = assembler.assemble_prompt(bundle)
+    st.detect_framework.assert_called_once()
+    st.fetch_schema.assert_called_once_with("react")
+    assert "Schema:" in prompt
+    assert "key: value" in prompt
+
+
+def test_assemble_prompt_calls_compact_when_over_budget() -> None:
+    from unittest.mock import MagicMock
+    from corge.prompt_assembler.assembler import _TOKEN_BUDGET
+    bm = MagicMock(spec=DummyBudgetManager)
+    bm.estimate_tokens.return_value = _TOKEN_BUDGET + 1
+    bm.compact.return_value = _make_bundle()
+    assembler = PromptAssembler(DummyContextPort(), DummySchemaTailor(), bm)
+    bundle = _make_bundle()
+
+    assembler.assemble_prompt(bundle)
+    bm.estimate_tokens.assert_called_once()
+    bm.compact.assert_called_once_with(bundle)

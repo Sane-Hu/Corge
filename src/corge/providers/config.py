@@ -17,9 +17,12 @@ Spec traceability:
 
 from __future__ import annotations
 
+import logging
 import tomllib
 from dataclasses import dataclass, field, fields
 from pathlib import Path
+
+_log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -66,6 +69,13 @@ class ProviderConfig:
         """Construct a ProviderConfig from a TOML string."""
         data = tomllib.loads(toml_text)
         kwargs = {}
+        known = {f.name for f in fields(cls)}
+        extras = set(data.keys()) - known
+        if extras:
+            _log.warning(
+                "Unknown keys in provider config (possible typos): %s",
+                sorted(extras),
+            )
         for f in fields(cls):
             if f.name in data:
                 kwargs[f.name] = data[f.name]
@@ -77,6 +87,13 @@ class ProviderConfig:
         with open(path, "rb") as f:
             data = tomllib.load(f)
         kwargs = {}
+        known = {f.name for f in fields(cls)}
+        extras = set(data.keys()) - known
+        if extras:
+            _log.warning(
+                "Unknown keys in provider config (possible typos): %s",
+                sorted(extras),
+            )
         for fl in fields(cls):
             if fl.name in data:
                 kwargs[fl.name] = data[fl.name]

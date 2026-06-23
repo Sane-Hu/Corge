@@ -36,6 +36,7 @@ from corge.contracts.models import (
     RepositoryContext,
     SemanticGap,
     Specification,
+    StickyNoteStatus,
     TechnicalPlan,
     ToolResult,
 )
@@ -54,6 +55,10 @@ class UiPort(Protocol):
     def show_argumentation_diff(
         self, canvas: CanvasSnapshot, spec: Specification, gaps: tuple[SemanticGap, ...]
     ) -> Specification: ...
+
+    def show_question(self, question: str, context: str) -> str:
+        """Display a Socratic question and return the user's answer."""
+        ...
 
     def show_plan(self, plan: Plan) -> None: ...
 
@@ -82,6 +87,16 @@ class UiPort(Protocol):
     def show_memory(self, events: tuple[MemoryEvent, ...]) -> None: ...
 
     def show_completion_review(self, plan: Plan) -> None: ...
+
+
+# ---------------------------------------------------------------------------
+# Sticky note validator (FR-018)
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class StickyNoteValidatorPort(Protocol):
+    def validate_node(self, node_id: str) -> StickyNoteStatus: ...
 
 
 # ---------------------------------------------------------------------------
@@ -205,9 +220,11 @@ class MemoryStorePort(Protocol):
 
     def update_profile(self, profile: EngineeringProfile) -> None: ...
 
+    def get_profile(self) -> EngineeringProfile: ...
+
     def get_facts(self, limit: int = 200) -> list[str]: ...
 
-    def get_scenario(self, kind: str) -> list[dict[str, Any]]: ...
+    def get_scenario(self, kind: str, limit: int = 5) -> list[dict[str, Any]]: ...
 
 
 # ---------------------------------------------------------------------------

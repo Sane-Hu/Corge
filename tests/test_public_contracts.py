@@ -225,39 +225,7 @@ def test_documented_public_classes_exist() -> None:
 # -- Stub methods raise NotImplementedError -----------------------------------
 
 
-def test_stub_methods_raise_not_implemented(
-    specification: Specification,
-    plan_step: PlanStep,
-    plan: Plan,
-    repository_context: RepositoryContext,
-    profile: EngineeringProfile,
-    context_bundle: ContextBundle,
-    memory_event: MemoryEvent,
-    approval_request: ApprovalRequest,
-    artifact_reference: ArtifactReference,
-    tool_result: ToolResult,
-) -> None:
-    stub_calls = [
-        lambda: PromptAssembler().collect_context(plan_step, specification),
-        lambda: BudgetManager().estimate_tokens(context_bundle),
-        lambda: BudgetManager().rank_context(context_bundle),
-        lambda: BudgetManager().clip(context_bundle, 1000),
-        lambda: BudgetManager().deduplicate(context_bundle),
-        lambda: BudgetManager().summarize(context_bundle),
-        lambda: BudgetManager().compact(context_bundle),
-        lambda: ToolRuntime().bash("pytest", Path(".")),
-        # Provider() now requires a ProviderConfig — tested in tests/providers/.
-        lambda: AuditLogger().record_prompt("prompt"),
-        lambda: AuditLogger().record_tool_call(tool_result),
-        lambda: AuditLogger().record_approval(
-            approval_request, ApprovalDecision.APPROVED
-        ),
-        lambda: AuditLogger().record_completion(AuditEvent(kind="complete")),
-    ]
-
-    for stub_call in stub_calls:
-        with pytest.raises(NotImplementedError):
-            stub_call()
+# (test_stub_methods_raise_not_implemented removed; no stubs remain)
 
 
 def test_artifact_store_lifecycle(tmp_path: Path) -> None:

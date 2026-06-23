@@ -13,7 +13,7 @@ This document consolidates the functional requirements, architectural subsystems
 - **FR-006 & FR-007 Memory Pyramid**:
   - **L0 Session Events**: Raw code/actions execution logs stored under `.agent/memory/l0/`.
   - **L1 Engineering Facts**: Repository-derived/user-derived facts stored in `.agent/memory.db`.
-  - **L2 Scenario Memory**: Feature-specific progress and blockers under `.agent/memory/scenarios/`.
+  - **L2 Scenario Memory**: Feature-specific progress and blockers under `.agent/memory/scenarios/` (streamable JSONL format).
   - **L3 Engineering Profile**: Coding styles/conventions/rules derived from repository and user interactions, stored in `.agent/engineering_profile.md`.
 - **FR-008 Planning Phase**: Generates a step-by-step implementation plan. Execution remains blocked until approval.
 - **FR-009 Human Approval Layer**: Intercepts destructive actions (`write`, `edit`, `bash`) for human consent. (`Read`) actions do not require approval.
@@ -52,7 +52,7 @@ The directory structure maps directly to the 8 logical modules defined in the sy
     *   `src/corge/artifacts/`: Heavy logging/execution output storage.
 *   **6. Execution & Safety Modules**
     *   `src/corge/approval/`: Gateway logic to capture human consent decisions.
-    *   `src/corge/tools/`: Stateless execution primitives (read, write, edit, bash).
+    *   `src/corge/tools/`: Stateless execution primitives (read, write, edit, bash), featuring explicit occurrence-count safety checks to prevent ambiguous file edits.
 *   **7. Providers Module (`src/corge/providers/`)**
     *   Single model API adapter providing compatible interfaces for OpenAI, DeepSeek, and Ollama.
 *   **8. Logging Module (`src/corge/logging/`)**
@@ -117,7 +117,7 @@ If a tool execution fails, the orchestrator catches `ToolExecutionError`, update
 All databases and persistent files reside under the `.agent/` directory:
 
 *   **Knowledge Graph Database (`.agent/repo_graph.db`)**
-    Contains structural entities parsed from source code files (Python files parsed via stdlib `ast`).
+    Contains structural entities parsed from source code files (Python files parsed via stdlib `ast`). Uses `journal_mode=WAL` and persistent connection pooling for high-performance concurrent traversals.
     ```sql
     CREATE TABLE nodes (
         node_id TEXT PRIMARY KEY,   -- Stable identifier (e.g., "src/main.py::MyClass")
@@ -138,7 +138,7 @@ All databases and persistent files reside under the `.agent/` directory:
     ```
 
 *   **L1 Engineering Facts Database (`.agent/memory.db`)**
-    Contains facts derived dynamically during repository scan and execution loops.
+    Contains facts derived dynamically during repository scan and execution loops. Uses `journal_mode=WAL` and connection pooling for concurrent writes.
     ```sql
     CREATE TABLE facts (
         id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -153,11 +153,11 @@ All databases and persistent files reside under the `.agent/` directory:
     `{"kind": str, "timestamp": str, "payload": dict}`
 
 *   **L2 Scenario Memory (`.agent/memory/scenarios/`)**
-    Stored as individual JSON files per scenario named `<kind>.json`, structured as lists of entries:
-    `[{"timestamp": str, "payload": dict}]`
+    Stored as streamable JSONL files per scenario named `<kind>.jsonl` to prevent data corruption during atomic concurrent writes, structured as streams of lines:
+    `{"timestamp": str, "payload": dict}`
 
 *   **L3 Engineering Profile (`.agent/engineering_profile.md`)**
-    Markdown file containing repository-derived rules filtered by a confidence threshold ($\ge 0.5$).
+    Markdown file containing repository-derived rules filtered by a confidence threshold ($\ge 0.5$). The Context Service dynamically parses the markdown back into structured memory to construct the execution prompt.
 
 ---
 

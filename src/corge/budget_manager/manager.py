@@ -15,17 +15,26 @@ class BudgetManager:
         if len(text) <= max_length:
             return text
         half = max_length // 2
-        return text[:half] + f"\n... [CLIPPED {len(text) - max_length} chars] ...\n" + text[-half:]
+        return text[:half] + "\n... [CLIPPED] ...\n" + text[-half:]
+
+    def _bundle_to_text(self, context: ContextBundle) -> str:
+        lines = [context.specification.title, context.specification.body]
+        lines.extend(context.engineering_profile.rules)
+        for mem in context.scenario_memory:
+            lines.append(str(mem.payload))
+        lines.extend(context.recent_actions)
+        return "\n".join(lines)
 
     def estimate_tokens(self, context: ContextBundle) -> int:
-        total = self._estimate_str(context.specification.title + context.specification.body)
-        for rule in context.engineering_profile.rules:
-            total += self._estimate_str(rule)
-        for mem in context.scenario_memory:
-            total += self._estimate_str(str(mem.payload))
-        for action in context.recent_actions:
-            total += self._estimate_str(action)
-        return total + 500  # Baseline buffer
+        text = self._bundle_to_text(context)
+        try:
+            import tiktoken
+
+            enc = tiktoken.get_encoding("cl100k_base")
+            return len(enc.encode(text))
+        except ImportError:
+            # todo: fallback heuristic; upgrade path: install tiktoken for ±1% accuracy
+            return len(text) // 4
 
     def rank_context(self, context: ContextBundle) -> ContextBundle:
         # Tiers are structurally ranked in the ContextBundle definition.
@@ -33,8 +42,10 @@ class BudgetManager:
 
     def clip(self, context: ContextBundle, token_limit: int) -> ContextBundle:
         # 1. Always clip large individual outputs in the transcript to save token costs
-        clipped_actions = tuple(self._clip_large_string(action) for action in context.recent_actions)
-        
+        clipped_actions = tuple(
+            self._clip_large_string(action) for action in context.recent_actions
+        )
+
         # 2. Always drop older events to maintain a tight context loop and prevent
         # multi-turn bloat, regardless of whether we are near the actual LLM limit.
         # This keeps token usage (and thus cost) low without hindering performance.
@@ -44,8 +55,9 @@ class BudgetManager:
             engineering_facts=context.engineering_facts[-10:],
             recent_actions=clipped_actions[-20:],
         )
-        
-        # 3. If for some reason we are STILL over a hard token limit (e.g. massive single step),
+
+        # 3. If for some reason we are STILL over a hard token limit
+        # (e.g. massive single step),
         # apply an even stricter emergency fallback.
         if self.estimate_tokens(context) > token_limit:
             return dataclasses.replace(
@@ -54,17 +66,20 @@ class BudgetManager:
                 engineering_facts=context.engineering_facts[-3:],
                 recent_actions=context.recent_actions[-5:],
             )
-            
+
         return context
 
     def deduplicate(self, context: ContextBundle) -> ContextBundle:
         # Deduplicate files and facts while preserving order
         unique_files = tuple(dict.fromkeys(context.relevant_files))
         unique_facts = tuple(dict.fromkeys(context.engineering_facts))
-        
-        # Deduplicate older reads/actions in the transcript. We keep the LATEST occurrence.
+
+        # Deduplicate older reads/actions in the transcript.
+        # We keep the LATEST occurrence.
         # Reverse, deduplicate, then reverse back.
-        unique_actions_reversed = list(dict.fromkeys(reversed(context.recent_actions)))
+        unique_actions_reversed = list(
+            dict.fromkeys(reversed(context.recent_actions))
+        )
         unique_actions = tuple(reversed(unique_actions_reversed))
 
         return dataclasses.replace(

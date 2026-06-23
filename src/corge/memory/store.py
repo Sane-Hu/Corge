@@ -20,9 +20,10 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from corge.contracts import EngineeringProfile, MemoryEvent
 
@@ -80,6 +81,16 @@ class MemoryStore:
         self._l1_path = self._agent_dir / "memory.db"
         self._l2_dir = self._agent_dir / "memory" / "scenarios"
         self._l3_path = self._agent_dir / "engineering_profile.md"
+        self._conn: sqlite3.Connection | None = None
+        self._schema_initialized: bool = False
+
+    def close(self) -> None:
+        if getattr(self, "_conn", None) is not None:
+            self._conn.close() # type: ignore
+            self._conn = None
+
+    def __del__(self) -> None:
+        self.close()
 
     # ------------------------------------------------------------------
     # L0 — Session Events (append-only JSONL, one file per session)
@@ -100,11 +111,14 @@ class MemoryStore:
         session_key = datetime.now(UTC).strftime("%Y%m%dT%H")
         log_file = self._l0_dir / f"{session_key}.jsonl"
 
-        line = json.dumps({
-            "kind": event.kind,
-            "timestamp": event.timestamp,
-            "payload": event.payload,
-        }, ensure_ascii=False)
+        line = json.dumps(
+            {
+                "kind": event.kind,
+                "timestamp": event.timestamp,
+                "payload": event.payload,
+            },
+            ensure_ascii=False,
+        )
 
         with log_file.open("a", encoding="utf-8") as fh:
             fh.write(line + "\n")
@@ -121,36 +135,34 @@ class MemoryStore:
         budget manager can weight facts by proximity to the current task.
         """
         self._agent_dir.mkdir(parents=True, exist_ok=True)
-        conn = self._l1_connect()
-        try:
+        with self._l1_connect() as conn:
             conn.execute(
                 "INSERT OR IGNORE INTO facts (fact, source, timestamp) VALUES (?,?,?)",
                 (fact.strip(), source, _now()),
             )
             conn.commit()
-        finally:
-            conn.close()
 
     def get_facts(self, limit: int = 200) -> list[str]:
         """Return up to ``limit`` facts ordered by insertion time (newest first).
 
         Used by the context engine to populate Tier 2 of the prompt.
         """
-        conn = self._l1_connect()
-        try:
+        with self._l1_connect() as conn:
             rows = conn.execute(
                 "SELECT fact FROM facts ORDER BY id DESC LIMIT ?", (limit,)
             ).fetchall()
             return [r[0] for r in rows]
-        finally:
-            conn.close()
 
-    def _l1_connect(self) -> sqlite3.Connection:
-        self._agent_dir.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(self._l1_path)
-        conn.executescript(_L1_DDL)
-        conn.execute("PRAGMA journal_mode=WAL")
-        return conn
+    @contextmanager
+    def _l1_connect(self) -> Iterator[sqlite3.Connection]:
+        if self._conn is None:
+            self._agent_dir.mkdir(parents=True, exist_ok=True)
+            self._conn = sqlite3.connect(self._l1_path, check_same_thread=False)
+            self._conn.execute("PRAGMA journal_mode=WAL")
+        if not self._schema_initialized:
+            self._conn.executescript(_L1_DDL)
+            self._schema_initialized = True
+        yield self._conn
 
     # ------------------------------------------------------------------
     # L2 — Scenario Memory (JSON file per scenario kind)
@@ -159,8 +171,8 @@ class MemoryStore:
     def store_scenario(self, scenario: MemoryEvent) -> None:
         """Persist feature-specific progress/blocker event (FR-007 L2).
 
-        Each unique ``scenario.kind`` maps to its own JSON file under
-        ``.agent/memory/scenarios/<kind>.json``.  The file holds a list
+        Each unique ``scenario.kind`` maps to its own JSONL file under
+        ``.agent/memory/scenarios/<kind>.jsonl``.  The file holds a list
         of timestamped entries so the full history of a scenario is
         available for resume and debugging.
 
@@ -175,41 +187,38 @@ class MemoryStore:
 
         # Sanitise kind → safe filename (replace slashes and spaces).
         safe_kind = scenario.kind.replace("/", "_").replace(" ", "_")
-        scenario_file = self._l2_dir / f"{safe_kind}.json"
+        scenario_file = self._l2_dir / f"{safe_kind}.jsonl"
 
-        # Load existing entries (empty list if file is new or corrupt).
-        existing: list[dict[str, Any]] = []
-        if scenario_file.exists():
-            try:
-                existing = json.loads(scenario_file.read_text(encoding="utf-8"))
-                if not isinstance(existing, list):
-                    existing = []
-            except (json.JSONDecodeError, OSError):
-                existing = []
-
-        existing.append({
+        entry = {
             "timestamp": scenario.timestamp,
             "payload": scenario.payload,
-        })
+        }
 
-        scenario_file.write_text(
-            json.dumps(existing, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
+        with scenario_file.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
-    def get_scenario(self, kind: str) -> list[dict[str, Any]]:
+    def get_scenario(self, kind: str, limit: int = 5) -> list[dict[str, Any]]:
         """Return all entries for a scenario kind, oldest first.
 
         Returns empty list if the scenario has never been written.
         Used by the context engine to populate Tier 3 of the prompt.
+        Bounded by ``limit`` to prevent context window exhaustion.
         """
         safe_kind = kind.replace("/", "_").replace(" ", "_")
-        scenario_file = self._l2_dir / f"{safe_kind}.json"
+        scenario_file = self._l2_dir / f"{safe_kind}.jsonl"
+
         if not scenario_file.exists():
             return []
+
+        events = []
         try:
-            data = json.loads(scenario_file.read_text(encoding="utf-8"))
-            return data if isinstance(data, list) else []
+            with scenario_file.open("r", encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    events.append(json.loads(line))
+            return events[-limit:] if limit > 0 else events
         except (json.JSONDecodeError, OSError):
             return []
 
@@ -262,12 +271,28 @@ class MemoryStore:
         lines.append("")  # trailing newline
         self._l3_path.write_text("\n".join(lines), encoding="utf-8")
 
-    def get_profile_text(self) -> str:
-        """Return raw markdown content of the engineering profile.
+    def get_profile(self) -> EngineeringProfile:
+        """Return the engineering profile parsed from markdown.
 
-        Returns empty string if the profile has never been written.
+        Returns an empty profile if the file has never been written.
         Used by the prompt assembler for Tier 1 context.
         """
         if not self._l3_path.exists():
-            return ""
-        return self._l3_path.read_text(encoding="utf-8")
+            return EngineeringProfile()
+            
+        text = self._l3_path.read_text(encoding="utf-8")
+        rules = []
+        confidence = {}
+        for line in text.splitlines():
+            line = line.strip()
+            if line.startswith("- ") and "<!-- confidence:" in line:
+                # e.g., "- Use DTOs  <!-- confidence: 0.95 -->"
+                rule_part = line[2:line.index("<!--")].strip()
+                try:
+                    conf_str = line.split("<!-- confidence:")[1].split("-->")[0].strip()
+                    confidence[rule_part] = float(conf_str)
+                except (IndexError, ValueError):
+                    confidence[rule_part] = 1.0
+                rules.append(rule_part)
+                
+        return EngineeringProfile(rules=tuple(rules), confidence=confidence)

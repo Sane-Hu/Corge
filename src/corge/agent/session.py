@@ -27,9 +27,14 @@ from corge.contracts import (
     AcceptanceCriteria,
     LifecycleState,
     MasterPhase,
+    Plan,
     PlanState,
+    PlanStep,
+    ProceduralStep,
     Specification,
     SpecState,
+    TechnicalPlan,
+    ToolAction,
 )
 
 _SESSION_FILE = "session.json"
@@ -45,6 +50,9 @@ class SessionState:
         spec_state: SpecState | None = None,
         plan_state: PlanState | None = None,
         specification: Specification | None = None,
+        plan: Plan | None = None,
+        technical_plan: TechnicalPlan | None = None,
+        procedural_steps: tuple[ProceduralStep, ...] = (),
         repo_root: Path | None = None,
     ) -> None:
         self.lifecycle_state = lifecycle_state
@@ -52,6 +60,9 @@ class SessionState:
         self.spec_state = spec_state
         self.plan_state = plan_state
         self.specification = specification
+        self.plan = plan
+        self.technical_plan = technical_plan
+        self.procedural_steps = procedural_steps
         self.repo_root = repo_root
 
 
@@ -74,12 +85,21 @@ def save_session(agent_dir: Path, state: SessionState) -> None:
             "testing_expectations": spec.testing_expectations,
         }
 
+    import dataclasses
+
     payload = {
         "lifecycle_state": state.lifecycle_state.value,
         "master_phase": state.master_phase.value,
         "spec_state": state.spec_state.value if state.spec_state else None,
         "plan_state": state.plan_state.value if state.plan_state else None,
         "specification": spec_data,
+        "plan": dataclasses.asdict(state.plan) if state.plan else None,
+        "technical_plan": (
+            dataclasses.asdict(state.technical_plan) if state.technical_plan else None
+        ),
+        "procedural_steps": [
+            dataclasses.asdict(s) for s in state.procedural_steps
+        ],
         "repo_root": str(state.repo_root) if state.repo_root else None,
     }
 
@@ -147,11 +167,65 @@ def load_session(agent_dir: Path) -> SessionState | None:
     if raw.get("repo_root"):
         repo_root = Path(raw["repo_root"])
 
+    plan: Plan | None = None
+    if raw.get("plan"):
+        pd = raw["plan"]
+        try:
+            steps = []
+            for s in pd.get("steps", []):
+                action = ToolAction(s["action"]) if s.get("action") else None
+                steps.append(
+                    PlanStep(
+                        identifier=s.get("identifier", ""),
+                        description=s.get("description", ""),
+                        action=action,
+                        target=s.get("target", ""),
+                        completed=s.get("completed", False),
+                    )
+                )
+            plan = Plan(
+                steps=tuple(steps),
+                specification_ref=pd.get("specification_ref", "")
+            )
+        except Exception:
+            pass
+
+    technical_plan: TechnicalPlan | None = None
+    if raw.get("technical_plan"):
+        td = raw["technical_plan"]
+        try:
+            technical_plan = TechnicalPlan(
+                content=td.get("content", ""),
+                specification_ref=td.get("specification_ref", ""),
+            )
+        except Exception:
+            pass
+
+    procedural_steps: tuple[ProceduralStep, ...] = ()
+    if raw.get("procedural_steps"):
+        psd = raw["procedural_steps"]
+        try:
+            p_steps: list[ProceduralStep] = []
+            for s in psd:
+                p_steps.append(
+                    ProceduralStep(
+                        identifier=s.get("identifier", ""),
+                        description=s.get("description", ""),
+                        completed=s.get("completed", False),
+                    )
+                )
+            procedural_steps = tuple(p_steps)
+        except Exception:
+            pass
+
     return SessionState(
         lifecycle_state=lifecycle_state,
         master_phase=master_phase,
         spec_state=spec_state,
         plan_state=plan_state,
         specification=specification,
+        plan=plan,
+        technical_plan=technical_plan,
+        procedural_steps=procedural_steps,
         repo_root=repo_root,
     )

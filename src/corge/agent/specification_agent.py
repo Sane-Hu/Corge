@@ -21,6 +21,7 @@ from corge.contracts import (
     ProviderPort,
     SemanticGap,
     Specification,
+    UiPort,
 )
 
 
@@ -120,17 +121,14 @@ class SpecificationAgent:
         self,
         canvas_text: str,
         argumentation_log: ArgumentationLogPort,
+        ui: UiPort,
     ) -> tuple[Specification, tuple[SemanticGap, ...]]:
         """Iterative Socratic Q&A loop to resolve specification gaps (FR-016).
 
         For each gap identified in the spec, the agent generates a targeted
-        question. The question and the provided answer are both recorded in
-        the ArgumentationLog for later consumption by BayesianUpdater.
-
-        This method does NOT interact with the UI directly — it accepts the
-        canvas text and the log port. The UI layer drives the Q&A by calling
-        this method once per clarification session, passing the canvas text
-        assembled from user answers back through the session controller.
+        question. The question is presented to the user via the UI port.
+        The question and the user's answer are then recorded in the
+        ArgumentationLog for later consumption by BayesianUpdater.
 
         Returns the concretized Specification and any remaining unresolved gaps.
         """
@@ -144,13 +142,12 @@ class SpecificationAgent:
         now = datetime.now(UTC).isoformat()
         for gap in gaps:
             question = self._formulate_question(gap.topic, spec)
-            # Log the question with a placeholder answer — the UI layer
-            # will surface this question to the user and record the answer
-            # via record_entry() with was_user_override as appropriate.
+            answer = ui.show_question(question, canvas_text)
+
             argumentation_log.record_entry(
                 ArgumentationEntry(
                     question=question,
-                    answer="",  # populated by UI when user responds
+                    answer=answer,
                     timestamp=now,
                     was_user_override=False,
                 )

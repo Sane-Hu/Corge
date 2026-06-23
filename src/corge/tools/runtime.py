@@ -1,4 +1,5 @@
 """Stateless execution primitives — satisfies ``contracts.ToolRuntimePort``."""
+
 from pathlib import Path
 
 from corge.contracts import ToolAction, ToolResult
@@ -10,9 +11,7 @@ class ToolRuntime:
     def read(self, path: Path) -> ToolResult:
         try:
             content = Path(path).read_text(encoding="utf-8")
-            return ToolResult(
-                action=ToolAction.READ, output=content, success=True
-            )
+            return ToolResult(action=ToolAction.READ, output=content, success=True)
         except FileNotFoundError:
             return ToolResult(
                 action=ToolAction.READ,
@@ -72,16 +71,26 @@ class ToolRuntime:
                 stderr=f"Failed to read {path}: {exc}",
             )
 
-        if old not in original:
+        occurrences = original.count(old)
+        if occurrences == 0:
             return ToolResult(
                 action=ToolAction.EDIT,
                 output="",
                 success=False,
-                stderr=f"Target string not found in {path}",
+                stderr=f"String not found in {path}. Make sure to include exact whitespace.",
+            )
+        if occurrences > 1:
+            return ToolResult(
+                action=ToolAction.EDIT,
+                output="",
+                success=False,
+                stderr=(
+                    f"Ambiguous edit: old string appears {occurrences} times in {path}. "
+                    "Include more surrounding context in 'old' to uniquely identify the target."
+                ),
             )
 
-        occurrences = original.count(old)
-        updated = original.replace(old, new)
+        updated = original.replace(old, new, 1)
 
         try:
             target.write_text(updated, encoding="utf-8")
@@ -95,15 +104,22 @@ class ToolRuntime:
 
         return ToolResult(
             action=ToolAction.EDIT,
-            output=f"path: {target}, occurrences_replaced: {occurrences}",
+            output=f"Successfully edited {path}",
             success=True,
+            stderr="",
         )
 
     def bash(self, command: str, cwd: Path) -> ToolResult:
+        # security: `shell=True` allows shell expansion and metacharacters
+        # (e.g., pipes, redirects).
+        # This is an intentional design choice for maximum flexibility but
+        # creates a shell injection risk.
+        # It relies entirely on the human approval gateway (FR-009) to catch
+        # malicious commands.
         timeout = 300  # 5 minutes default timeout
         try:
             import subprocess
-            
+
             process = subprocess.Popen(
                 command,
                 cwd=cwd,
@@ -112,7 +128,7 @@ class ToolRuntime:
                 stderr=subprocess.PIPE,
                 text=True,
             )
-            
+
             try:
                 stdout, stderr = process.communicate(timeout=timeout)
             except subprocess.TimeoutExpired:
@@ -125,7 +141,7 @@ class ToolRuntime:
                     success=False,
                     stderr=f"Command timed out after {timeout} seconds\n{stderr}",
                 )
-                
+
             success = process.returncode == 0
             return ToolResult(
                 action=ToolAction.BASH,

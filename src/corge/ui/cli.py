@@ -22,13 +22,13 @@ from corge.contracts import (
     CanvasSnapshot,
     ContextBundle,
     EngineeringProfile,
-    KnowledgeGraphPort,
     MemoryEvent,
     Plan,
     ProceduralStep,
     RepositoryContext,
     SemanticGap,
     Specification,
+    StickyNoteValidatorPort,
     TechnicalPlan,
     UiPort,
 )
@@ -90,10 +90,10 @@ class CliUi(UiPort):
     def __init__(
         self,
         app: CorgeApp,
-        knowledge_graph: KnowledgeGraphPort | None = None,
+        validator: StickyNoteValidatorPort | None = None,
     ) -> None:
         self._app = app
-        self._kg = knowledge_graph
+        self._validator = validator
 
     def _run_screen(self, screen: Screen[Any]) -> Any:
         future: concurrent.futures.Future[Any] = concurrent.futures.Future()
@@ -109,14 +109,8 @@ class CliUi(UiPort):
     # ------------------------------------------------------------------
 
     def show_spec_wizard(self) -> Specification:
-        """Show the freestyle canvas (CANVAS_FREESTYLE sub-state).
-
-        Per finding 8.4: the canvas provides ghost text guidance; it does NOT
-        produce a fully structured Specification — that is the Concretization
-        agent's job.  The UI returns the raw canvas text wrapped in a minimal
-        Specification body.
-        """
-        text = self._run_screen(CanvasScreen(knowledge_graph=self._kg))
+        """Present a freestyle brainstorming canvas to the user."""
+        text = self._run_screen(CanvasScreen(validator=self._validator))
         # Wrap raw canvas text; SpecificationAgent.concretize() will structure it.
         return Specification(
             title="Canvas Draft",
@@ -147,6 +141,19 @@ class CliUi(UiPort):
             body=result_text or spec.body,
             acceptance_criteria=spec.acceptance_criteria,
         )
+
+    def show_question(self, question: str, context: str) -> str:
+        """Display a Socratic question and return the user's answer."""
+        result_text = self._run_screen(
+            InteractiveDiffScreen(
+                left_title="Context",
+                left_text=context,
+                right_title="Clarifying Question",
+                right_text=question,
+                prompt_text="Please provide an answer to the question above.",
+            )
+        )
+        return result_text or ""
 
     # ------------------------------------------------------------------
     # Planning phase screens
@@ -180,9 +187,7 @@ class CliUi(UiPort):
     def show_procedural_steps_editor(
         self, steps: tuple[ProceduralStep, ...]
     ) -> tuple[ProceduralStep, ...]:
-        steps_text = "\n".join(
-            f"[{s.identifier}] {s.description}" for s in steps
-        )
+        steps_text = "\n".join(f"[{s.identifier}] {s.description}" for s in steps)
         result_text = self._run_screen(
             InteractiveDiffScreen(
                 left_title="Technical Plan",
@@ -315,9 +320,14 @@ class CliUi(UiPort):
     def show_logs(self) -> None:
         try:
             from pathlib import Path
+
             log_path = Path(".agent/audit.jsonl")
-            msg = log_path.read_text(encoding="utf-8")[-10000:] if log_path.exists() else "No logs found."
+            if log_path.exists():
+                msg = log_path.read_text(encoding="utf-8")[-10000:]
+            else:
+                msg = "No logs found."
         except Exception as e:
             msg = f"Error loading logs: {e}"
-        # todo: simplistic raw log dump; upgrade path: parse JSONL into an interactive data table.
+        # todo: simplistic raw log dump; upgrade path: parse JSONL into
+        # an interactive data table.
         self._run_screen(MessageScreen("Logs", msg))

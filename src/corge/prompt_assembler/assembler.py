@@ -1,22 +1,35 @@
-"""Prompt construction — satisfies ``contracts.PromptAssemblerPort``.
-
-"""
+"""Prompt construction — satisfies ``contracts.PromptAssemblerPort``."""
 
 from __future__ import annotations
 
-from corge.contracts import ContextBundle, EngineeringProfile, PlanStep, Specification
-from corge.contracts.ports import ContextPort
+from corge.contracts import (
+    BudgetManagerPort,
+    ContextBundle,
+    ContextPort,
+    EngineeringProfile,
+    PlanStep,
+    SchemaTailorPort,
+    Specification,
+)
 
 # Rules below this confidence are excluded from Tier 1 prompt output.
 # Defined in 02-technical-spec.md Section 4 (Engineering Profile).
 _ENGINEERING_PROFILE_CONFIDENCE_THRESHOLD = 0.5
+_TOKEN_BUDGET = 100_000
 
 
 class PromptAssembler:
     """Builds the ephemeral execution prompt from a context bundle."""
 
-    def __init__(self, context_port: ContextPort) -> None:
+    def __init__(
+        self,
+        context_port: ContextPort,
+        schema_tailor: SchemaTailorPort,
+        budget_manager: BudgetManagerPort,
+    ) -> None:
         self._context_port = context_port
+        self._schema_tailor = schema_tailor
+        self._budget_manager = budget_manager
 
     def collect_context(
         self, step: PlanStep, specification: Specification
@@ -26,6 +39,9 @@ class PromptAssembler:
 
     def assemble_prompt(self, context: ContextBundle) -> str:
         """Render the structured context bundle into the ephemeral markdown prompt."""
+        if self._budget_manager.estimate_tokens(context) > _TOKEN_BUDGET:
+            context = self._budget_manager.compact(context)
+
         sections: list[str] = []
 
         tier1 = self._render_tier1(context)
@@ -61,6 +77,13 @@ class PromptAssembler:
             f"Title: {spec.title}",
             f"Goal: {spec.body}",
         ]
+
+        framework_id = self._schema_tailor.detect_framework()
+        schema = self._schema_tailor.fetch_schema(framework_id)
+        if schema:
+            lines.append("Schema:")
+            for key, val in schema.items():
+                lines.append(f"  {key}: {val}")
 
         if spec.constraints:
             lines.append(f"Constraints: {spec.constraints}")
@@ -138,9 +161,7 @@ class PromptAssembler:
                 return step
         return None
 
-    def _confident_profile_rules(
-        self, profile: EngineeringProfile
-    ) -> tuple[str, ...]:
+    def _confident_profile_rules(self, profile: EngineeringProfile) -> tuple[str, ...]:
         if not profile.rules:
             return ()
         return tuple(

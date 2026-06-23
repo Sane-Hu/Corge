@@ -11,9 +11,9 @@ from corge.contracts import (
 
 class PlanningAgent:
     """Translates specifications into Technical and Procedural plans."""
-    
+
     def __init__(self, provider: ProviderPort) -> None:
-        self.provider = provider
+        self._provider = provider
 
     def generate_technical_plan(self, specification: Specification) -> TechnicalPlan:
         prompt = (
@@ -25,7 +25,7 @@ class PlanningAgent:
             f"Body: {specification.body}"
         )
         msg = ProviderMessage(role="user", content=prompt)
-        response = self.provider.chat((msg,))
+        response = self._provider.chat((msg,))
         return TechnicalPlan(
             content=response.content, specification_ref=specification.title
         )
@@ -41,23 +41,25 @@ class PlanningAgent:
             f"Plan:\n{technical_plan.content}"
         )
         msg = ProviderMessage(role="user", content=prompt)
-        response = self.provider.chat((msg,))
-        
+        response = self._provider.chat((msg,))
+
         steps = []
         step_count = 0
         for line in response.content.split("\n"):
             if line.strip().startswith("STEP:"):
                 step_count += 1
-                steps.append(ProceduralStep(
-                    identifier=f"step-{step_count}",
-                    description=line.replace("STEP:", "").strip()
-                ))
-        
+                steps.append(
+                    ProceduralStep(
+                        identifier=f"step-{step_count}",
+                        description=line.replace("STEP:", "").strip(),
+                    )
+                )
+
         if not steps:
             steps.append(
                 ProceduralStep(
                     identifier="step-1", description="Execute technical plan"
                 )
             )
-            
+
         return tuple(steps)

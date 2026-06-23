@@ -15,6 +15,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import json
+import logging
+import sqlite3
+
 from corge.contracts import (
     AcceptanceCriteria,
     ContextBundle,
@@ -44,6 +48,8 @@ _CODING_EXCLUDED_GRAPH_KINDS = frozenset({"argumentation", "architecture"})
 _COMPRESSED_HISTORY_LIMIT = 5  # max N-2…N-Start entries to keep
 
 
+_log = logging.getLogger(__name__)
+
 class ContextService:
     """Concrete context service.  Satisfies ``contracts.ContextPort``.
 
@@ -59,9 +65,11 @@ class ContextService:
         self,
         knowledge_graph: KnowledgeGraphPort,
         memory_store: MemoryStorePort,
+        root: Path,
     ) -> None:
         self._kg = knowledge_graph
         self._memory = memory_store
+        self._root = root
 
         # Markov chaining state (Tier 4 / coding phase)
         self._last_step_result: str = ""
@@ -86,9 +94,7 @@ class ContextService:
             phase=MasterPhase.SPECIFICATION,
         )
 
-    def refresh_context(
-        self, repository_context: RepositoryContext
-    ) -> ContextBundle:
+    def refresh_context(self, repository_context: RepositoryContext) -> ContextBundle:
         """Refresh context for the Planning phase (Layer 2).
 
         Same as load_context for now.
@@ -127,7 +133,7 @@ class ContextService:
         return self._build_bundle(
             specification=specification,
             plan=plan_for_step,
-            repository_context=RepositoryContext(root=Path(".")),
+            repository_context=RepositoryContext(root=self._root),
             phase=MasterPhase.CODING,
             markov_context=markov_ctx,
             current_step_id=step.identifier,
@@ -161,35 +167,35 @@ class ContextService:
         try:
             result = self._kg.query_graph(GraphQuery(expression="files"))
             relevant_files = tuple(n.node_id for n in result.nodes[:50])
-        except Exception:
-            pass  # KG may not be built yet (empty repo)
+        except (RuntimeError, sqlite3.OperationalError, ValueError) as exc:
+            _log.warning("KG query failed during context assembly: %s", exc)
 
-        # Tier 2b — engineering facts from L1 memory
+        # Tier 2 — repo conventions + local rules
         engineering_facts: tuple[str, ...] = ()
-        engineering_profile = EngineeringProfile()
+        engineering_profile = self._memory.get_profile()
         try:
             facts = self._memory.get_facts(limit=50)
             if facts:
                 engineering_facts = tuple(facts)
-                engineering_profile = EngineeringProfile(rules=engineering_facts)
-        except Exception:
-            pass  # memory may be empty on first run
+        except (sqlite3.OperationalError, FileNotFoundError, OSError) as exc:
+            _log.warning("Failed to load engineering facts: %s", exc)
 
         # Tier 3 — scenario memory (coding phase only; excluded from spec/plan)
         scenario_memory: tuple[MemoryEvent, ...] = ()
         if phase == MasterPhase.CODING:
-            try:
-                raw = self._memory.get_scenario(specification.title)
-                scenario_memory = tuple(
-                    MemoryEvent(
-                        kind=specification.title,
-                        payload=entry.get("payload", {}),
-                        timestamp=entry.get("timestamp", ""),
+            if specification and specification.title:
+                try:
+                    raw = self._memory.get_scenario(specification.title, limit=5)
+                    scenario_memory = tuple(
+                        MemoryEvent(
+                            kind=specification.title,
+                            payload=entry.get("payload", {}),
+                            timestamp=entry.get("timestamp", ""),
+                        )
+                        for entry in raw
                     )
-                    for entry in raw
-                )
-            except Exception:
-                pass
+                except (json.JSONDecodeError, FileNotFoundError, OSError, KeyError) as exc:
+                    _log.warning("Failed to load scenario memory: %s", exc)
 
         return ContextBundle(
             specification=specification,

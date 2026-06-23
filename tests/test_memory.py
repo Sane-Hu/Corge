@@ -151,17 +151,20 @@ class TestL2ScenarioMemory:
 
     def test_creates_scenario_file(self, store: MemoryStore, agent_dir: Path) -> None:
         store.store_scenario(MemoryEvent(kind="user_auth", payload={"discovery": "JWT used"}))
-        scenario_file = agent_dir / "memory" / "scenarios" / "user_auth.json"
+        scenario_file = agent_dir / "memory" / "scenarios" / "user_auth.jsonl"
         assert scenario_file.exists()
 
     def test_scenario_file_is_valid_json(self, store: MemoryStore, agent_dir: Path) -> None:
         store.store_scenario(MemoryEvent(kind="user_auth", payload={"discovery": "JWT used"}))
-        scenario_file = agent_dir / "memory" / "scenarios" / "user_auth.json"
-        data = json.loads(scenario_file.read_text())
-        assert isinstance(data, list)
-        assert len(data) == 1
-        assert "timestamp" in data[0]
-        assert "payload" in data[0]
+        scenario_file = agent_dir / "memory" / "scenarios" / "user_auth.jsonl"
+        assert scenario_file.exists()
+
+        lines = scenario_file.read_text(encoding="utf-8").strip().splitlines()
+        assert len(lines) == 1
+        data = json.loads(lines[0])
+        assert isinstance(data, dict)
+        assert "timestamp" in data
+        assert "payload" in data
 
     def test_appends_to_existing_scenario(self, store: MemoryStore, agent_dir: Path) -> None:
         store.store_scenario(MemoryEvent(kind="user_auth", payload={"discovery": "JWT used"}))
@@ -174,7 +177,7 @@ class TestL2ScenarioMemory:
         store.store_scenario(MemoryEvent(kind="user_auth", payload={"x": 1}))
         store.store_scenario(MemoryEvent(kind="payment_flow", payload={"x": 2}))
         scenarios_dir = agent_dir / "memory" / "scenarios"
-        files = list(scenarios_dir.glob("*.json"))
+        files = list(scenarios_dir.glob("*.jsonl"))
         assert len(files) == 2
 
     def test_get_scenario_returns_oldest_first(self, store: MemoryStore) -> None:
@@ -199,7 +202,7 @@ class TestL2ScenarioMemory:
 
     def test_kind_with_slashes_creates_valid_filename(self, store: MemoryStore, agent_dir: Path) -> None:
         store.store_scenario(MemoryEvent(kind="auth/login", payload={}))
-        scenario_file = agent_dir / "memory" / "scenarios" / "auth_login.json"
+        scenario_file = agent_dir / "memory" / "scenarios" / "auth_login.jsonl"
         assert scenario_file.exists()
 
     def test_stamps_empty_timestamp_in_scenario(self, store: MemoryStore) -> None:
@@ -282,17 +285,18 @@ class TestL3EngineeringProfile:
         assert "Old rule" not in content
         assert "New rule" in content
 
-    def test_get_profile_text_returns_empty_when_missing(self, store: MemoryStore) -> None:
-        assert store.get_profile_text() == ""
+    def test_get_profile_returns_empty_when_missing(self, store: MemoryStore) -> None:
+        profile = store.get_profile()
+        assert profile.rules == ()
 
-    def test_get_profile_text_returns_content(self, store: MemoryStore) -> None:
+    def test_get_profile_returns_parsed_content(self, store: MemoryStore) -> None:
         store.update_profile(EngineeringProfile(
             rules=("Use service layer",),
             confidence={"Use service layer": 0.9}
         ))
-        text = store.get_profile_text()
-        assert "# Engineering profile" in text
-        assert "Use service layer" in text
+        profile = store.get_profile()
+        assert profile.rules == ("Use service layer",)
+        assert profile.confidence["Use service layer"] == 0.9
 
     def test_empty_rules_writes_placeholder(self, store: MemoryStore, agent_dir: Path) -> None:
         store.update_profile(EngineeringProfile(rules=(), confidence={}))

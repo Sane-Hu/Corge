@@ -2,7 +2,7 @@
 
 import json
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from corge.contracts import ApprovalDecision, ApprovalRequest, AuditEvent, ToolResult
@@ -20,7 +20,7 @@ class AuditLogger:
             f.write(json.dumps(asdict(event)) + "\n")
 
     def _now(self) -> str:
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(UTC).isoformat()
 
     def record_prompt(self, prompt: str) -> None:
         self._append(

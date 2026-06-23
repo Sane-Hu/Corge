@@ -15,10 +15,9 @@ from textual.screen import Screen
 from textual.widgets import Button, Label, Static, TextArea
 
 from corge.contracts import (
-    GraphQuery,
-    KnowledgeGraphPort,
     StickyNote,
     StickyNoteStatus,
+    StickyNoteValidatorPort,
 )
 
 # Ghost text shown in the canvas before the user starts typing.
@@ -94,11 +93,11 @@ class CanvasScreen(Screen[str]):
 
     def __init__(
         self,
-        knowledge_graph: KnowledgeGraphPort | None = None,
+        validator: StickyNoteValidatorPort | None = None,
         initial_text: str = "",
     ) -> None:
         super().__init__()
-        self._kg = knowledge_graph
+        self._validator = validator
         self._initial_text = initial_text or _GHOST_TEXT
         self._sticky_notes: list[StickyNote] = []
 
@@ -116,14 +115,12 @@ class CanvasScreen(Screen[str]):
         with Horizontal(classes="footer"):
             yield Button("Submit to Concretization", id="submit", variant="primary")
 
-    def on_text_area_changed(self, event: TextArea.Changed) -> None:
-        """Re-parse sticky notes and validate them against the KG on every edit."""
-        self._sticky_notes = self._parse_sticky_notes(event.text_area.text)
-        self._refresh_sticky_display()
-
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "submit":
-            self.dismiss(self._text_area.text)
+            text = self._text_area.text
+            self._sticky_notes = self._parse_sticky_notes(text)
+            self._refresh_sticky_display()
+            self.dismiss(text)
 
     # ------------------------------------------------------------------
     # Sticky note parsing and KG validation (FR-018)
@@ -142,7 +139,7 @@ class CanvasScreen(Screen[str]):
             stripped = line.strip()
             if not stripped.startswith("@node:"):
                 continue
-            rest = stripped[len("@node:"):]
+            rest = stripped[len("@node:") :]
             # node_id ends at the first double-space or tab
             parts = rest.split(None, 1)
             if not parts:
@@ -154,16 +151,10 @@ class CanvasScreen(Screen[str]):
         return notes
 
     def _validate_node(self, node_id: str) -> StickyNoteStatus:
-        """Check if a node_id exists in the Knowledge Graph."""
-        if self._kg is None:
-            return StickyNoteStatus.ACTIVE  # no KG available — optimistic
-        try:
-            result = self._kg.query_graph(GraphQuery(expression=f"node:{node_id}"))
-            return (
-                StickyNoteStatus.ACTIVE if result.nodes else StickyNoteStatus.INVALID
-            )
-        except Exception:
-            return StickyNoteStatus.ACTIVE  # fail open
+        """Check if a node_id is valid."""
+        if self._validator is None:
+            return StickyNoteStatus.ACTIVE  # no validator available — optimistic
+        return self._validator.validate_node(node_id)
 
     def _refresh_sticky_display(self) -> None:
         """Update the sticky note status panel."""

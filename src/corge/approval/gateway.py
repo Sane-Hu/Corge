@@ -21,7 +21,7 @@ class ApprovalGateway:
             decision = ApprovalDecision.APPROVED
         else:
             decision = self._ui.request_approval(request)
-        
+
         self._audit_logger.record_approval(request, decision)
         return decision
 

@@ -15,9 +15,11 @@ from corge.agent.specification_agent import SpecificationAgent
 from corge.contracts import (
     ApprovalGatewayPort,
     ArgumentationLogPort,
+    BudgetManagerPort,
     ContextBundle,
     ContextPort,
     HeuristicUpdaterPort,
+    KnowledgeGraphPort,
     LifecycleState,
     MasterPhase,
     MemoryEvent,
@@ -27,12 +29,16 @@ from corge.contracts import (
     PlanStep,
     ProceduralStep,
     ProviderPort,
+    SchemaTailorPort,
     SemanticGap,
     Specification,
     SpecState,
     TechnicalPlan,
     ToolRuntimePort,
+    UiPort,
 )
+from corge.agent.session import SessionState
+from corge.prompt_assembler import PromptAssembler
 
 # ---------------------------------------------------------------------------
 # Valid lifecycle transitions (Tech-spec §3 state diagram)
@@ -90,6 +96,8 @@ class SessionController:
         context_service    — context hydration
         memory_store       — memory pyramid persistence
         heuristic_updater  — post-spec Bayesian batch learning
+        schema_tailor      — schema injection
+        budget_manager     — context budget enforcement
     """
 
     def __init__(
@@ -100,12 +108,20 @@ class SessionController:
         context_service: ContextPort,
         memory_store: MemoryStorePort,
         heuristic_updater: HeuristicUpdaterPort,
+        knowledge_graph: KnowledgeGraphPort,
+        schema_tailor: SchemaTailorPort,
+        budget_manager: BudgetManagerPort,
     ) -> None:
         # Sub-agents (intra-module wiring)
         self._spec_agent = SpecificationAgent(provider)
         self._plan_agent = PlanningAgent(provider)
         self._code_agent = CodingAgent(
-            provider, tool_runtime, approval_gateway, context_service
+            provider, tool_runtime, approval_gateway, context_service, knowledge_graph
+        )
+        self._prompt_assembler = PromptAssembler(
+            context_port=context_service,
+            schema_tailor=schema_tailor,
+            budget_manager=budget_manager,
         )
 
         # External port dependencies
@@ -117,6 +133,12 @@ class SessionController:
         self._phase: MasterPhase = MasterPhase.SPECIFICATION
         self._spec_state: SpecState | None = None
         self._plan_state: PlanState | None = None
+
+        self._specification: Specification | None = None
+        self._plan: Plan | None = None
+        self._technical_plan: TechnicalPlan | None = None
+        self._procedural_steps: tuple[ProceduralStep, ...] = ()
+        self._pending_gaps: tuple[SemanticGap, ...] = ()
 
         # Repository bootstrapping flag (CC.2)
         self._is_empty_repo: bool = False
@@ -158,6 +180,19 @@ class SessionController:
         """Set by REPOSITORY_ANALYSIS phase after scanning the selected directory."""
         self._is_empty_repo = empty
 
+    def load_from_session(self, state: SessionState) -> None:
+        """Restore internal state from a SessionState object."""
+        self._state = state.lifecycle_state
+        self._phase = state.master_phase
+        self._spec_state = state.spec_state
+        self._plan_state = state.plan_state
+        self._specification = state.specification
+        self._plan = state.plan
+        self._technical_plan = state.technical_plan
+        self._procedural_steps = state.procedural_steps
+        if state.repo_root:
+            pass  # Currently repo_root is handled elsewhere
+
     def advance(self) -> LifecycleState:
         """Advance to the next lifecycle state.
 
@@ -167,9 +202,7 @@ class SessionController:
         """
         next_state = _TRANSITIONS.get(self._state)
         if next_state is None:
-            raise InvalidTransitionError(
-                f"No transition defined from {self._state!r}"
-            )
+            raise InvalidTransitionError(f"No transition defined from {self._state!r}")
         self._state = next_state
         self._phase = _STATE_PHASE[next_state]
 
@@ -185,6 +218,8 @@ class SessionController:
                 self._spec_state = SpecState.CANVAS_FREESTYLE
             elif self._state == LifecycleState.SPEC_VALIDATION:
                 self._spec_state = SpecState.CONCRETIZATION
+                if self._pending_gaps:
+                    self._spec_state = SpecState.ARGUMENTATION_DIFF
             elif self._state == LifecycleState.SPEC_APPROVAL:
                 self._spec_state = SpecState.SPEC_METASTABLE
             self._plan_state = None
@@ -211,19 +246,22 @@ class SessionController:
     # ------------------------------------------------------------------
 
     def analyze_specification_gaps(self, canvas_text: str) -> tuple[SemanticGap, ...]:
-        return self._spec_agent.analyze_specification_gaps(canvas_text)
+        self._pending_gaps = self._spec_agent.analyze_specification_gaps(canvas_text)
+        return self._pending_gaps
 
     def concretize(self, canvas_text: str) -> Specification:
         """Compile raw canvas text into a structured Specification."""
         return self._spec_agent.concretize(canvas_text)
 
     def run_socratic_loop(
-        self,
-        canvas_text: str,
-        argumentation_log: ArgumentationLogPort,
+        self, canvas_text: str, argumentation_log: ArgumentationLogPort, ui: UiPort
     ) -> tuple[Specification, tuple[SemanticGap, ...]]:
-        """Run the iterative gap analysis → question → answer Socratic loop."""
-        return self._spec_agent.run_socratic_loop(canvas_text, argumentation_log)
+        """Run the interactive specification refinement loop.
+
+        Delegates to the internal SpecificationAgent and returns the updated
+        specification and any unresolved gaps.
+        """
+        return self._spec_agent.run_socratic_loop(canvas_text, argumentation_log, ui)
 
     # ------------------------------------------------------------------
     # AgentPort delegation — Planning phase
