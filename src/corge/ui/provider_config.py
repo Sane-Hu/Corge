@@ -73,14 +73,14 @@ class ProviderConfigScreen(Screen[dict[str, str]]):
                     classes="info-msg",
                 )
 
-            model_val = self.prefill.get("model", "deepseek-chat")
+            model_val = self.prefill.get("model", "")
             api_key_val = self.prefill.get("api_key", "")
             base_url_val = self.prefill.get("base_url", "")
 
             with Vertical(classes="field-row"):
                 yield Label("Model Name:")
                 yield Input(
-                    placeholder="e.g. deepseek-chat, gpt-4o, llama3",
+                    placeholder="e.g. gpt-4o, llama3",
                     id="model_input",
                     value=model_val,
                 )
@@ -97,7 +97,7 @@ class ProviderConfigScreen(Screen[dict[str, str]]):
             with Vertical(classes="field-row"):
                 yield Label("Base URL Override (Optional):")
                 yield Input(
-                    placeholder="e.g. https://api.deepseek.com/v1",
+                    placeholder="e.g. https://api.openai.com/v1",
                     id="base_url_input",
                     value=base_url_val,
                 )
@@ -111,10 +111,12 @@ class ProviderConfigScreen(Screen[dict[str, str]]):
             model = self.query_one("#model_input", Input).value.strip()
             api_key = self.query_one("#api_key_input", Input).value.strip()
             base_url = self.query_one("#base_url_input", Input).value.strip()
-            self.dismiss({
-                "model": model,
-                "api_key": api_key,
-                "base_url": base_url,
-            })
+            self.dismiss(
+                {
+                    "model": model,
+                    "api_key": api_key,
+                    "base_url": base_url,
+                }
+            )
         elif event.button.id == "exit_btn":
             self.dismiss(None)

@@ -24,6 +24,7 @@ from corge.contracts import (
 
 class InvalidTransitionError(Exception):
     """Raised when a state transition is blocked."""
+
     pass
 
 
@@ -126,13 +127,24 @@ def test_session_round_trip_with_full_plan(tmp_path) -> None:
     state = SessionState(
         lifecycle_state=LifecycleState.EXECUTION,
         master_phase=MasterPhase.CODING,
-        plan=Plan(steps=(PlanStep(identifier="s1", description="do it", action=ToolAction.WRITE, target="f.txt", completed=True),), specification_ref="ref"),
+        plan=Plan(
+            steps=(
+                PlanStep(
+                    identifier="s1",
+                    description="do it",
+                    action=ToolAction.WRITE,
+                    target="f.txt",
+                    completed=True,
+                ),
+            ),
+            specification_ref="ref",
+        ),
         technical_plan=TechnicalPlan(content="hello", specification_ref="ref"),
         procedural_steps=(ProceduralStep(identifier="p1", description="read"),),
     )
     save_session(tmp_path, state)
     loaded = load_session(tmp_path)
-    
+
     assert loaded is not None
     assert loaded.lifecycle_state == LifecycleState.EXECUTION
     assert loaded.plan is not None
@@ -147,6 +159,7 @@ def test_sync_nested_states_enters_argumentation_diff_when_gaps_present() -> Non
     from unittest.mock import MagicMock
 
     from corge.agent.session_controller import SessionController
+
     controller = SessionController(
         provider=MagicMock(),
         tool_runtime=MagicMock(),
@@ -159,13 +172,15 @@ def test_sync_nested_states_enters_argumentation_diff_when_gaps_present() -> Non
         budget_manager=MagicMock(),
     )
     # Mock the spec_agent to return gaps
-    controller._spec_agent.analyze_specification_gaps = MagicMock(return_value=(SemanticGap("test"),))
+    controller._spec_agent.analyze_specification_gaps = MagicMock(
+        return_value=(SemanticGap("test"),)
+    )
     controller.analyze_specification_gaps("canvas text")
-    
+
     # Transition to SPEC_VALIDATION
     # Start -> REPOSITORY_SELECTION -> REPOSITORY_ANALYSIS -> SPEC_ENTRY -> SPEC_VALIDATION
     for _ in range(4):
         controller.advance()
-        
+
     assert controller._state == LifecycleState.SPEC_VALIDATION
     assert controller._spec_state == SpecState.ARGUMENTATION_DIFF

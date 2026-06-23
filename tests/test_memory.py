@@ -39,8 +39,9 @@ def agent_dir(tmp_path: Path) -> Path:
 
 
 class TestL0SessionEvents:
-
-    def test_creates_jsonl_file_on_first_event(self, store: MemoryStore, agent_dir: Path) -> None:
+    def test_creates_jsonl_file_on_first_event(
+        self, store: MemoryStore, agent_dir: Path
+    ) -> None:
         store.store_event(MemoryEvent(kind="tool_call", payload={"tool": "read"}))
         l0_dir = agent_dir / "memory" / "l0"
         files = list(l0_dir.glob("*.jsonl"))
@@ -75,7 +76,9 @@ class TestL0SessionEvents:
         obj = json.loads(log_file.read_text().strip())
         assert obj["timestamp"] != ""
 
-    def test_preserves_existing_timestamp(self, store: MemoryStore, agent_dir: Path) -> None:
+    def test_preserves_existing_timestamp(
+        self, store: MemoryStore, agent_dir: Path
+    ) -> None:
         ts = "2024-01-01T00:00:00+00:00"
         store.store_event(MemoryEvent(kind="tool_call", payload={}, timestamp=ts))
         l0_dir = agent_dir / "memory" / "l0"
@@ -84,7 +87,11 @@ class TestL0SessionEvents:
         assert obj["timestamp"] == ts
 
     def test_payload_preserved(self, store: MemoryStore, agent_dir: Path) -> None:
-        store.store_event(MemoryEvent(kind="approval", payload={"action": "write", "target": "main.py"}))
+        store.store_event(
+            MemoryEvent(
+                kind="approval", payload={"action": "write", "target": "main.py"}
+            )
+        )
         l0_dir = agent_dir / "memory" / "l0"
         log_file = next(l0_dir.glob("*.jsonl"))
         obj = json.loads(log_file.read_text().strip())
@@ -98,7 +105,6 @@ class TestL0SessionEvents:
 
 
 class TestL1EngineeringFacts:
-
     def test_stores_fact(self, store: MemoryStore) -> None:
         store.store_fact("Uses service layer pattern")
         facts = store.get_facts()
@@ -135,7 +141,9 @@ class TestL1EngineeringFacts:
     def test_get_facts_returns_empty_when_none(self, store: MemoryStore) -> None:
         assert store.get_facts() == []
 
-    def test_creates_memory_db_in_agent_dir(self, store: MemoryStore, agent_dir: Path) -> None:
+    def test_creates_memory_db_in_agent_dir(
+        self, store: MemoryStore, agent_dir: Path
+    ) -> None:
         store.store_fact("any fact")
         assert (agent_dir / "memory.db").exists()
 
@@ -146,14 +154,19 @@ class TestL1EngineeringFacts:
 
 
 class TestL2ScenarioMemory:
-
     def test_creates_scenario_file(self, store: MemoryStore, agent_dir: Path) -> None:
-        store.store_scenario(MemoryEvent(kind="user_auth", payload={"discovery": "JWT used"}))
+        store.store_scenario(
+            MemoryEvent(kind="user_auth", payload={"discovery": "JWT used"})
+        )
         scenario_file = agent_dir / "memory" / "scenarios" / "user_auth.jsonl"
         assert scenario_file.exists()
 
-    def test_scenario_file_is_valid_json(self, store: MemoryStore, agent_dir: Path) -> None:
-        store.store_scenario(MemoryEvent(kind="user_auth", payload={"discovery": "JWT used"}))
+    def test_scenario_file_is_valid_json(
+        self, store: MemoryStore, agent_dir: Path
+    ) -> None:
+        store.store_scenario(
+            MemoryEvent(kind="user_auth", payload={"discovery": "JWT used"})
+        )
         scenario_file = agent_dir / "memory" / "scenarios" / "user_auth.jsonl"
         assert scenario_file.exists()
 
@@ -164,14 +177,24 @@ class TestL2ScenarioMemory:
         assert "timestamp" in data
         assert "payload" in data
 
-    def test_appends_to_existing_scenario(self, store: MemoryStore, agent_dir: Path) -> None:
-        store.store_scenario(MemoryEvent(kind="user_auth", payload={"discovery": "JWT used"}))
-        store.store_scenario(MemoryEvent(kind="user_auth", payload={"blocker": "token expiry unclear"}))
-        store.store_scenario(MemoryEvent(kind="user_auth", payload={"decision": "use 1h expiry"}))
+    def test_appends_to_existing_scenario(
+        self, store: MemoryStore, agent_dir: Path
+    ) -> None:
+        store.store_scenario(
+            MemoryEvent(kind="user_auth", payload={"discovery": "JWT used"})
+        )
+        store.store_scenario(
+            MemoryEvent(kind="user_auth", payload={"blocker": "token expiry unclear"})
+        )
+        store.store_scenario(
+            MemoryEvent(kind="user_auth", payload={"decision": "use 1h expiry"})
+        )
         data = store.get_scenario("user_auth")
         assert len(data) == 3
 
-    def test_different_kinds_are_separate_files(self, store: MemoryStore, agent_dir: Path) -> None:
+    def test_different_kinds_are_separate_files(
+        self, store: MemoryStore, agent_dir: Path
+    ) -> None:
         store.store_scenario(MemoryEvent(kind="user_auth", payload={"x": 1}))
         store.store_scenario(MemoryEvent(kind="payment_flow", payload={"x": 2}))
         scenarios_dir = agent_dir / "memory" / "scenarios"
@@ -186,19 +209,29 @@ class TestL2ScenarioMemory:
         assert data[0]["payload"]["step"] == 1
         assert data[-1]["payload"]["step"] == 3
 
-    def test_get_scenario_returns_empty_for_unknown_kind(self, store: MemoryStore) -> None:
+    def test_get_scenario_returns_empty_for_unknown_kind(
+        self, store: MemoryStore
+    ) -> None:
         assert store.get_scenario("nonexistent_feature") == []
 
     def test_payload_preserved_in_scenario(self, store: MemoryStore) -> None:
-        store.store_scenario(MemoryEvent(
-            kind="checkout",
-            payload={"discovery": "uses Stripe", "blocker": None, "files": ["payment.py"]}
-        ))
+        store.store_scenario(
+            MemoryEvent(
+                kind="checkout",
+                payload={
+                    "discovery": "uses Stripe",
+                    "blocker": None,
+                    "files": ["payment.py"],
+                },
+            )
+        )
         data = store.get_scenario("checkout")
         assert data[0]["payload"]["discovery"] == "uses Stripe"
         assert data[0]["payload"]["files"] == ["payment.py"]
 
-    def test_kind_with_slashes_creates_valid_filename(self, store: MemoryStore, agent_dir: Path) -> None:
+    def test_kind_with_slashes_creates_valid_filename(
+        self, store: MemoryStore, agent_dir: Path
+    ) -> None:
         store.store_scenario(MemoryEvent(kind="auth/login", payload={}))
         scenario_file = agent_dir / "memory" / "scenarios" / "auth_login.jsonl"
         assert scenario_file.exists()
@@ -215,55 +248,71 @@ class TestL2ScenarioMemory:
 
 
 class TestL3EngineeringProfile:
-
     def test_creates_markdown_file(self, store: MemoryStore, agent_dir: Path) -> None:
-        store.update_profile(EngineeringProfile(
-            rules=("Use service layer",),
-            confidence={"Use service layer": 0.9}
-        ))
+        store.update_profile(
+            EngineeringProfile(
+                rules=("Use service layer",), confidence={"Use service layer": 0.9}
+            )
+        )
         assert (agent_dir / "engineering_profile.md").exists()
 
-    def test_high_confidence_rules_included(self, store: MemoryStore, agent_dir: Path) -> None:
-        store.update_profile(EngineeringProfile(
-            rules=("Use service layer", "DTOs are frozen"),
-            confidence={"Use service layer": 0.95, "DTOs are frozen": 0.80}
-        ))
+    def test_high_confidence_rules_included(
+        self, store: MemoryStore, agent_dir: Path
+    ) -> None:
+        store.update_profile(
+            EngineeringProfile(
+                rules=("Use service layer", "DTOs are frozen"),
+                confidence={"Use service layer": 0.95, "DTOs are frozen": 0.80},
+            )
+        )
         content = (agent_dir / "engineering_profile.md").read_text()
         assert "Use service layer" in content
         assert "DTOs are frozen" in content
 
-    def test_low_confidence_rules_excluded(self, store: MemoryStore, agent_dir: Path) -> None:
-        store.update_profile(EngineeringProfile(
-            rules=("Solid rule", "Uncertain rule"),
-            confidence={"Solid rule": 0.9, "Uncertain rule": 0.3}
-        ))
+    def test_low_confidence_rules_excluded(
+        self, store: MemoryStore, agent_dir: Path
+    ) -> None:
+        store.update_profile(
+            EngineeringProfile(
+                rules=("Solid rule", "Uncertain rule"),
+                confidence={"Solid rule": 0.9, "Uncertain rule": 0.3},
+            )
+        )
         content = (agent_dir / "engineering_profile.md").read_text()
         assert "Solid rule" in content
         assert "Uncertain rule" not in content
 
-    def test_threshold_boundary_included(self, store: MemoryStore, agent_dir: Path) -> None:
+    def test_threshold_boundary_included(
+        self, store: MemoryStore, agent_dir: Path
+    ) -> None:
         # exactly 0.5 → included
-        store.update_profile(EngineeringProfile(
-            rules=("Boundary rule",),
-            confidence={"Boundary rule": 0.5}
-        ))
+        store.update_profile(
+            EngineeringProfile(
+                rules=("Boundary rule",), confidence={"Boundary rule": 0.5}
+            )
+        )
         content = (agent_dir / "engineering_profile.md").read_text()
         assert "Boundary rule" in content
 
-    def test_below_threshold_excluded(self, store: MemoryStore, agent_dir: Path) -> None:
+    def test_below_threshold_excluded(
+        self, store: MemoryStore, agent_dir: Path
+    ) -> None:
         # 0.49 → excluded
-        store.update_profile(EngineeringProfile(
-            rules=("Almost rule",),
-            confidence={"Almost rule": 0.49}
-        ))
+        store.update_profile(
+            EngineeringProfile(rules=("Almost rule",), confidence={"Almost rule": 0.49})
+        )
         content = (agent_dir / "engineering_profile.md").read_text()
         assert "Almost rule" not in content
 
-    def test_rules_sorted_by_confidence_descending(self, store: MemoryStore, agent_dir: Path) -> None:
-        store.update_profile(EngineeringProfile(
-            rules=("Low rule", "High rule", "Mid rule"),
-            confidence={"Low rule": 0.6, "High rule": 0.95, "Mid rule": 0.75}
-        ))
+    def test_rules_sorted_by_confidence_descending(
+        self, store: MemoryStore, agent_dir: Path
+    ) -> None:
+        store.update_profile(
+            EngineeringProfile(
+                rules=("Low rule", "High rule", "Mid rule"),
+                confidence={"Low rule": 0.6, "High rule": 0.95, "Mid rule": 0.75},
+            )
+        )
         content = (agent_dir / "engineering_profile.md").read_text()
         high_pos = content.index("High rule")
         mid_pos = content.index("Mid rule")
@@ -271,14 +320,12 @@ class TestL3EngineeringProfile:
         assert high_pos < mid_pos < low_pos
 
     def test_overwrites_not_appends(self, store: MemoryStore, agent_dir: Path) -> None:
-        store.update_profile(EngineeringProfile(
-            rules=("Old rule",),
-            confidence={"Old rule": 0.9}
-        ))
-        store.update_profile(EngineeringProfile(
-            rules=("New rule",),
-            confidence={"New rule": 0.9}
-        ))
+        store.update_profile(
+            EngineeringProfile(rules=("Old rule",), confidence={"Old rule": 0.9})
+        )
+        store.update_profile(
+            EngineeringProfile(rules=("New rule",), confidence={"New rule": 0.9})
+        )
         content = (agent_dir / "engineering_profile.md").read_text()
         assert "Old rule" not in content
         assert "New rule" in content
@@ -288,24 +335,28 @@ class TestL3EngineeringProfile:
         assert profile.rules == ()
 
     def test_get_profile_returns_parsed_content(self, store: MemoryStore) -> None:
-        store.update_profile(EngineeringProfile(
-            rules=("Use service layer",),
-            confidence={"Use service layer": 0.9}
-        ))
+        store.update_profile(
+            EngineeringProfile(
+                rules=("Use service layer",), confidence={"Use service layer": 0.9}
+            )
+        )
         profile = store.get_profile()
         assert profile.rules == ("Use service layer",)
         assert profile.confidence["Use service layer"] == 0.9
 
-    def test_empty_rules_writes_placeholder(self, store: MemoryStore, agent_dir: Path) -> None:
+    def test_empty_rules_writes_placeholder(
+        self, store: MemoryStore, agent_dir: Path
+    ) -> None:
         store.update_profile(EngineeringProfile(rules=(), confidence={}))
         content = (agent_dir / "engineering_profile.md").read_text()
         assert "no rules above confidence threshold" in content
 
-    def test_rule_without_confidence_entry_defaults_to_included(self, store: MemoryStore, agent_dir: Path) -> None:
+    def test_rule_without_confidence_entry_defaults_to_included(
+        self, store: MemoryStore, agent_dir: Path
+    ) -> None:
         # rule with no confidence entry → defaults to 1.0 → included
-        store.update_profile(EngineeringProfile(
-            rules=("Rule with no confidence",),
-            confidence={}
-        ))
+        store.update_profile(
+            EngineeringProfile(rules=("Rule with no confidence",), confidence={})
+        )
         content = (agent_dir / "engineering_profile.md").read_text()
         assert "Rule with no confidence" in content

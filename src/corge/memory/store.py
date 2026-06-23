@@ -87,7 +87,7 @@ class MemoryStore:
 
     def close(self) -> None:
         if getattr(self, "_conn", None) is not None:
-            self._conn.close() # type: ignore
+            self._conn.close()  # type: ignore
             self._conn = None
 
     def __del__(self) -> None:
@@ -280,7 +280,7 @@ class MemoryStore:
         """
         if not self._l3_path.exists():
             return EngineeringProfile()
-            
+
         text = self._l3_path.read_text(encoding="utf-8")
         rules = []
         confidence = {}
@@ -288,12 +288,12 @@ class MemoryStore:
             line = line.strip()
             if line.startswith("- ") and "<!-- confidence:" in line:
                 # e.g., "- Use DTOs  <!-- confidence: 0.95 -->"
-                rule_part = line[2:line.index("<!--")].strip()
+                rule_part = line[2 : line.index("<!--")].strip()
                 try:
                     conf_str = line.split("<!-- confidence:")[1].split("-->")[0].strip()
                     confidence[rule_part] = float(conf_str)
                 except (IndexError, ValueError):
                     confidence[rule_part] = 1.0
                 rules.append(rule_part)
-                
+
         return EngineeringProfile(rules=tuple(rules), confidence=confidence)

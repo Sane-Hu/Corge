@@ -1,6 +1,5 @@
 """Tests for specialized agents."""
 
-
 from corge.agent.coding_agent import CodingAgent
 from corge.agent.planning_agent import PlanningAgent
 from corge.agent.session_controller import SessionController

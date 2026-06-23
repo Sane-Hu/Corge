@@ -71,7 +71,12 @@ class RealCorgeApp(CorgeApp):
                 except Exception:
                     pass
             else:
-                template_path = Path("config.toml.example")
+                template_path = (
+                    Path(__file__).resolve().parent.parent.parent
+                    / "config.toml.example"
+                )
+                if not template_path.exists():
+                    template_path = Path("config.toml.example")
                 if template_path.exists():
                     try:
                         with open(template_path, "rb") as f:
@@ -92,7 +97,7 @@ class RealCorgeApp(CorgeApp):
                 new_cfg = ui.show_provider_config_screen(
                     error_message=error_message,
                     prefill={
-                        "model": prefill.get("model", "deepseek-chat"),
+                        "model": prefill.get("model", ""),
                         "api_key": prefill.get("api_key", ""),
                         "base_url": prefill.get("base_url", ""),
                     },
@@ -135,7 +140,6 @@ class RealCorgeApp(CorgeApp):
             schema_tailor=schema_tailor,
             budget_manager=budget_manager,
         )
-
 
         spec: Specification | None = None
         tech_plan: TechnicalPlan | None = None
@@ -229,9 +233,13 @@ class RealCorgeApp(CorgeApp):
             elif controller.state == LifecycleState.VERIFICATION:
                 assert plan is not None
                 assert spec is not None
-                step = plan.steps[-1] if plan.steps else PlanStep(
-                    identifier="verification",
-                    description="Verification of acceptance criteria",
+                step = (
+                    plan.steps[-1]
+                    if plan.steps
+                    else PlanStep(
+                        identifier="verification",
+                        description="Verification of acceptance criteria",
+                    )
                 )
                 bundle = context_service.retrieve_relevant_context(spec, step)
                 controller.evaluate_completion(plan, bundle)
@@ -253,6 +261,7 @@ class RealCorgeApp(CorgeApp):
     def _update_config_toml(self, new_cfg: dict[str, str]) -> None:
         import tomllib
         from typing import Any
+
         existing: dict[str, Any] = {}
         if self.config_path.exists():
             try:
@@ -262,7 +271,11 @@ class RealCorgeApp(CorgeApp):
                 pass
         else:
             # Prefill from config.toml.example
-            template_path = Path("config.toml.example")
+            template_path = (
+                Path(__file__).resolve().parent.parent.parent / "config.toml.example"
+            )
+            if not template_path.exists():
+                template_path = Path("config.toml.example")
             if template_path.exists():
                 try:
                     with open(template_path, "rb") as f:
@@ -309,20 +322,26 @@ class RealCorgeApp(CorgeApp):
         self.config_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-
 def main() -> None:
     """CLI entrypoint function."""
     if len(sys.argv) > 1:
         target_path = Path(sys.argv[1]).resolve()
     else:
         from corge.ui.directory_selector import choose_directory_cli
+
         target_path = choose_directory_cli()
 
     if not target_path.exists():
         print(f"Error: Target path '{target_path}' does not exist.", file=sys.stderr)
         sys.exit(1)
 
-    config_path = Path("config.toml").resolve()
+    config_path = target_path / ".agent" / "config.toml"
+    if not config_path.exists():
+        if (target_path / "config.toml").exists():
+            config_path = target_path / "config.toml"
+        elif Path("config.toml").exists():
+            config_path = Path("config.toml").resolve()
+
     try:
         app = RealCorgeApp(target_repo=target_path, config_path=config_path)
         app.run()

@@ -40,7 +40,9 @@ def test_load_context_strips_layer_1() -> None:
 
 def test_retrieve_uses_injected_root(tmp_path: pathlib.Path) -> None:
     svc = _make_context_service(root=tmp_path)
-    spec = Specification(title="test", body="test", acceptance_criteria=AcceptanceCriteria(()))
+    spec = Specification(
+        title="test", body="test", acceptance_criteria=AcceptanceCriteria(())
+    )
     step = PlanStep(identifier="step-1", description="test")
     bundle = svc.retrieve_relevant_context(spec, step)
     assert bundle.repository_context.root == tmp_path
@@ -64,7 +66,10 @@ def test_retrieve_relevant_context_markov_chaining() -> None:
 
     assert bundle.markov_context is not None
     assert bundle.markov_context.agent_proposal == "Created database module"
-    assert bundle.markov_context.user_correction == "Actually, use SQLite instead of Postgres"
+    assert (
+        bundle.markov_context.user_correction
+        == "Actually, use SQLite instead of Postgres"
+    )
     assert "Created database module" in bundle.markov_context.compressed_trajectory
 
     # Second call: N-2 gets compressed, N-1 updates

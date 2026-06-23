@@ -143,7 +143,7 @@ class KnowledgeGraph:
 
     def close(self) -> None:
         if getattr(self, "_conn", None) is not None:
-            self._conn.close() # type: ignore
+            self._conn.close()  # type: ignore
             self._conn = None
 
     def __del__(self) -> None:

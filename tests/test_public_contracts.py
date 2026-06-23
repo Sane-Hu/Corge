@@ -257,7 +257,6 @@ def test_tool_runtime_lifecycle(tmp_path: Path) -> None:
     assert test_file.read_text(encoding="utf-8") == "edited"
 
 
-
 # -- Model construction with new fields --------------------------------------
 
 
@@ -333,9 +332,7 @@ def test_tool_result_success_and_stderr() -> None:
     assert ok.success is True
     assert ok.stderr == ""
 
-    fail = ToolResult(
-        action=ToolAction.BASH, output="", success=False, stderr="exit 1"
-    )
+    fail = ToolResult(action=ToolAction.BASH, output="", success=False, stderr="exit 1")
     assert fail.success is False
     assert fail.stderr == "exit 1"
 

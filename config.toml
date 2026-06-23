@@ -1,0 +1,9 @@
+# Corge LLM Provider Configuration
+model = "dwnfkadlfnda"
+api_key = "fjbaefkjewbafj"
+base_url = "kjwebfkjAEWBKL'BFLAWE"
+max_tokens = 4096
+reasoning_effort = "medium"
+enable_prefix_caching = true
+keep_alive = "-1"
+timeout = 120.0

@@ -7,7 +7,7 @@ from corge.contracts import ChatResponse, ProviderPort
 def test_draft_specification_parses_json():
     mock_provider = Mock(spec=ProviderPort)
     mock_provider.chat.return_value = ChatResponse(
-        content='''```json
+        content="""```json
 {
   "title": "Test Title",
   "body": "Test Body",
@@ -15,8 +15,8 @@ def test_draft_specification_parses_json():
   "constraints": "Test constraints",
   "testing_expectations": "Test expectations"
 }
-```''',
-        usage={}
+```""",
+        usage={},
     )
     agent = SpecificationAgent(mock_provider)
     spec = agent.concretize("canvas")
@@ -25,6 +25,7 @@ def test_draft_specification_parses_json():
     assert len(spec.acceptance_criteria.items) == 2
     assert spec.constraints == "Test constraints"
     assert spec.testing_expectations == "Test expectations"
+
 
 def test_draft_specification_fallback():
     mock_provider = Mock(spec=ProviderPort)
@@ -35,22 +36,24 @@ def test_draft_specification_fallback():
     assert spec.body == "canvas text"
     assert len(spec.acceptance_criteria.items) == 0
 
+
 def test_analyze_specification_gaps_parses_json():
     mock_provider = Mock(spec=ProviderPort)
     mock_provider.chat.return_value = ChatResponse(
-        content='''```json
+        content="""```json
   [
     {
       "topic": "Missing auth logic"
     }
   ]
-```''',
-        usage={}
+```""",
+        usage={},
     )
     agent = SpecificationAgent(mock_provider)
     gaps = agent.analyze_specification_gaps("canvas")
     assert len(gaps) == 1
     assert gaps[0].topic == "Missing auth logic"
+
 
 def test_analyze_specification_gaps_fallback():
     mock_provider = Mock(spec=ProviderPort)
@@ -59,23 +62,25 @@ def test_analyze_specification_gaps_fallback():
     gaps = agent.analyze_specification_gaps("canvas")
     assert gaps == ()
 
+
 def test_socratic_loop_records_real_answer():
     from corge.contracts import ArgumentationLogPort, UiPort
+
     mock_provider = Mock(spec=ProviderPort)
     mock_provider.chat.side_effect = [
         ChatResponse(content='{"title": "Title"}', usage={}),
         ChatResponse(content='[{"topic": "Auth"}]', usage={}),
-        ChatResponse(content='Question 1?', usage={}),
+        ChatResponse(content="Question 1?", usage={}),
     ]
-    
+
     mock_ui = Mock(spec=UiPort)
     mock_ui.show_question.return_value = "My answer"
-    
+
     mock_arg_log = Mock(spec=ArgumentationLogPort)
-    
+
     agent = SpecificationAgent(mock_provider)
     agent.run_socratic_loop("canvas", mock_arg_log, mock_ui)
-    
+
     mock_arg_log.record_entry.assert_called_once()
     entry = mock_arg_log.record_entry.call_args[0][0]
     assert entry.answer == "My answer"

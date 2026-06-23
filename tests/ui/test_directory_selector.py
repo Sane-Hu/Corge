@@ -40,7 +40,7 @@ def test_choose_directory_cli_navigate_into_subdir(tmp_path: Path) -> None:
     child1.mkdir()
     child2 = tmp_path / "subdir_b"
     child2.mkdir()
-    
+
     # subdir_a will be index 4, subdir_b index 5
     with patch("builtins.input", side_effect=["4", "0"]):
         res = choose_directory_cli(tmp_path)

@@ -148,9 +148,7 @@ class CodingAgent:
                 try:
                     action = ToolAction(action_str)
                 except ValueError as exc:
-                    raise ToolExecutionError(
-                        f"Unknown action: {action_str!r}"
-                    ) from exc
+                    raise ToolExecutionError(f"Unknown action: {action_str!r}") from exc
 
                 target = action_dict.get("target", "")
 

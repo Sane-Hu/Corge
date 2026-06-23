@@ -48,6 +48,7 @@ _COMPRESSED_HISTORY_LIMIT = 5  # max N-2…N-Start entries to keep
 
 _log = logging.getLogger(__name__)
 
+
 class ContextService:
     """Concrete context service.  Satisfies ``contracts.ContextPort``.
 
@@ -193,7 +194,10 @@ class ContextService:
                         for entry in raw
                     )
                 except (
-                    json.JSONDecodeError, FileNotFoundError, OSError, KeyError
+                    json.JSONDecodeError,
+                    FileNotFoundError,
+                    OSError,
+                    KeyError,
                 ) as exc:
                     _log.warning("Failed to load scenario memory: %s", exc)
 

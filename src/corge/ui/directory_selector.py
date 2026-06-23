@@ -18,11 +18,13 @@ def choose_directory_cli(start_path: Path | None = None) -> Path:
 
         # Gather visible subdirectories
         try:
-            subdirs = sorted([
-                p
-                for p in current.iterdir()
-                if p.is_dir() and not p.name.startswith(".")
-            ])
+            subdirs = sorted(
+                [
+                    p
+                    for p in current.iterdir()
+                    if p.is_dir() and not p.name.startswith(".")
+                ]
+            )
         except PermissionError:
             print("Error: Permission denied to read this directory.")
             subdirs = []
@@ -64,9 +66,7 @@ def choose_directory_cli(start_path: Path | None = None) -> Path:
                     current = p
                 elif not p.exists():
                     create_choice = (
-                        input(
-                            f"Directory '{p}' does not exist. Create it? (y/n): "
-                        )
+                        input(f"Directory '{p}' does not exist. Create it? (y/n): ")
                         .strip()
                         .lower()
                     )

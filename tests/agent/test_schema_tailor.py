@@ -1,7 +1,5 @@
 """Tests for the schema tailor (Argument of Specs RD § 2, Layer 1)."""
 
-
-
 from corge.agent.schema_tailor import SchemaTailor
 from corge.contracts import (
     GraphNode,
@@ -83,4 +81,3 @@ def test_fetch_laravel_schema() -> None:
     tailor = SchemaTailor(_MockKnowledgeGraph())
     schema = tailor.fetch_schema("laravel")
     assert schema.get("name") == "Laravel"
-

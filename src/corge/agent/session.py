@@ -97,9 +97,7 @@ def save_session(agent_dir: Path, state: SessionState) -> None:
         "technical_plan": (
             dataclasses.asdict(state.technical_plan) if state.technical_plan else None
         ),
-        "procedural_steps": [
-            dataclasses.asdict(s) for s in state.procedural_steps
-        ],
+        "procedural_steps": [dataclasses.asdict(s) for s in state.procedural_steps],
         "repo_root": str(state.repo_root) if state.repo_root else None,
     }
 
@@ -184,8 +182,7 @@ def load_session(agent_dir: Path) -> SessionState | None:
                     )
                 )
             plan = Plan(
-                steps=tuple(steps),
-                specification_ref=pd.get("specification_ref", "")
+                steps=tuple(steps), specification_ref=pd.get("specification_ref", "")
             )
         except Exception:
             pass

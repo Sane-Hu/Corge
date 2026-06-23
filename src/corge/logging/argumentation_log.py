@@ -19,6 +19,7 @@ from corge.contracts import ArgumentationEntry, CanvasSnapshot
 
 _log = logging.getLogger(__name__)
 
+
 class ArgumentationLog:
     """Concrete argumentation log.  Satisfies ``contracts.ArgumentationLogPort``."""
 

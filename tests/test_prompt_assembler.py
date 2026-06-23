@@ -59,10 +59,15 @@ def _make_bundle(**overrides: object) -> ContextBundle:
 class DummyContextPort:
     def load_context(self, repository_context: RepositoryContext) -> ContextBundle:
         return _make_bundle()
+
     def refresh_context(self, repository_context: RepositoryContext) -> ContextBundle:
         return _make_bundle()
-    def retrieve_relevant_context(self, specification: Specification, step: PlanStep) -> ContextBundle:
+
+    def retrieve_relevant_context(
+        self, specification: Specification, step: PlanStep
+    ) -> ContextBundle:
         return _make_bundle()
+
     def update_markov_state(self, result: str, correction: str = "") -> None:
         pass
 
@@ -70,6 +75,7 @@ class DummyContextPort:
 class DummySchemaTailor:
     def detect_framework(self) -> str | None:
         return None
+
     def fetch_schema(self, framework_id: str | None) -> dict[str, object]:
         return {}
 
@@ -77,20 +83,27 @@ class DummySchemaTailor:
 class DummyBudgetManager:
     def estimate_tokens(self, context: ContextBundle) -> int:
         return 10
+
     def rank_context(self, context: ContextBundle) -> ContextBundle:
         return context
+
     def clip(self, context: ContextBundle, token_limit: int) -> ContextBundle:
         return context
+
     def deduplicate(self, context: ContextBundle) -> ContextBundle:
         return context
+
     def summarize(self, context: ContextBundle) -> str:
         return ""
+
     def compact(self, context: ContextBundle) -> ContextBundle:
         return context
 
 
 def _make_assembler() -> PromptAssembler:
-    return PromptAssembler(DummyContextPort(), DummySchemaTailor(), DummyBudgetManager())
+    return PromptAssembler(
+        DummyContextPort(), DummySchemaTailor(), DummyBudgetManager()
+    )
 
 
 def test_assemble_prompt_includes_tier1_always() -> None:
@@ -241,7 +254,12 @@ def test_assemble_prompt_includes_current_step_when_id_matches() -> None:
 
 def test_assemble_prompt_includes_engineering_facts() -> None:
     assembler = _make_assembler()
-    bundle = _make_bundle(engineering_facts=("Always use strict typing", "No external calls in unit tests"))
+    bundle = _make_bundle(
+        engineering_facts=(
+            "Always use strict typing",
+            "No external calls in unit tests",
+        )
+    )
 
     prompt = assembler.assemble_prompt(bundle)
 
@@ -252,6 +270,7 @@ def test_assemble_prompt_includes_engineering_facts() -> None:
 
 def test_assemble_prompt_calls_schema_tailor() -> None:
     from unittest.mock import MagicMock
+
     st = MagicMock(spec=DummySchemaTailor)
     st.detect_framework.return_value = "react"
     st.fetch_schema.return_value = {"key": "value"}
@@ -269,6 +288,7 @@ def test_assemble_prompt_calls_compact_when_over_budget() -> None:
     from unittest.mock import MagicMock
 
     from corge.prompt_assembler.assembler import _TOKEN_BUDGET
+
     bm = MagicMock(spec=DummyBudgetManager)
     bm.estimate_tokens.return_value = _TOKEN_BUDGET + 1
     bm.compact.return_value = _make_bundle()

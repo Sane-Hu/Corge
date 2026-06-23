@@ -16,6 +16,7 @@ from corge.contracts import ArgumentationLogPort, HeuristicConfig
 
 _log = logging.getLogger(__name__)
 
+
 class BayesianUpdater:
     """Concrete implementation of HeuristicUpdaterPort."""
 
@@ -48,6 +49,7 @@ class BayesianUpdater:
             return HeuristicConfig()
         try:
             import tomllib
+
             with path.open("rb") as f:
                 data = tomllib.load(f)
             default_config = HeuristicConfig()

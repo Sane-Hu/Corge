@@ -77,9 +77,7 @@ class BudgetManager:
         # Deduplicate older reads/actions in the transcript.
         # We keep the LATEST occurrence.
         # Reverse, deduplicate, then reverse back.
-        unique_actions_reversed = list(
-            dict.fromkeys(reversed(context.recent_actions))
-        )
+        unique_actions_reversed = list(dict.fromkeys(reversed(context.recent_actions)))
         unique_actions = tuple(reversed(unique_actions_reversed))
 
         return dataclasses.replace(

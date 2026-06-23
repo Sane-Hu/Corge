@@ -27,5 +27,6 @@ def test_markov_context_is_frozen() -> None:
     """MarkovStepContext is immutable."""
     ctx = MarkovStepContext(agent_proposal="a", user_correction="b")
     import pytest
+
     with pytest.raises(AttributeError):
         ctx.agent_proposal = "changed"  # type: ignore[misc]

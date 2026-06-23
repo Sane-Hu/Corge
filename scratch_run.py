@@ -170,8 +170,10 @@ class ScratchApp(CorgeApp):
             elif controller.state == LifecycleState.EXECUTION:
                 assert spec is not None
                 assert plan is not None
-                step = plan.steps[0] if plan.steps else PlanStep(
-                    identifier="mock", description="mock step"
+                step = (
+                    plan.steps[0]
+                    if plan.steps
+                    else PlanStep(identifier="mock", description="mock step")
                 )
                 bundle = context_service.retrieve_relevant_context(spec, step)
                 ui.show_execution(bundle)
@@ -185,8 +187,10 @@ class ScratchApp(CorgeApp):
             elif controller.state == LifecycleState.VERIFICATION:
                 assert plan is not None
                 assert spec is not None
-                step = plan.steps[-1] if plan.steps else PlanStep(
-                    identifier="mock", description="mock step"
+                step = (
+                    plan.steps[-1]
+                    if plan.steps
+                    else PlanStep(identifier="mock", description="mock step")
                 )
                 bundle = context_service.retrieve_relevant_context(spec, step)
                 controller.evaluate_completion(plan, bundle)

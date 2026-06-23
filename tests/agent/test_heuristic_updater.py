@@ -107,9 +107,7 @@ def test_abandonment_penalty_decreases_base_engagement(agent_dir: Path) -> None:
 
 def test_persistence_survives_reinitialisation(agent_dir: Path) -> None:
     """Heuristics written to disk are loaded correctly on next instantiation."""
-    entries = (
-        ArgumentationEntry(question="db", answer="pg", was_user_override=False),
-    )
+    entries = (ArgumentationEntry(question="db", answer="pg", was_user_override=False),)
     log1 = _make_log(*entries)
     u1 = BayesianUpdater(agent_dir, log1)
     u1.run_batch_update(abandoned=False)

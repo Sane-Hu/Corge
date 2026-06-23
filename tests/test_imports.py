@@ -24,4 +24,3 @@ def test_public_modules_import_cleanly() -> None:
     for module_name in module_names:
         module = importlib.import_module(module_name)
         assert module is not None
-

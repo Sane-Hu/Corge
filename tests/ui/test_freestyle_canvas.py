@@ -30,9 +30,7 @@ def repo_with_file(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def _validate_sticky(
-    kg: KnowledgeGraph, note: StickyNote
-) -> StickyNote:
+def _validate_sticky(kg: KnowledgeGraph, note: StickyNote) -> StickyNote:
     """Check if the sticky note's node still exists in the graph."""
     result = kg.query_graph(GraphQuery(expression=f"node:{note.node_id}"))
     if not result.nodes:
@@ -60,9 +58,12 @@ def test_sticky_note_active_when_node_exists(
     assert validated.status == StickyNoteStatus.ACTIVE
 
 
-def test_sticky_note_validator_returns_active_for_unknown_node_when_no_validator() -> None:
+def test_sticky_note_validator_returns_active_for_unknown_node_when_no_validator() -> (
+    None
+):
     """CanvasScreen defaults to ACTIVE when no validator is provided."""
     from corge.ui.freestyle_canvas import CanvasScreen
+
     canvas = CanvasScreen(validator=None)
     assert canvas._validate_node("anything") == StickyNoteStatus.ACTIVE
 
@@ -83,6 +84,7 @@ def test_sticky_note_invalid_when_node_deleted(
     # Delete the file, triggering a graph update
     (repo_with_file / "src" / "auth_service.py").unlink()
     from corge.contracts import GraphUpdate
+
     kg.update_graph(GraphUpdate(paths=(repo_with_file / "src" / "auth_service.py",)))
 
     validated = _validate_sticky(kg, note)
@@ -106,9 +108,7 @@ def test_canvas_snapshot_concretized_ranges() -> None:
     assert snap.concretized_ranges == ((0, 1),)
 
 
-def test_fuzzy_search_finds_partial_match(
-    repo_with_file: Path, tmp_path: Path
-) -> None:
+def test_fuzzy_search_finds_partial_match(repo_with_file: Path, tmp_path: Path) -> None:
     """Discovery mode fuzzy search finds nodes by partial keyword."""
     db = tmp_path / "test.db"
     kg = KnowledgeGraph(db_path=db)
