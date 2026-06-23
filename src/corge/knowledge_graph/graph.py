@@ -24,9 +24,9 @@ from __future__ import annotations
 
 import ast
 import sqlite3
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator
 
 from corge.contracts import (
     GraphNode,
@@ -154,7 +154,7 @@ class KnowledgeGraph:
     # ------------------------------------------------------------------
 
     @contextmanager
-    def _get_conn(self) -> Iterator[sqlite3.Connection]:
+    def _get_conn(self) -> Generator[sqlite3.Connection, None, None]:
         if self._conn is None:
             if self._db_path is None:
                 raise RuntimeError(

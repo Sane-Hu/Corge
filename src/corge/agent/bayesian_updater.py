@@ -10,11 +10,9 @@ Spec traceability:
 
 import json
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 
 from corge.contracts import ArgumentationLogPort, HeuristicConfig
-
 
 _log = logging.getLogger(__name__)
 
@@ -52,12 +50,16 @@ class BayesianUpdater:
             import tomllib
             with path.open("rb") as f:
                 data = tomllib.load(f)
-            
             default_config = HeuristicConfig()
+            delta_clip = data.get("delta_clip_max", default_config.delta_clip_max)
+            penalty = data.get(
+                "abandonment_penalty", default_config.abandonment_penalty
+            )
+            decay = data.get("decay_rate", default_config.decay_rate)
             return HeuristicConfig(
-                delta_clip_max=data.get("delta_clip_max", default_config.delta_clip_max),
-                abandonment_penalty=data.get("abandonment_penalty", default_config.abandonment_penalty),
-                decay_rate=data.get("decay_rate", default_config.decay_rate),
+                delta_clip_max=delta_clip,
+                abandonment_penalty=penalty,
+                decay_rate=decay,
             )
         except Exception as exc:
             _log.warning("Failed to load heuristics config: %s", exc)

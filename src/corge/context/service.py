@@ -13,16 +13,14 @@ Spec traceability:
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import json
 import logging
 import sqlite3
+from pathlib import Path
 
 from corge.contracts import (
     AcceptanceCriteria,
     ContextBundle,
-    EngineeringProfile,
     GraphQuery,
     KnowledgeGraphPort,
     MarkovStepContext,
@@ -194,7 +192,9 @@ class ContextService:
                         )
                         for entry in raw
                     )
-                except (json.JSONDecodeError, FileNotFoundError, OSError, KeyError) as exc:
+                except (
+                    json.JSONDecodeError, FileNotFoundError, OSError, KeyError
+                ) as exc:
                     _log.warning("Failed to load scenario memory: %s", exc)
 
         return ContextBundle(

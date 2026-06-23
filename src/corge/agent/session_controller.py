@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from corge.agent.coding_agent import CodingAgent
 from corge.agent.planning_agent import PlanningAgent
+from corge.agent.session import SessionState
 from corge.agent.specification_agent import SpecificationAgent
 from corge.contracts import (
     ApprovalGatewayPort,
@@ -37,7 +38,6 @@ from corge.contracts import (
     ToolRuntimePort,
     UiPort,
 )
-from corge.agent.session import SessionState
 from corge.prompt_assembler import PromptAssembler
 
 # ---------------------------------------------------------------------------

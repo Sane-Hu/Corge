@@ -77,7 +77,10 @@ class ToolRuntime:
                 action=ToolAction.EDIT,
                 output="",
                 success=False,
-                stderr=f"String not found in {path}. Make sure to include exact whitespace.",
+                stderr=(
+                    f"String not found in {path}. "
+                    "Make sure to include exact whitespace."
+                ),
             )
         if occurrences > 1:
             return ToolResult(
@@ -85,8 +88,10 @@ class ToolRuntime:
                 output="",
                 success=False,
                 stderr=(
-                    f"Ambiguous edit: old string appears {occurrences} times in {path}. "
-                    "Include more surrounding context in 'old' to uniquely identify the target."
+                    f"Ambiguous edit: old string appears {occurrences} "
+                    f"times in {path}. "
+                    "Include more surrounding context in 'old' "
+                    "to uniquely identify the target."
                 ),
             )
 

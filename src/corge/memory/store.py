@@ -20,10 +20,11 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from corge.contracts import EngineeringProfile, MemoryEvent
 
@@ -154,7 +155,7 @@ class MemoryStore:
             return [r[0] for r in rows]
 
     @contextmanager
-    def _l1_connect(self) -> Iterator[sqlite3.Connection]:
+    def _l1_connect(self) -> Generator[sqlite3.Connection, None, None]:
         if self._conn is None:
             self._agent_dir.mkdir(parents=True, exist_ok=True)
             self._conn = sqlite3.connect(self._l1_path, check_same_thread=False)
