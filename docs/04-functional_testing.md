@@ -112,19 +112,34 @@ Use this empty directory as the target. Corge must be able to scaffold the proje
 
 ### 3.1 Launch Corge
 
+There are two ways to target a repository:
+
+**Option A: Launch with path argument**
+Provide the path directly as a command-line argument:
+```bash
+uv run python -m corge /path/to/target/repository
+```
+
+**Option B: Launch interactively**
+Run without arguments to launch the interactive CLI directory explorer:
 ```bash
 uv run python -m corge
 ```
 
 > **Note**: Replace `python -m corge` with the actual entry-point command once the CLI entrypoint is finalized in `pyproject.toml`. The invocation may also be `uv run corge` if a `[project.scripts]` entry exists.
 
-**Expected**: The Textual TUI opens. The UI transitions to the `REPOSITORY_SELECTION` lifecycle state.
+**Expected (Option B)**: An interactive selection menu is displayed in the terminal where you can:
+- Press `0` to select the current directory.
+- Press `1` to navigate up a level.
+- Press `2` to create a new directory.
+- Press `3` to input a path manually.
+- Press any number `4` or greater to navigate into subdirectories.
 
 ### 3.2 Select the target repository
 
-When prompted, provide the absolute path to the target repository (Phase 2).
+Complete the selection using Option A or Option B above.
 
-**Expected**: The agent enters `REPOSITORY_ANALYSIS`. The TUI displays repository context (file count, detected tech stack, knowledge graph summary). The `.agent/` directory is created inside the target repository with:
+**Expected**: The Textual TUI opens and the agent enters `REPOSITORY_ANALYSIS`. The TUI displays repository context (file count, detected tech stack, knowledge graph summary). The `.agent/` directory is created inside the target repository with:
 
 ```text
 .agent/

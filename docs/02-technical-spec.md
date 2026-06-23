@@ -38,7 +38,7 @@ The directory structure maps directly to the 8 logical modules defined in the sy
 *   **1. Shared Contracts Layer (`src/corge/contracts/`)**
     *   Defines the public interfaces ([ports.py](src/corge/contracts/ports.py)), dataclasses ([models.py](src/corge/contracts/models.py)), and enum states ([lifecycle.py](src/corge/contracts/lifecycle.py)).
 *   **2. UI Module (`src/corge/ui/`)**
-    *   A pure CLI presentation layer ([cli.py](src/corge/ui/cli.py)) with zero business logic. Contains the `CanvasScreen`, `InteractiveDiffScreen`, and `MessageScreen` Textual screens.
+    *   A pure CLI presentation layer ([cli.py](src/corge/ui/cli.py)) with zero business logic. Contains the `CanvasScreen`, `InteractiveDiffScreen`, and `MessageScreen` Textual screens, and an interactive CLI directory selector and creator ([directory_selector.py](src/corge/ui/directory_selector.py)).
 *   **3. Agent Modules (`src/corge/agent/`)**
     *   Orchestration state machines (`SessionController`, `SpecificationAgent`, `PlanningAgent`, `CodingAgent`) and utility services (`SchemaTailor` for stack detection and YAML parser, `HeuristicUpdater` for spec optimization).
 *   **4. Context Engineering Modules**
@@ -222,7 +222,7 @@ Where:
 
 ## 5. TUI Screen Map
 
-The presentation layer utilizes three fundamental UI screens within [cli.py](src/corge/ui/cli.py) to manage the interactive user loops:
+The presentation layer utilizes an interactive pre-TUI CLI directory selection menu ([directory_selector.py](src/corge/ui/directory_selector.py)) and three fundamental UI screens within [cli.py](src/corge/ui/cli.py) to manage the interactive user loops:
 
 ```text
                             ┌────────────────────────────────────────┐
