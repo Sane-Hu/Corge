@@ -85,7 +85,8 @@ def choose_directory_cli(start_path: Path | None = None) -> Path:
                     current = subdirs[idx - 4]
                 else:
                     print(
-                        "Invalid choice. Please select one of the listed option numbers."
+                        "Invalid choice. Please select one of the "
+                        "listed option numbers."
                     )
             except ValueError:
                 print("Invalid choice. Please enter a valid number.")

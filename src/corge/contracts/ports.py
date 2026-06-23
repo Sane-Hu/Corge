@@ -88,6 +88,11 @@ class UiPort(Protocol):
 
     def show_completion_review(self, plan: Plan) -> None: ...
 
+    def show_provider_config_screen(
+        self, error_message: str | None = None, prefill: dict[str, str] | None = None
+    ) -> dict[str, str] | None: ...
+
+
 
 # ---------------------------------------------------------------------------
 # Sticky note validator (FR-018)

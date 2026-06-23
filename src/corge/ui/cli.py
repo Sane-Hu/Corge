@@ -34,6 +34,7 @@ from corge.contracts import (
 )
 from corge.ui.freestyle_canvas import CanvasScreen
 from corge.ui.interactive_diff import InteractiveDiffScreen
+from corge.ui.provider_config import ProviderConfigScreen
 
 
 class MessageScreen(Screen[None]):
@@ -331,3 +332,13 @@ class CliUi(UiPort):
         # todo: simplistic raw log dump; upgrade path: parse JSONL into
         # an interactive data table.
         self._run_screen(MessageScreen("Logs", msg))
+
+    def show_provider_config_screen(
+        self, error_message: str | None = None, prefill: dict[str, str] | None = None
+    ) -> dict[str, str] | None:
+        """Present the provider configuration screen to the user."""
+        res: dict[str, str] | None = self._run_screen(
+            ProviderConfigScreen(error_message=error_message, prefill=prefill)
+        )
+        return res
+

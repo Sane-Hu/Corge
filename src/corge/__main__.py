@@ -54,8 +54,63 @@ class RealCorgeApp(CorgeApp):
         agent_dir.mkdir(parents=True, exist_ok=True)
 
         # 1. Instantiate concrete implementations
-        provider = bootstrap_provider(self.config_path)
         knowledge_graph = KnowledgeGraph(agent_dir / "kg")
+        validator = StickyNoteValidator(knowledge_graph)
+        ui = CliUi(self, validator)
+
+        provider = None
+        error_message = None
+        import tomllib
+
+        while provider is None:
+            prefill = {}
+            if self.config_path.exists():
+                try:
+                    with open(self.config_path, "rb") as f:
+                        prefill = tomllib.load(f)
+                except Exception:
+                    pass
+            else:
+                template_path = Path("config.toml.example")
+                if template_path.exists():
+                    try:
+                        with open(template_path, "rb") as f:
+                            prefill = tomllib.load(f)
+                    except Exception:
+                        pass
+
+            if prefill.get("api_key") == "your-api-key-here":
+                prefill["api_key"] = ""
+
+            # Check if we should prompt the user
+            should_prompt = (
+                not self.config_path.exists()
+                or prefill.get("api_key") == ""
+                or error_message
+            )
+            if should_prompt:
+                new_cfg = ui.show_provider_config_screen(
+                    error_message=error_message,
+                    prefill={
+                        "model": prefill.get("model", "deepseek-chat"),
+                        "api_key": prefill.get("api_key", ""),
+                        "base_url": prefill.get("base_url", ""),
+                    },
+                )
+                if not new_cfg:
+                    try:
+                        self.call_from_thread(self.exit)
+                    except Exception:
+                        pass
+                    return
+                self._update_config_toml(new_cfg)
+                error_message = None
+
+            try:
+                provider = bootstrap_provider(self.config_path)
+            except (FileNotFoundError, ValueError, ConnectionError) as e:
+                error_message = str(e)
+
         memory_store = MemoryStore(self.target_repo)
         context_service = ContextService(
             knowledge_graph, memory_store, self.target_repo
@@ -66,8 +121,6 @@ class RealCorgeApp(CorgeApp):
         argumentation_log = ArgumentationLog(agent_dir)
         tool_runtime = ToolRuntime()
 
-        validator = StickyNoteValidator(knowledge_graph)
-        ui = CliUi(self, validator)
         approval_gateway = ApprovalGateway(ui, audit_logger)
         heuristic_updater = BayesianUpdater(agent_dir, argumentation_log)
 
@@ -82,6 +135,7 @@ class RealCorgeApp(CorgeApp):
             schema_tailor=schema_tailor,
             budget_manager=budget_manager,
         )
+
 
         spec: Specification | None = None
         tech_plan: TechnicalPlan | None = None
@@ -195,6 +249,65 @@ class RealCorgeApp(CorgeApp):
             self.call_from_thread(self.exit)
         except Exception:
             pass
+
+    def _update_config_toml(self, new_cfg: dict[str, str]) -> None:
+        import tomllib
+        from typing import Any
+        existing: dict[str, Any] = {}
+        if self.config_path.exists():
+            try:
+                with open(self.config_path, "rb") as f:
+                    existing = tomllib.load(f)
+            except Exception:
+                pass
+        else:
+            # Prefill from config.toml.example
+            template_path = Path("config.toml.example")
+            if template_path.exists():
+                try:
+                    with open(template_path, "rb") as f:
+                        existing = tomllib.load(f)
+                except Exception:
+                    pass
+
+        # Update fields from editor
+        existing["model"] = new_cfg["model"]
+        existing["api_key"] = new_cfg["api_key"]
+        existing["base_url"] = new_cfg.get("base_url", "")
+
+        # Make sure standard defaults exist if missing
+        if "max_tokens" not in existing:
+            existing["max_tokens"] = 4096
+        if "keep_alive" not in existing:
+            existing["keep_alive"] = "-1"
+        if "timeout" not in existing:
+            existing["timeout"] = 120.0
+        if "enable_prefix_caching" not in existing:
+            existing["enable_prefix_caching"] = True
+
+        # Custom flat-dictionary to TOML serializer
+        lines = ["# Corge LLM Provider Configuration"]
+        extra_headers = {}
+        for k, v in existing.items():
+            if k == "extra_headers":
+                extra_headers = v
+                continue
+            if v is None:
+                continue
+            if isinstance(v, bool):
+                lines.append(f"{k} = {str(v).lower()}")
+            elif isinstance(v, (int, float)):
+                lines.append(f"{k} = {v}")
+            else:
+                lines.append(f'{k} = "{v}"')
+
+        if extra_headers:
+            lines.append("\n[extra_headers]")
+            for hk, hv in extra_headers.items():
+                lines.append(f'{hk} = "{hv}"')
+
+        self.config_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
 
 
 def main() -> None:
