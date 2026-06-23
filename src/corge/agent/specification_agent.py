@@ -140,37 +140,42 @@ class SpecificationAgent:
         finally:
             ui.hide_loading()
 
-        # Step 3: For each gap, formulate and log a Socratic question
-        now = datetime.now(UTC).isoformat()
-        for gap in gaps:
-            ui.show_loading(f"Formulating question for gap: {gap.topic}...")
-            try:
-                question = self._formulate_question(gap.topic, spec)
-            finally:
-                ui.hide_loading()
-            answer = ui.show_question(question, canvas_text)
+        if not gaps:
+            return spec, gaps
 
-            argumentation_log.record_entry(
-                ArgumentationEntry(
-                    question=question,
-                    answer=answer,
-                    timestamp=now,
-                    was_user_override=False,
-                )
+        # Step 3: Formulate and log bulk Socratic questions
+        now = datetime.now(UTC).isoformat()
+        ui.show_loading("Formulating clarifying questions...")
+        try:
+            questions = self._formulate_bulk_questions(gaps, spec)
+        finally:
+            ui.hide_loading()
+
+        answers = ui.show_question(questions, canvas_text)
+
+        argumentation_log.record_entry(
+            ArgumentationEntry(
+                question=questions,
+                answer=answers,
+                timestamp=now,
+                was_user_override=False,
             )
+        )
 
         return spec, gaps
 
-    def _formulate_question(self, topic: str, spec: Specification) -> str:
-        """Ask the model to generate a targeted clarifying question for a gap."""
+    def _formulate_bulk_questions(
+        self, gaps: tuple[SemanticGap, ...], spec: Specification
+    ) -> str:
+        """Ask the model to generate a targeted clarifying question for all gaps."""
+        topics = "\n".join(f"- {gap.topic}" for gap in gaps)
         prompt = (
             "You are a Socratic specification reviewer.\n"
-            f"The following specification has an unresolved gap about: {topic!r}\n"
+            f"The following specification has unresolved gaps:\n{topics}\n\n"
             f"Specification title: {spec.title}\n"
             f"Specification body: {spec.body[:500]}\n\n"
-            "Write ONE concise clarifying question (max 2 sentences) to "
-            "resolve this gap.\n"
-            "Return ONLY the question, no preamble."
+            "Write a concise numbered list of clarifying questions to resolve these gaps.\n"
+            "Return ONLY the questions, no preamble."
         )
         msg = ProviderMessage(role="user", content=prompt)
         response = self._provider.chat((msg,))

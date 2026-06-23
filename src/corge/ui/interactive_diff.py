@@ -43,6 +43,8 @@ class InteractiveDiffScreen(Screen[str]):
         right_title: str,
         right_text: str,
         prompt_text: str = "Review and edit if needed. Click Approve to continue.",
+        approve_text: str = "Approve",
+        reject_text: str = "Reject",
     ) -> None:
         super().__init__()
         self._left_title = left_title
@@ -50,6 +52,8 @@ class InteractiveDiffScreen(Screen[str]):
         self._right_title = right_title
         self._right_text = right_text
         self._prompt_text = prompt_text
+        self._approve_text = approve_text
+        self._reject_text = reject_text
 
     def compose(self) -> ComposeResult:
         with Horizontal(classes="panes"):
@@ -62,8 +66,8 @@ class InteractiveDiffScreen(Screen[str]):
                 yield self.right_area
         with Horizontal(classes="footer"):
             yield Static(self._prompt_text + "  ")
-            yield Button("Approve", id="approve", variant="success")
-            yield Button("Reject", id="reject", variant="error")
+            yield Button(self._approve_text, id="approve", variant="success")
+            yield Button(self._reject_text, id="reject", variant="error")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "approve":

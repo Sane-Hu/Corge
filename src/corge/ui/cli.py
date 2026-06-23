@@ -169,11 +169,13 @@ class CliUi(UiPort):
         """Display a Socratic question and return the user's answer."""
         result_text = self._run_screen(
             InteractiveDiffScreen(
-                left_title="Context",
-                left_text=context,
-                right_title="Clarifying Question",
-                right_text=question,
-                prompt_text="Please provide an answer to the question above.",
+                left_title="Clarifying Questions",
+                left_text=question,
+                right_title="Your Answers",
+                right_text="",
+                prompt_text="Please provide your answers. Click Submit when done.",
+                approve_text="Submit Answers",
+                reject_text="Skip",
             )
         )
         return result_text or ""
