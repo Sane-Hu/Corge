@@ -132,16 +132,22 @@ class SpecificationAgent:
 
         Returns the concretized Specification and any remaining unresolved gaps.
         """
-        # Step 1: Concretize canvas into structured spec
-        spec = self.concretize(canvas_text)
-
-        # Step 2: Identify gaps in the concretized spec
-        gaps = self.analyze_specification_gaps(spec.body or canvas_text)
+        # Step 1 & 2: Concretize canvas and identify gaps
+        ui.show_loading("Concretizing specification...")
+        try:
+            spec = self.concretize(canvas_text)
+            gaps = self.analyze_specification_gaps(spec.body or canvas_text)
+        finally:
+            ui.hide_loading()
 
         # Step 3: For each gap, formulate and log a Socratic question
         now = datetime.now(UTC).isoformat()
         for gap in gaps:
-            question = self._formulate_question(gap.topic, spec)
+            ui.show_loading(f"Formulating question for gap: {gap.topic}...")
+            try:
+                question = self._formulate_question(gap.topic, spec)
+            finally:
+                ui.hide_loading()
             answer = ui.show_question(question, canvas_text)
 
             argumentation_log.record_entry(

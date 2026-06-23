@@ -178,14 +178,22 @@ class RealCorgeApp(CorgeApp):
 
             elif controller.state == LifecycleState.PLAN_GENERATION:
                 assert spec is not None
-                tech_plan = controller.generate_technical_plan(spec)
+                ui.show_loading("Generating technical plan...")
+                try:
+                    tech_plan = controller.generate_technical_plan(spec)
+                finally:
+                    ui.hide_loading()
                 tech_plan = ui.show_tech_plan_editor(tech_plan)
                 controller.advance()
 
             elif controller.state == LifecycleState.PLAN_REVIEW:
                 assert tech_plan is not None
                 assert spec is not None
-                proc_steps = controller.generate_procedural_steps(tech_plan)
+                ui.show_loading("Generating procedural steps...")
+                try:
+                    proc_steps = controller.generate_procedural_steps(tech_plan)
+                finally:
+                    ui.hide_loading()
                 proc_steps = ui.show_procedural_steps_editor(proc_steps)
 
                 plan = Plan(
@@ -211,7 +219,11 @@ class RealCorgeApp(CorgeApp):
                 for i, step in enumerate(plan.steps):
                     bundle = context_service.retrieve_relevant_context(spec, step)
                     ui.show_execution(bundle)
-                    controller.execute_step(step, bundle)
+                    ui.show_loading(f"Executing step: {step.identifier}...")
+                    try:
+                        controller.execute_step(step, bundle)
+                    finally:
+                        ui.hide_loading()
                     updated_steps[i] = dataclasses.replace(step, completed=True)
 
                 plan = dataclasses.replace(plan, steps=tuple(updated_steps))
@@ -229,7 +241,11 @@ class RealCorgeApp(CorgeApp):
                     )
                 )
                 bundle = context_service.retrieve_relevant_context(spec, step)
-                controller.evaluate_completion(plan, bundle)
+                ui.show_loading("Verifying completion...")
+                try:
+                    controller.evaluate_completion(plan, bundle)
+                finally:
+                    ui.hide_loading()
                 controller.advance()
 
             elif controller.state == LifecycleState.COMPLETION_REVIEW:

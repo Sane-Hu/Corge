@@ -92,6 +92,10 @@ class UiPort(Protocol):
         self, error_message: str | None = None, prefill: dict[str, str] | None = None
     ) -> dict[str, str] | None: ...
 
+    def show_loading(self, message: str) -> None: ...
+
+    def hide_loading(self) -> None: ...
+
 
 # ---------------------------------------------------------------------------
 # Sticky note validator (FR-018)

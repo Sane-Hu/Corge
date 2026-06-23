@@ -61,6 +61,10 @@ class CanvasScreen(Screen[str]):
         padding: 1 2;
         margin: 1 2;
     }
+    .ghost-text {
+        color: $text-muted;
+        margin-bottom: 1;
+    }
     .canvas-header {
         text-align: center;
         color: $accent;
@@ -98,12 +102,14 @@ class CanvasScreen(Screen[str]):
     ) -> None:
         super().__init__()
         self._validator = validator
-        self._initial_text = initial_text or _GHOST_TEXT
+        self._initial_text = initial_text
         self._sticky_notes: list[StickyNote] = []
 
     def compose(self) -> ComposeResult:
         with Vertical(classes="canvas-container"):
             yield Static("Freestyle Canvas — Brainstorming", classes="canvas-header")
+            if not self._initial_text:
+                yield Static(_GHOST_TEXT, classes="ghost-text")
             self._text_area = TextArea(self._initial_text)
             yield self._text_area
         with Vertical(classes="sticky-panel"):

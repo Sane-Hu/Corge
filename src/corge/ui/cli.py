@@ -13,7 +13,7 @@ from typing import Any
 from textual.app import App, ComposeResult
 from textual.containers import Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Static, TextArea
+from textual.widgets import Button, Static, TextArea, LoadingIndicator
 
 from corge.contracts import (
     AcceptanceCriteria,
@@ -59,6 +59,19 @@ class MessageScreen(Screen[None]):
             self.dismiss(None)
 
 
+class LoadingScreen(Screen[None]):
+    """Generic loading indicator screen."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__()
+        self._message = message
+
+    def compose(self) -> ComposeResult:
+        with Vertical(classes="loading-container"):
+            yield Static(self._message, classes="title")
+            yield LoadingIndicator()
+
+
 class CorgeApp(App[None]):
     """The main Textual application for Corge."""
 
@@ -77,6 +90,15 @@ class CorgeApp(App[None]):
         text-style: bold;
         color: $accent;
         margin-bottom: 1;
+    }
+    LoadingScreen {
+        align: center middle;
+    }
+    .loading-container {
+        width: 50%;
+        height: auto;
+        border: round $primary;
+        padding: 1 2;
     }
     """
 
@@ -341,3 +363,11 @@ class CliUi(UiPort):
             ProviderConfigScreen(error_message=error_message, prefill=prefill)
         )
         return res
+
+    def show_loading(self, message: str) -> None:
+        """Display a blocking loading overlay with a message."""
+        self._app.call_from_thread(self._app.push_screen, LoadingScreen(message))
+
+    def hide_loading(self) -> None:
+        """Dismiss the active loading overlay."""
+        self._app.call_from_thread(self._app.pop_screen)
