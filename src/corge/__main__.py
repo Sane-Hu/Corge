@@ -99,7 +99,11 @@ class RealCorgeApp(CorgeApp):
                 error_message = None
 
             try:
-                provider = bootstrap_provider(self.config_path)
+                ui.show_loading("Validating API connection...")
+                try:
+                    provider = bootstrap_provider(self.config_path)
+                finally:
+                    ui.hide_loading()
             except (FileNotFoundError, ValueError, ConnectionError) as e:
                 error_message = str(e)
 
@@ -152,7 +156,11 @@ class RealCorgeApp(CorgeApp):
                     RepositoryContext(root=self.target_repo)
                 )
                 if not controller.is_empty_repo:
-                    knowledge_graph.build_graph(bundle.repository_context)
+                    ui.show_loading("Analyzing repository structure and building Knowledge Graph...")
+                    try:
+                        knowledge_graph.build_graph(bundle.repository_context)
+                    finally:
+                        ui.hide_loading()
                 ui.show_repository_understanding(bundle.repository_context)
                 controller.advance()
 

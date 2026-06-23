@@ -20,7 +20,11 @@ class ApprovalGateway:
         if request.action == ToolAction.READ:
             decision = ApprovalDecision.APPROVED
         else:
-            decision = self._ui.request_approval(request)
+            self._ui.hide_loading()
+            try:
+                decision = self._ui.request_approval(request)
+            finally:
+                self._ui.show_loading("Resuming execution...")
 
         self._audit_logger.record_approval(request, decision)
         return decision
