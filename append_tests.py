@@ -1,4 +1,3 @@
-import sys
 
 coding_agent_tests = '''
 def test_execute_step_raises_on_rejection(coding_agent, provider, tool_runtime, tmp_path, approval_gateway):

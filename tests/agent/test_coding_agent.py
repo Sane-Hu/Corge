@@ -10,10 +10,8 @@ from corge.agent.coding_agent import CodingAgent, ToolExecutionError
 from corge.contracts import (
     ApprovalDecision,
     ContextBundle,
-    GraphUpdate,
     Plan,
     PlanStep,
-    ProviderMessage,
     ToolAction,
     ToolResult,
 )
@@ -217,8 +215,8 @@ def test_read_deduplication_skips_second_read(coding_agent, provider, tool_runti
 
 
 def test_execute_step_raises_on_rejection(coding_agent, provider, tool_runtime, tmp_path, approval_gateway):
-    from corge.contracts import ChatResponse
     from corge.agent.coding_agent import ToolExecutionError
+    from corge.contracts import ChatResponse
     provider.chat.return_value = ChatResponse(
         content='''```json
 {
@@ -244,7 +242,12 @@ def test_execute_step_raises_on_rejection(coding_agent, provider, tool_runtime, 
     assert "rejected" in str(exc.value).lower()
 
 def test_evaluate_completion_returns_true_on_satisfied_criteria(coding_agent, provider):
-    from corge.contracts import ChatResponse, PlanStep, Specification, AcceptanceCriteria
+    from corge.contracts import (
+        AcceptanceCriteria,
+        ChatResponse,
+        PlanStep,
+        Specification,
+    )
     provider.chat.return_value = ChatResponse(
         content='''```json\n{"all_satisfied": true}\n```''',
         usage={}
@@ -256,7 +259,12 @@ def test_evaluate_completion_returns_true_on_satisfied_criteria(coding_agent, pr
     assert res is True
 
 def test_evaluate_completion_returns_false_on_malformed_json(coding_agent, provider):
-    from corge.contracts import ChatResponse, PlanStep, Specification, AcceptanceCriteria
+    from corge.contracts import (
+        AcceptanceCriteria,
+        ChatResponse,
+        PlanStep,
+        Specification,
+    )
     provider.chat.return_value = ChatResponse(content='Not JSON', usage={})
     step = PlanStep(identifier="1", description="test")
     spec = Specification(title="t", body="b", acceptance_criteria=AcceptanceCriteria(("C1",)))

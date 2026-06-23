@@ -3,8 +3,6 @@
 import pathlib
 from unittest.mock import MagicMock
 
-import pytest
-
 from corge.context.service import ContextService
 from corge.contracts import (
     AcceptanceCriteria,

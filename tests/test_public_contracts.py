@@ -12,7 +12,6 @@ from corge.context import ContextService
 from corge.contracts import (
     AcceptanceCriteria,
     AgentPort,
-    ApprovalDecision,
     ApprovalGatewayPort,
     ApprovalRequest,
     ArtifactReference,

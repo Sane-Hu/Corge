@@ -1,3 +1,11 @@
+"""Corge command-line entrypoint.
+
+Traces to docs/02-technical-spec.md and docs/04-functional_testing.md.
+"""
+
+from __future__ import annotations
+
+import sys
 from pathlib import Path
 
 from textual import work
@@ -11,13 +19,10 @@ from corge.context.service import ContextService
 from corge.context.sticky_validator import StickyNoteValidator
 from corge.contracts import (
     CanvasSnapshot,
-    ChatResponse,
     LifecycleState,
     Plan,
     PlanStep,
     ProceduralStep,
-    ProviderMessage,
-    ProviderPort,
     RepositoryContext,
     Specification,
     SpecState,
@@ -27,58 +32,34 @@ from corge.knowledge_graph.graph import KnowledgeGraph
 from corge.logging.argumentation_log import ArgumentationLog
 from corge.logging.audit import AuditLogger
 from corge.memory.store import MemoryStore
+from corge.providers.provider import bootstrap_provider
 from corge.tools.runtime import ToolRuntime
 from corge.ui.cli import CliUi, CorgeApp
 
 
-class MockProvider(ProviderPort):
-    def chat(self, messages: tuple[ProviderMessage, ...]) -> ChatResponse:
-        text = " ".join(m.content.lower() for m in messages)
+class RealCorgeApp(CorgeApp):
+    """Main Textual application orchestration run loop using the real provider."""
 
-        if "analyze the following canvas text" in text or "gaps" in text:
-            return ChatResponse(
-                content='```json\n[{"topic": "Mock Gap"}]\n```', usage={}
-            )
-        elif "concretize" in text or "structure" in text:
-            content = (
-                '```json\n{"title": "Mock Specification", '
-                '"body": "This is a mock spec body.", '
-                '"acceptance_criteria": ["Mock AC 1"], '
-                '"constraints": "Mock constraints", '
-                '"testing_expectations": "Mock expectations"}\n```'
-            )
-            return ChatResponse(content=content, usage={})
-        elif "technical plan" in text:
-            content = "Generated mock technical plan detailing the mock implementation."
-            return ChatResponse(content=content, usage={})
-        elif "procedural step" in text or "step-by-step" in text:
-            return ChatResponse(content="1. Mock Step 1\n2. Mock Step 2", usage={})
-        elif "execute" in text or "tool" in text:
-            content = '```json\n{"done": true, "actions": []}\n```'
-            return ChatResponse(content=content, usage={})
-        elif "evaluate" in text or "acceptance" in text:
-            content = '```json\n{"all_satisfied": true}\n```'
-            return ChatResponse(content=content, usage={})
-
-        return ChatResponse(content="Mocked Provider Response.", usage={})
-
-
-class ScratchApp(CorgeApp):
-    """App that runs the scratch loop in a worker thread."""
+    def __init__(self, target_repo: Path, config_path: Path) -> None:
+        super().__init__()
+        self.target_repo = target_repo.resolve()
+        self.config_path = config_path.resolve()
 
     def on_mount(self) -> None:
-        self.run_scratch()
+        self.run_session()
 
     @work(thread=True)
-    def run_scratch(self) -> None:
-        agent_dir = Path(".agent")
-        agent_dir.mkdir(exist_ok=True)
+    def run_session(self) -> None:
+        agent_dir = self.target_repo / ".agent"
+        agent_dir.mkdir(parents=True, exist_ok=True)
 
         # 1. Instantiate concrete implementations
-        mock_provider = MockProvider()
+        provider = bootstrap_provider(self.config_path)
         knowledge_graph = KnowledgeGraph(agent_dir / "kg")
-        memory_store = MemoryStore(Path.cwd())
-        context_service = ContextService(knowledge_graph, memory_store, Path.cwd())
+        memory_store = MemoryStore(self.target_repo)
+        context_service = ContextService(
+            knowledge_graph, memory_store, self.target_repo
+        )
         schema_tailor = SchemaTailor(knowledge_graph)
         budget_manager = BudgetManager()
         audit_logger = AuditLogger(agent_dir)
@@ -91,7 +72,7 @@ class ScratchApp(CorgeApp):
         heuristic_updater = BayesianUpdater(agent_dir, argumentation_log)
 
         controller = SessionController(
-            provider=mock_provider,
+            provider=provider,
             tool_runtime=tool_runtime,
             approval_gateway=approval_gateway,
             context_service=context_service,
@@ -112,13 +93,21 @@ class ScratchApp(CorgeApp):
                 controller.advance()
 
             elif controller.state == LifecycleState.REPOSITORY_SELECTION:
-                controller.set_empty_repo(False)
+                is_empty = True
+                if self.target_repo.exists():
+                    for child in self.target_repo.iterdir():
+                        if child.name not in (".git", ".agent"):
+                            is_empty = False
+                            break
+                controller.set_empty_repo(is_empty)
                 controller.advance()
 
             elif controller.state == LifecycleState.REPOSITORY_ANALYSIS:
                 bundle = context_service.load_context(
-                    RepositoryContext(root=Path.cwd())
+                    RepositoryContext(root=self.target_repo)
                 )
+                if not controller.is_empty_repo:
+                    knowledge_graph.build_graph(bundle.repository_context)
                 ui.show_repository_understanding(bundle.repository_context)
                 controller.advance()
 
@@ -170,23 +159,25 @@ class ScratchApp(CorgeApp):
             elif controller.state == LifecycleState.EXECUTION:
                 assert spec is not None
                 assert plan is not None
-                step = plan.steps[0] if plan.steps else PlanStep(
-                    identifier="mock", description="mock step"
-                )
-                bundle = context_service.retrieve_relevant_context(spec, step)
-                ui.show_execution(bundle)
 
-                for step in plan.steps:
+                import dataclasses
+
+                updated_steps = list(plan.steps)
+                for i, step in enumerate(plan.steps):
+                    bundle = context_service.retrieve_relevant_context(spec, step)
+                    ui.show_execution(bundle)
                     controller.execute_step(step, bundle)
-                    step.completed = True
+                    updated_steps[i] = dataclasses.replace(step, completed=True)
 
+                plan = dataclasses.replace(plan, steps=tuple(updated_steps))
                 controller.advance()
 
             elif controller.state == LifecycleState.VERIFICATION:
                 assert plan is not None
                 assert spec is not None
                 step = plan.steps[-1] if plan.steps else PlanStep(
-                    identifier="mock", description="mock step"
+                    identifier="verification",
+                    description="Verification of acceptance criteria",
                 )
                 bundle = context_service.retrieve_relevant_context(spec, step)
                 controller.evaluate_completion(plan, bundle)
@@ -200,7 +191,6 @@ class ScratchApp(CorgeApp):
             else:
                 break
 
-        # End loop, exit gracefully
         try:
             self.call_from_thread(self.exit)
         except Exception:
@@ -208,8 +198,27 @@ class ScratchApp(CorgeApp):
 
 
 def main() -> None:
-    app = ScratchApp()
-    app.run()
+    """CLI entrypoint function."""
+    if len(sys.argv) > 1:
+        target_path = Path(sys.argv[1]).resolve()
+    else:
+        from corge.ui.directory_selector import choose_directory_cli
+        target_path = choose_directory_cli()
+
+    if not target_path.exists():
+        print(f"Error: Target path '{target_path}' does not exist.", file=sys.stderr)
+        sys.exit(1)
+
+    config_path = Path("config.toml").resolve()
+    try:
+        app = RealCorgeApp(target_repo=target_path, config_path=config_path)
+        app.run()
+    except (FileNotFoundError, ValueError, ConnectionError) as e:
+        print(f"Configuration Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

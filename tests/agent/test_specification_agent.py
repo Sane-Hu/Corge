@@ -1,7 +1,8 @@
-import pytest
 from unittest.mock import Mock
-from corge.contracts import ProviderPort, ChatResponse, SemanticGap
+
 from corge.agent.specification_agent import SpecificationAgent
+from corge.contracts import ChatResponse, ProviderPort
+
 
 def test_draft_specification_parses_json():
     mock_provider = Mock(spec=ProviderPort)
@@ -55,9 +56,11 @@ def test_analyze_specification_gaps_fallback():
     mock_provider = Mock(spec=ProviderPort)
     mock_provider.chat.return_value = ChatResponse(content="No JSON here", usage={})
     agent = SpecificationAgent(mock_provider)
+    gaps = agent.analyze_specification_gaps("canvas")
+    assert gaps == ()
 
 def test_socratic_loop_records_real_answer():
-    from corge.contracts import UiPort, ArgumentationLogPort
+    from corge.contracts import ArgumentationLogPort, UiPort
     mock_provider = Mock(spec=ProviderPort)
     mock_provider.chat.side_effect = [
         ChatResponse(content='{"title": "Title"}', usage={}),

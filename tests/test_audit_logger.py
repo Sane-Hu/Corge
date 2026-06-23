@@ -1,5 +1,6 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
+
 from corge.logging.audit import AuditLogger
 
 

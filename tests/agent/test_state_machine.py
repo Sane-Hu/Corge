@@ -7,6 +7,7 @@ Spec traceability:
 
 import pytest
 
+from corge.agent.session import SessionState, load_session, save_session
 from corge.contracts import (
     LifecycleState,
     MasterPhase,
@@ -19,7 +20,6 @@ from corge.contracts import (
     TechnicalPlan,
     ToolAction,
 )
-from corge.agent.session import SessionState, save_session, load_session
 
 
 class InvalidTransitionError(Exception):
@@ -144,8 +144,9 @@ def test_session_round_trip_with_full_plan(tmp_path) -> None:
 
 
 def test_sync_nested_states_enters_argumentation_diff_when_gaps_present() -> None:
-    from corge.agent.session_controller import SessionController
     from unittest.mock import MagicMock
+
+    from corge.agent.session_controller import SessionController
     controller = SessionController(
         provider=MagicMock(),
         tool_runtime=MagicMock(),

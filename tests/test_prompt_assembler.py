@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from corge.contracts import (
     AcceptanceCriteria,
     ArtifactReference,
@@ -269,6 +267,7 @@ def test_assemble_prompt_calls_schema_tailor() -> None:
 
 def test_assemble_prompt_calls_compact_when_over_budget() -> None:
     from unittest.mock import MagicMock
+
     from corge.prompt_assembler.assembler import _TOKEN_BUDGET
     bm = MagicMock(spec=DummyBudgetManager)
     bm.estimate_tokens.return_value = _TOKEN_BUDGET + 1

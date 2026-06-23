@@ -10,14 +10,12 @@ Run:
 from __future__ import annotations
 
 import json
-import time
 from pathlib import Path
 
 import pytest
 
 from corge.contracts import EngineeringProfile, MemoryEvent
 from corge.memory import MemoryStore
-
 
 # ---------------------------------------------------------------------------
 # Fixture

@@ -1,5 +1,11 @@
-from corge.contracts import AcceptanceCriteria, ContextBundle, EngineeringProfile, Plan, Specification
 from corge.budget_manager.manager import BudgetManager
+from corge.contracts import (
+    AcceptanceCriteria,
+    ContextBundle,
+    EngineeringProfile,
+    Plan,
+    Specification,
+)
 
 
 def test_budget_manager():
@@ -34,6 +40,7 @@ def test_budget_manager():
     
     # Test clip (with a very small limit to force clipping)
     clipped = bm.clip(context, token_limit=0)
+    assert clipped is not None
     # The output of clipped logic depends on how it's implemented.
     # Currently it limits to the last 10, but we will test it after modification.
     

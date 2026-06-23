@@ -1,7 +1,16 @@
-import pytest
 from unittest.mock import Mock
-from corge.contracts import ProviderPort, ChatResponse, ContextBundle, Specification, AcceptanceCriteria, Plan, PlanStep, TechnicalPlan
+
 from corge.agent.planning_agent import PlanningAgent
+from corge.contracts import (
+    AcceptanceCriteria,
+    ChatResponse,
+    ContextBundle,
+    Plan,
+    ProviderPort,
+    Specification,
+    TechnicalPlan,
+)
+
 
 def _mock_context() -> ContextBundle:
     return ContextBundle(

@@ -1,10 +1,12 @@
-import pytest
 from unittest.mock import MagicMock
-from pathlib import Path
 
 from corge.contracts import (
-    Specification, AcceptanceCriteria, TechnicalPlan, ApprovalDecision
+    AcceptanceCriteria,
+    ApprovalDecision,
+    Specification,
+    TechnicalPlan,
 )
+
 
 def test_scratch_orchestration_loop(monkeypatch, tmp_path):
     import scratch_run
