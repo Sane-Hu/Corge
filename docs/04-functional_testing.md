@@ -126,7 +126,7 @@ When prompted, provide the absolute path to the target repository (Phase 2).
 
 **Expected**: The agent enters `REPOSITORY_ANALYSIS`. The TUI displays repository context (file count, detected tech stack, knowledge graph summary). The `.agent/` directory is created inside the target repository with:
 
-```
+```text
 .agent/
 ├── repo_graph.db
 ├── memory.db
@@ -161,7 +161,7 @@ Run through at least these three stack variants to exercise the schema files tha
 
 The TUI opens the `CanvasScreen`. Write a short, realistic feature request in the free-form text area. For example:
 
-```
+```text
 Add a REST endpoint /api/health that returns {"status": "ok", "version": "<semver>"}
 with a 200 response. The version must be read from the package metadata.
 Include one automated test.
@@ -175,7 +175,7 @@ Press **Submit to Concretization**.
 
 While still on the `CanvasScreen`, type a sticky note reference using the `@node:<id>` syntax, e.g.:
 
-```
+```text
 @node:src/corge/tools/runtime.py
 ```
 
@@ -509,7 +509,7 @@ Use this section to document issues discovered during manual testing. Add one en
 
 Copy the block below for each new issue:
 
-```
+```text
 ### ISSUE-<N> — <Short title>
 
 - **Phase**: Phase <number> — <phase name>
