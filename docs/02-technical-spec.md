@@ -11,20 +11,20 @@ This document consolidates the functional requirements, architectural subsystems
 - **FR-003 & FR-004 Repository Ingestion & Updates**: Analyzes repository structure, files, config, and build files. Updates are computed incrementally on file modifications.
 - **FR-005 Repository Knowledge Graph**: A queryable representation of files, directories, classes, functions, and their dependencies.
 - **FR-006 & FR-007 Memory Pyramid**:
-  - **L0 Session Events**: Raw code/actions execution logs stored under `.agent/memory/l0/`.
-  - **L1 Engineering Facts**: Repository-derived/user-derived facts stored in `.agent/memory.db`.
-  - **L2 Scenario Memory**: Feature-specific progress and blockers under `.agent/memory/scenarios/` (streamable JSONL format).
-  - **L3 Engineering Profile**: Coding styles/conventions/rules derived from repository and user interactions, stored in `.agent/engineering_profile.md`.
+  - **L0 Session Events**: Raw code/actions execution logs stored locally under `.agent/memory/l0/`.
+  - **L1 Engineering Facts**: Repository-derived/user-derived facts stored locally in `.agent/memory.db`.
+  - **L2 Scenario Memory**: Feature-specific progress and blockers locally under `.agent/memory/scenarios/` (streamable JSONL format).
+  - **L3 Engineering Profile**: Coding styles/conventions derived from the repository, stored locally in `.agent/engineering_profile.md` and merged with a global profile at `~/.config/corge/global_profile.md`.
 - **FR-008 Planning Phase**: Generates a step-by-step implementation plan. Execution remains blocked until approval.
 - **FR-009 Human Approval Layer**: Intercepts destructive actions (`write`, `edit`, `bash`) for human consent. (`Read`) actions do not require approval.
 - **FR-010 Artifact Offloading**: Large build/test logs are saved under `.agent/artifacts/` and referenced in prompts using the `artifact://` URI scheme.
 - **FR-011 Context Budget Manager**: Minimizes context bloat and token cost by unconditionally clipping, deduplicating, and compacting the transcript in multi-turn sessions, using limits only as a hard fallback ceiling.
 - **FR-012 Test-Based Completion**: Delivery requires all acceptance criteria to be satisfied, tests to exist and pass, and human approval.
-- **FR-013 Audit Logging**: Records prompts, plans, tools, approvals, and completions for accountability.
+- **FR-013 Audit Logging**: Records prompts, plans, tools, approvals, and completions for accountability. Detailed tool execution is stored locally in `.agent/audit.jsonl`, while high-level session events are tracked globally in `~/.config/corge/global_audit.jsonl`.
 - **FR-014 Provider Abstraction**: Single integration point for models (DeepSeek, Ollama, OpenAI-compat) that automatically strips `<think>` tags and populates standardized usage fields.
 - **FR-015 Empty Repository Bootstrapping**: Allows complete project scaffolding starting from specification.
 - **FR-016 Argument of Specs (Wizard)**: Interactive Socratic specification wizard with schema tailoring based on framework.
-- **FR-017 Heuristic Learning**: Bayesian self-improvement via `spec_wizard_heuristics.json` to optimize spec generation based on user overrides and abandonment.
+- **FR-017 Heuristic Learning**: Bayesian self-improvement via `~/.config/corge/spec_wizard_heuristics.json` to optimize spec generation across all projects based on user overrides and abandonment (using local `ArgumentationLog`).
 - **FR-018 Freestyle Canvas**: Immutable snapshots, sticky notes with live graph validation, and semantic gap blocking.
 
 ---
@@ -114,7 +114,9 @@ If a tool execution fails, the orchestrator catches `ToolExecutionError`, update
 ## 4. Context Engineering & Persistent Storage
 
 ### Database DDL & Storage Schema
-All databases and persistent files reside under the `.agent/` directory:
+Persistence is divided into repository-local state (`.agent/`) and global cross-project state (`~/.config/corge/`).
+
+**Repository-Local Storage (`.agent/`)**
 
 *   **Knowledge Graph Database (`.agent/repo_graph.db`)**
     Contains structural entities parsed from source code files (Python files parsed via stdlib `ast`). Uses `journal_mode=WAL` and persistent connection pooling for high-performance concurrent traversals.
@@ -157,7 +159,7 @@ All databases and persistent files reside under the `.agent/` directory:
     `{"timestamp": str, "payload": dict}`
 
 *   **L3 Engineering Profile (`.agent/engineering_profile.md`)**
-    Markdown file containing repository-derived rules filtered by a confidence threshold ($\ge 0.5$). The Context Service dynamically parses the markdown back into structured memory to construct the execution prompt.
+    Markdown file containing repository-derived rules filtered by a confidence threshold ($\ge 0.5$). The Context Service dynamically parses the markdown and merges it with the global profile from `~/.config/corge/global_profile.md` to construct the execution prompt.
 
 ---
 
@@ -175,7 +177,7 @@ The query interface `query_graph()` processes string expressions matching the fo
 ---
 
 ### Framework-Aware Schema Tailoring
-The `SchemaTailor` checks for signature configuration files to detect the tech stack and load specialized system prompts from `src/corge/schemas/stack/`. If no signature is matched, it defaults to `generic.yaml`.
+The `SchemaTailor` checks for signature configuration files to detect the tech stack. It first checks `~/.config/corge/schemas/` for custom user-defined global schemas. If none exist, it loads specialized system prompts from `src/corge/schemas/stack/`. If no signature is matched, it defaults to `generic.yaml`.
 
 | Signature File | Detected Framework / Stack |
 | :--- | :--- |
@@ -191,7 +193,7 @@ The `SchemaTailor` checks for signature configuration files to detect the tech s
 ---
 
 ### Bayesian Heuristic Learning
-The `HeuristicUpdater` performs offline Bayesian self-improvement on spec-generation heuristics using Socratic logs from the `ArgumentationLog` after spec completion or session abandonment. It computes an Exponentially Weighted Moving Average (EWMA) to smooth probability shifts and prevent overfitting or catastrophic forgetting:
+The `HeuristicUpdater` performs offline Bayesian self-improvement on spec-generation heuristics. It uses repo-local Socratic logs from the `ArgumentationLog` after spec completion or session abandonment to update the global priors stored in `~/.config/corge/spec_wizard_heuristics.json` based on global rules in `~/.config/corge/corge_heuristics.toml`. It computes an Exponentially Weighted Moving Average (EWMA) to smooth probability shifts and prevent overfitting or catastrophic forgetting:
 
 $$P_{\text{new}} = (1 - \alpha) \cdot P_{\text{old}} + \alpha \cdot \text{Observation}$$
 

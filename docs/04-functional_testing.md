@@ -78,7 +78,7 @@ Open `config.toml` and fill in:
 | `base_url` | API endpoint; defaults to `https://api.openai.com/v1` if blank |
 | `max_tokens` | Max completion tokens per request; `0` uses the API default |
 
-**Expected**: `config.toml` exists at the project root and is populated with valid credentials.
+**Expected**: `config.toml` exists at the project root and is populated with valid credentials. Note that the application prioritizes reading/writing `~/.config/corge/CorgeAPIConfig.toml`, but checks `TARGET_REPO/CorgeAPIConfig.toml` as an override.
 
 ### 1.2 Verify the provider is reachable
 
@@ -237,7 +237,7 @@ cat <target-repo>/.agent/argumentation_log.json | python3 -m json.tool
 
 The `InteractiveDiffScreen` or a `MessageScreen` presents the final specification for human approval.
 
-**Expected**: On approval, the agent advances to `MasterPhase.PLANNING`. The spec is immutably locked. The audit logger records the approval event to `.agent/audit.jsonl`.
+**Expected**: On approval, the agent advances to `MasterPhase.PLANNING`. The spec is immutably locked. The audit logger records the approval event locally to `.agent/audit.jsonl` and the completion/milestone globally to `~/.config/corge/global_audit.jsonl`.
 
 ---
 
@@ -360,7 +360,7 @@ After each tool execution, the agent updates persistence.
 - New facts are written to `.agent/memory.db`.
 - The knowledge graph in `.agent/repo_graph.db` reflects any new or modified files.
 - Scenario memory for the current feature is appended to `.agent/memory/scenarios/<kind>.jsonl`.
-- The engineering profile (`.agent/engineering_profile.md`) is updated if new conventions are detected.
+- The engineering profile (`.agent/engineering_profile.md`) is updated if new conventions are detected, and high confidence rules are also promoted to `~/.config/corge/global_profile.md`.
 
 ### 6.8 Artifact store offload (`artifacts/store.py`)
 
@@ -437,10 +437,10 @@ Restart Corge and point it at the same target repository.
 
 ### 9.1 Heuristic update after completion
 
-After a completed session, the `HeuristicUpdater` runs an offline Bayesian update on `spec_wizard_heuristics.json`.
+After a completed session, the `HeuristicUpdater` runs an offline Bayesian update on `~/.config/corge/spec_wizard_heuristics.json`.
 
 **Functional checks**:
-- `spec_wizard_heuristics.json` exists (or is created) after the first completed session.
+- `~/.config/corge/spec_wizard_heuristics.json` exists (or is created) after the first completed session.
 - The `engagement` prior is updated using the EWMA formula with `α = 0.01`.
 - Delta clipping is enforced: no single update moves a probability by more than `0.05`.
 
@@ -448,7 +448,7 @@ After a completed session, the `HeuristicUpdater` runs an offline Bayesian updat
 
 Start a session, advance through the spec wizard, and then quit before the plan is approved.
 
-**Expected**: The `HeuristicUpdater` applies the abandonment penalty (`-0.05` after clipping) to the engagement prior in `spec_wizard_heuristics.json`.
+**Expected**: The `HeuristicUpdater` applies the abandonment penalty (`-0.05` after clipping) to the engagement prior in `~/.config/corge/spec_wizard_heuristics.json`.
 
 ---
 

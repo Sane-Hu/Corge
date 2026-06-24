@@ -124,7 +124,7 @@ The initial Knowledge Graph implementation (`src/corge/knowledge_graph/graph.py`
 ## 13. Cloud Collaboration & Remote Storage
 
 - **Proposal:** Migrate local databases (`.agent/`) and artifact directories to remote, centralized databases (PostgreSQL) and cloud object stores (AWS S3) to support multi-user team workspaces.
-- **Current Implementation:** All state databases, graphs, scenarios, logs, and artifacts are stored locally in the `.agent/` folder.
+- **Current Implementation:** State databases, graphs, scenarios, and artifacts are stored locally in the `.agent/` folder, while config, global audit logs, global schemas, and global heuristics are stored in `~/.config/corge/`.
 - **Upgrade Path:** Reimplement the repository knowledge graph, memory store, and artifact storage ports to target remote cloud connections.
 - **Reasoning for Deferral:** (MVP Scope) Local disk persistence is robust and enables offline execution. Cloud infrastructure is a multi-tenant product requirement that is not needed for individual developer tool evaluation.
 
