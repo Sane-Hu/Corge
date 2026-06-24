@@ -1,5 +1,7 @@
 """Planning agent — handles PlanState reiterations."""
 
+from typing import Callable
+
 from corge.contracts import (
     ProceduralStep,
     ProviderMessage,
@@ -15,7 +17,9 @@ class PlanningAgent:
     def __init__(self, provider: ProviderPort) -> None:
         self._provider = provider
 
-    def generate_technical_plan(self, specification: Specification) -> TechnicalPlan:
+    def generate_technical_plan(
+        self, specification: Specification, on_token: Callable[[str], None] | None = None
+    ) -> TechnicalPlan:
         prompt = (
             "You are a technical planner.\n"
             "Create an architectural blueprint for the following specification.\n"
@@ -25,13 +29,13 @@ class PlanningAgent:
             f"Body: {specification.body}"
         )
         msg = ProviderMessage(role="user", content=prompt)
-        response = self._provider.chat((msg,))
+        response = self._provider.chat((msg,), on_token=on_token)
         return TechnicalPlan(
             content=response.content, specification_ref=specification.title
         )
 
     def generate_procedural_steps(
-        self, technical_plan: TechnicalPlan
+        self, technical_plan: TechnicalPlan, on_token: Callable[[str], None] | None = None
     ) -> tuple[ProceduralStep, ...]:
         prompt = (
             "You are an execution planner.\n"
@@ -41,7 +45,7 @@ class PlanningAgent:
             f"Plan:\n{technical_plan.content}"
         )
         msg = ProviderMessage(role="user", content=prompt)
-        response = self._provider.chat((msg,))
+        response = self._provider.chat((msg,), on_token=on_token)
 
         steps = []
         step_count = 0

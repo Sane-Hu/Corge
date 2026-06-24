@@ -9,6 +9,7 @@ Spec traceability:
 
 from __future__ import annotations
 
+from typing import Callable
 from corge.agent.coding_agent import CodingAgent
 from corge.agent.planning_agent import PlanningAgent
 from corge.agent.session import SessionState
@@ -267,23 +268,29 @@ class SessionController:
     # AgentPort delegation — Planning phase
     # ------------------------------------------------------------------
 
-    def generate_technical_plan(self, specification: Specification) -> TechnicalPlan:
-        return self._plan_agent.generate_technical_plan(specification)
+    def generate_technical_plan(
+        self, specification: Specification, on_token: Callable[[str], None] | None = None
+    ) -> TechnicalPlan:
+        return self._plan_agent.generate_technical_plan(specification, on_token=on_token)
 
     def generate_procedural_steps(
-        self, technical_plan: TechnicalPlan
+        self, technical_plan: TechnicalPlan, on_token: Callable[[str], None] | None = None
     ) -> tuple[ProceduralStep, ...]:
-        return self._plan_agent.generate_procedural_steps(technical_plan)
+        return self._plan_agent.generate_procedural_steps(technical_plan, on_token=on_token)
 
     # ------------------------------------------------------------------
     # AgentPort delegation — Coding phase
     # ------------------------------------------------------------------
 
-    def execute_step(self, step: PlanStep, context: ContextBundle) -> None:
-        self._code_agent.execute_step(step, context)
+    def execute_step(
+        self, step: PlanStep, context: ContextBundle, on_token: Callable[[str], None] | None = None
+    ) -> None:
+        self._code_agent.execute_step(step, context, on_token=on_token)
 
-    def evaluate_completion(self, plan: Plan, context: ContextBundle) -> bool:
-        return self._code_agent.evaluate_completion(plan, context)
+    def evaluate_completion(
+        self, plan: Plan, context: ContextBundle, on_token: Callable[[str], None] | None = None
+    ) -> bool:
+        return self._code_agent.evaluate_completion(plan, context, on_token=on_token)
 
     # ------------------------------------------------------------------
     # Memory persistence (AgentPort)

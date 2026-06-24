@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import re
+from typing import Callable
 from datetime import UTC, datetime
 
 from corge.contracts import (
@@ -35,7 +36,7 @@ class SpecificationAgent:
     # CONCRETIZATION sub-state (Tech-spec §3 SpecState)
     # ------------------------------------------------------------------
 
-    def concretize(self, canvas_text: str) -> Specification:
+    def concretize(self, canvas_text: str, on_token: Callable[[str], None] | None = None) -> Specification:
         """Compile raw canvas text into a structured Specification (FR-002).
 
         Prompts the model to extract the structured wizard fields:
@@ -57,7 +58,7 @@ class SpecificationAgent:
             f"Brainstorming text:\n{canvas_text}"
         )
         msg = ProviderMessage(role="user", content=prompt)
-        response = self._provider.chat((msg,))
+        response = self._provider.chat((msg,), on_token=on_token)
 
         match = re.search(r"\{.*\}", response.content, re.DOTALL)
         if match:
@@ -89,7 +90,7 @@ class SpecificationAgent:
     # ARGUMENTATION_DIFF sub-state (Tech-spec §3 SpecState)
     # ------------------------------------------------------------------
 
-    def analyze_specification_gaps(self, canvas_text: str) -> tuple[SemanticGap, ...]:
+    def analyze_specification_gaps(self, canvas_text: str, on_token: Callable[[str], None] | None = None) -> tuple[SemanticGap, ...]:
         """Identify semantic gaps in a drafted specification (FR-016).
 
         Returns a tuple of unresolved SemanticGap objects.
@@ -102,7 +103,7 @@ class SpecificationAgent:
             f"Draft:\n{canvas_text}"
         )
         msg = ProviderMessage(role="user", content=prompt)
-        response = self._provider.chat((msg,))
+        response = self._provider.chat((msg,), on_token=on_token)
 
         match = re.search(r"\[.*\]", response.content, re.DOTALL)
         if match:
@@ -135,8 +136,8 @@ class SpecificationAgent:
         # Step 1 & 2: Concretize canvas and identify gaps
         ui.show_loading("Concretizing specification...")
         try:
-            spec = self.concretize(canvas_text)
-            gaps = self.analyze_specification_gaps(spec.body or canvas_text)
+            spec = self.concretize(canvas_text, on_token=ui.stream_token)
+            gaps = self.analyze_specification_gaps(spec.body or canvas_text, on_token=ui.stream_token)
         finally:
             ui.hide_loading()
 
@@ -147,7 +148,7 @@ class SpecificationAgent:
         now = datetime.now(UTC).isoformat()
         ui.show_loading("Formulating clarifying questions...")
         try:
-            questions = self._formulate_bulk_questions(gaps, spec)
+            questions = self._formulate_bulk_questions(gaps, spec, on_token=ui.stream_token)
         finally:
             ui.hide_loading()
 
@@ -165,7 +166,7 @@ class SpecificationAgent:
         return spec, gaps
 
     def _formulate_bulk_questions(
-        self, gaps: tuple[SemanticGap, ...], spec: Specification
+        self, gaps: tuple[SemanticGap, ...], spec: Specification, on_token: Callable[[str], None] | None = None
     ) -> str:
         """Ask the model to generate a targeted clarifying question for all gaps."""
         topics = "\n".join(f"- {gap.topic}" for gap in gaps)
@@ -178,5 +179,5 @@ class SpecificationAgent:
             "Return ONLY the questions, no preamble."
         )
         msg = ProviderMessage(role="user", content=prompt)
-        response = self._provider.chat((msg,))
+        response = self._provider.chat((msg,), on_token=on_token)
         return response.content.strip()

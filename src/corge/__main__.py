@@ -188,7 +188,7 @@ class RealCorgeApp(CorgeApp):
                 assert spec is not None
                 ui.show_loading("Generating technical plan...")
                 try:
-                    tech_plan = controller.generate_technical_plan(spec)
+                    tech_plan = controller.generate_technical_plan(spec, on_token=ui.stream_token)
                 finally:
                     ui.hide_loading()
                 tech_plan = ui.show_tech_plan_editor(tech_plan)
@@ -199,7 +199,7 @@ class RealCorgeApp(CorgeApp):
                 assert spec is not None
                 ui.show_loading("Generating procedural steps...")
                 try:
-                    proc_steps = controller.generate_procedural_steps(tech_plan)
+                    proc_steps = controller.generate_procedural_steps(tech_plan, on_token=ui.stream_token)
                 finally:
                     ui.hide_loading()
                 proc_steps = ui.show_procedural_steps_editor(proc_steps)
@@ -229,7 +229,7 @@ class RealCorgeApp(CorgeApp):
                     ui.show_execution(bundle)
                     ui.show_loading(f"Executing step: {step.identifier}...")
                     try:
-                        controller.execute_step(step, bundle)
+                        controller.execute_step(step, bundle, on_token=ui.stream_token)
                     finally:
                         ui.hide_loading()
                     updated_steps[i] = dataclasses.replace(step, completed=True)
@@ -251,7 +251,7 @@ class RealCorgeApp(CorgeApp):
                 bundle = context_service.retrieve_relevant_context(spec, step)
                 ui.show_loading("Verifying completion...")
                 try:
-                    controller.evaluate_completion(plan, bundle)
+                    controller.evaluate_completion(plan, bundle, on_token=ui.stream_token)
                 finally:
                     ui.hide_loading()
                 controller.advance()

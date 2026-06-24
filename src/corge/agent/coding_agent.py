@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from corge.contracts import (
     ApprovalDecision,
@@ -67,7 +67,9 @@ class CodingAgent:
 
     _MAX_ACTIONS_PER_STEP = 20
 
-    def execute_step(self, step: PlanStep, context: ContextBundle) -> None:
+    def execute_step(
+        self, step: PlanStep, context: ContextBundle, on_token: Callable[[str], None] | None = None
+    ) -> None:
         """Execute a single plan step through the full 9-step cycle.
 
         Raises:
@@ -125,7 +127,7 @@ class CodingAgent:
 
             # Step 4: Reason & action selection
             msg = ProviderMessage(role="user", content=prompt)
-            response = self._provider.chat((msg,))
+            response = self._provider.chat((msg,), on_token=on_token)
 
             match = re.search(r"```json\s*(.*?)\s*```", response.content, re.DOTALL)
             if not match:
@@ -227,7 +229,9 @@ class CodingAgent:
     # Completion verification (FR-012, Tech-spec §3 step 7)
     # ------------------------------------------------------------------
 
-    def evaluate_completion(self, plan: Plan, context: ContextBundle) -> bool:
+    def evaluate_completion(
+        self, plan: Plan, context: ContextBundle, on_token: Callable[[str], None] | None = None
+    ) -> bool:
         """Verify that all acceptance criteria are satisfied (FR-012).
 
         Asks the model to evaluate each criterion against the execution
@@ -254,7 +258,7 @@ class CodingAgent:
             + f"\n\nExecution trajectory:\n{trajectory or '(no trajectory recorded)'}"
         )
         msg = ProviderMessage(role="user", content=prompt)
-        response = self._provider.chat((msg,))
+        response = self._provider.chat((msg,), on_token=on_token)
 
         match = re.search(r"\{.*\}", response.content, re.DOTALL)
         if match:

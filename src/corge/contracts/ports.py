@@ -96,6 +96,10 @@ class UiPort(Protocol):
 
     def hide_loading(self) -> None: ...
 
+    def stream_token(self, token: str) -> None:
+        """Stream an LLM generation token directly to the UI."""
+        ...
+
 
 # ---------------------------------------------------------------------------
 # Sticky note validator (FR-018)
@@ -292,7 +296,13 @@ class ToolRuntimePort(Protocol):
 class ProviderPort(Protocol):
     """External model integration boundary."""
 
-    def chat(self, messages: tuple[ProviderMessage, ...]) -> ChatResponse: ...
+    from typing import Callable
+
+    def chat(
+        self,
+        messages: tuple[ProviderMessage, ...],
+        on_token: Callable[[str], None] | None = None,
+    ) -> ChatResponse: ...
 
     def validate_connection(self) -> bool:
         """Verify the provider connection and credentials.

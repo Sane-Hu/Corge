@@ -11,7 +11,7 @@ import concurrent.futures
 from typing import Any
 
 from textual.app import App, ComposeResult
-from textual.containers import Vertical
+from textual.containers import Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Button, Static, TextArea, LoadingIndicator
 
@@ -65,11 +65,23 @@ class LoadingScreen(Screen[None]):
     def __init__(self, message: str) -> None:
         super().__init__()
         self._message = message
+        self._stream_content = ""
+        self.stream_static = Static("")
 
     def compose(self) -> ComposeResult:
         with Vertical(classes="loading-container"):
             yield Static(self._message, classes="title")
             yield LoadingIndicator()
+            with VerticalScroll(classes="stream-scroll"):
+                yield self.stream_static
+
+    def append_token(self, token: str) -> None:
+        self._stream_content += token
+        self.stream_static.update(self._stream_content)
+        try:
+            self.query_one(VerticalScroll).scroll_end(animate=False)
+        except Exception:
+            pass
 
 
 class CorgeApp(App[None]):
@@ -105,8 +117,14 @@ class CorgeApp(App[None]):
     .loading-container {
         width: 50%;
         height: auto;
+        max-height: 80%;
         border: round $primary;
         padding: 1 2;
+    }
+    .stream-scroll {
+        height: 10;
+        margin-top: 1;
+        overflow-y: auto;
     }
     """
 
@@ -381,3 +399,10 @@ class CliUi(UiPort):
     def hide_loading(self) -> None:
         """Dismiss the active loading overlay."""
         self._app.call_from_thread(self._app.pop_screen)
+
+    def stream_token(self, token: str) -> None:
+        """Stream an LLM generation token directly to the UI."""
+        def do_update() -> None:
+            if isinstance(self._app.screen, LoadingScreen):
+                self._app.screen.append_token(token)
+        self._app.call_from_thread(do_update)

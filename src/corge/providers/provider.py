@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from typing import Any, Callable
+
 import openai
 
 from corge.contracts import ChatResponse, ProviderMessage
@@ -77,7 +79,11 @@ class Provider:
     # Public interface (ProviderPort)
     # ------------------------------------------------------------------
 
-    def chat(self, messages: tuple[ProviderMessage, ...]) -> ChatResponse:
+    def chat(
+        self,
+        messages: tuple[ProviderMessage, ...],
+        on_token: Callable[[str], None] | None = None,
+    ) -> ChatResponse:
         """Send a chat request and return the assistant reply.
 
         Args:
@@ -117,6 +123,29 @@ class Provider:
         if extra_body:
             create_kwargs["extra_body"] = extra_body
 
+        if on_token:
+            create_kwargs["stream"] = True
+            create_kwargs["stream_options"] = {"include_usage": True}
+            stream = self._client.chat.completions.create(**create_kwargs)  # type: ignore[call-overload]
+            
+            full_content = []
+            usage_obj = None
+            
+            for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    token = chunk.choices[0].delta.content
+                    full_content.append(token)
+                    on_token(token)
+                
+                # Usage is usually sent in the final chunk when include_usage=True
+                if hasattr(chunk, "usage") and chunk.usage:
+                    usage_obj = chunk.usage
+            
+            raw_content = "".join(full_content)
+            content = _strip_thinking_tags(raw_content)
+            usage = self._extract_usage(usage_obj)
+            return ChatResponse(content=content, usage=usage)
+
         completion = self._client.chat.completions.create(**create_kwargs)  # type: ignore[call-overload]
         return self._parse_response(completion)
 
@@ -148,7 +177,7 @@ class Provider:
 
         Thinking tokens (from DeepSeek R1 or o1-style models) are embedded in
         ``choice.message.reasoning_content`` by DeepSeek or wrapped in
-        ``<think>…</think>`` blocks in the content string by some OSS models.
+        ``<think>...</think>`` blocks in the content string by some OSS models.
         We strip the ``<think>`` wrapper so ``ChatResponse.content`` always
         contains only the final prose answer.
         """
@@ -158,7 +187,11 @@ class Provider:
         # Strip <think>...</think> blocks (OSS reasoning models).
         content = _strip_thinking_tags(raw_content)
 
-        usage_obj = completion.usage
+        usage = self._extract_usage(completion.usage)
+        return ChatResponse(content=content, usage=usage)
+
+    def _extract_usage(self, usage_obj: Any) -> dict[str, int]:
+        """Extract standard token usage dictionary from an OpenAI usage object."""
         usage: dict[str, int] = {
             "prompt_tokens": 0,
             "completion_tokens": 0,
@@ -180,8 +213,7 @@ class Provider:
             usage["cache_write_tokens"] = (
                 usage_extras.get("prompt_cache_miss_tokens", 0) or 0
             )
-
-        return ChatResponse(content=content, usage=usage)
+        return usage
 
 
 def _strip_thinking_tags(text: str) -> str:
