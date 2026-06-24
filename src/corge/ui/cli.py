@@ -76,6 +76,14 @@ class CorgeApp(App[None]):
     """The main Textual application for Corge."""
 
     CSS = """
+    $primary: #75188f;
+    $secondary: #75167a;
+    $accent: #e886fa; /* Lighter purple for readable text accents */
+
+    Screen {
+        background: #2b0630; /* Solid dark purple background */
+    }
+
     MessageScreen {
         align: center middle;
     }
