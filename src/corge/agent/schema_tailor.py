@@ -25,19 +25,7 @@ from corge.contracts import (
 _SCHEMAS_PACKAGE = "corge.schemas.stack"
 
 
-def _load_schema_file(name: str) -> dict[str, Any]:
-    """Load a schema file from the schemas/stack package.
-
-    Returns an empty dict on missing file (safe fallback).
-    """
-    try:
-        ref = importlib.resources.files(_SCHEMAS_PACKAGE).joinpath(name)
-        text = ref.read_text(encoding="utf-8")
-    except (FileNotFoundError, TypeError, ModuleNotFoundError):
-        return {}
-
-    # Simple key: value parser for our minimal YAML subset.
-    # todo: naive line parser; upgrade to PyYAML for nested schemas.
+def _parse_schema_text(text: str) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for line in text.splitlines():
         line = line.strip()
@@ -48,12 +36,34 @@ def _load_schema_file(name: str) -> dict[str, Any]:
             result[key.strip()] = value.strip()
     return result
 
+def _load_schema_file(name: str, global_dir: Path | None = None) -> dict[str, Any]:
+    """Load a schema file from global config or the schemas/stack package.
+
+    Returns an empty dict on missing file (safe fallback).
+    """
+    if global_dir:
+        global_path = global_dir / "schemas" / name
+        if global_path.exists():
+            try:
+                return _parse_schema_text(global_path.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+
+    try:
+        ref = importlib.resources.files(_SCHEMAS_PACKAGE).joinpath(name)
+        text = ref.read_text(encoding="utf-8")
+    except (FileNotFoundError, TypeError, ModuleNotFoundError):
+        return {}
+
+    return _parse_schema_text(text)
+
 
 class SchemaTailor:
     """Concrete schema tailor.  Satisfies ``contracts.SchemaTailorPort``."""
 
-    def __init__(self, knowledge_graph: KnowledgeGraphPort) -> None:
+    def __init__(self, knowledge_graph: KnowledgeGraphPort, global_dir: Path | None = None) -> None:
         self._kg = knowledge_graph
+        self._global_dir = global_dir
 
     def detect_framework(self) -> str | None:
         """Query the Knowledge Graph for config nodes that reveal the framework.
@@ -86,8 +96,8 @@ class SchemaTailor:
     def fetch_schema(self, framework_id: str | None) -> dict[str, object]:
         """Load the schema for the given framework, or generic fallback."""
         if framework_id:
-            schema = _load_schema_file(f"{framework_id}.yaml")
+            schema = _load_schema_file(f"{framework_id}.yaml", self._global_dir)
             if schema:
                 return schema
 
-        return _load_schema_file("generic.yaml")
+        return _load_schema_file("generic.yaml", self._global_dir)

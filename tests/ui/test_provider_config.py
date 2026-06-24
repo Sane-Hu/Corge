@@ -25,7 +25,7 @@ def test_update_config_toml_overwrites_correctly(tmp_path: Path) -> None:
     """_update_config_toml writes fields and type conversions properly."""
     config_file = tmp_path / "config.toml"
     # Create empty app context
-    app = RealCorgeApp(target_repo=tmp_path, config_path=config_file)
+    app = RealCorgeApp(target_repo=tmp_path, config_path=config_file, global_dir=tmp_path)
 
     new_cfg = {
         "model": "deepseek-chat",
@@ -63,7 +63,7 @@ def test_update_config_toml_merges_existing_config(tmp_path: Path) -> None:
     """
     config_file.write_text(initial_toml, encoding="utf-8")
 
-    app = RealCorgeApp(target_repo=tmp_path, config_path=config_file)
+    app = RealCorgeApp(target_repo=tmp_path, config_path=config_file, global_dir=tmp_path)
     new_cfg = {
         "model": "new-model",
         "api_key": "new-key",

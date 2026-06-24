@@ -40,10 +40,11 @@ from corge.ui.cli import CliUi, CorgeApp
 class RealCorgeApp(CorgeApp):
     """Main Textual application orchestration run loop using the real provider."""
 
-    def __init__(self, target_repo: Path, config_path: Path) -> None:
+    def __init__(self, target_repo: Path, config_path: Path, global_dir: Path) -> None:
         super().__init__()
         self.target_repo = target_repo.resolve()
         self.config_path = config_path.resolve()
+        self.global_dir = global_dir.resolve()
 
     def on_mount(self) -> None:
         self.run_session()
@@ -107,18 +108,18 @@ class RealCorgeApp(CorgeApp):
             except (FileNotFoundError, ValueError, ConnectionError) as e:
                 error_message = str(e)
 
-        memory_store = MemoryStore(self.target_repo)
+        memory_store = MemoryStore(self.target_repo, self.global_dir)
         context_service = ContextService(
             knowledge_graph, memory_store, self.target_repo
         )
-        schema_tailor = SchemaTailor(knowledge_graph)
+        schema_tailor = SchemaTailor(knowledge_graph, self.global_dir)
         budget_manager = BudgetManager()
-        audit_logger = AuditLogger(agent_dir)
+        audit_logger = AuditLogger(agent_dir, self.global_dir)
         argumentation_log = ArgumentationLog(agent_dir)
         tool_runtime = ToolRuntime()
 
         approval_gateway = ApprovalGateway(ui, audit_logger)
-        heuristic_updater = BayesianUpdater(agent_dir, argumentation_log)
+        heuristic_updater = BayesianUpdater(self.global_dir, argumentation_log)
 
         controller = SessionController(
             provider=provider,
@@ -346,10 +347,19 @@ def main() -> None:
         print(f"Error: Target path '{target_path}' does not exist.", file=sys.stderr)
         sys.exit(1)
 
+    global_dir = Path.home() / ".config" / "corge"
+    global_dir.mkdir(parents=True, exist_ok=True)
+
     config_path = target_path / "CorgeAPIConfig.toml"
+    if not config_path.exists():
+        fallback_path = target_path / ".agent" / "CorgeAPIConfig.toml"
+        if fallback_path.exists():
+            config_path = fallback_path
+        else:
+            config_path = global_dir / "CorgeAPIConfig.toml"
 
     try:
-        app = RealCorgeApp(target_repo=target_path, config_path=config_path)
+        app = RealCorgeApp(target_repo=target_path, config_path=config_path, global_dir=global_dir)
         app.run()
     except (FileNotFoundError, ValueError, ConnectionError) as e:
         print(f"Configuration Error: {e}", file=sys.stderr)

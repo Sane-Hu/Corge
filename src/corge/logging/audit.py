@@ -11,13 +11,22 @@ from corge.contracts import ApprovalDecision, ApprovalRequest, AuditEvent, ToolR
 class AuditLogger:
     """Concrete audit logger.  Satisfies ``contracts.AuditLoggerPort``."""
 
-    def __init__(self, agent_dir: Path) -> None:
+    def __init__(self, agent_dir: Path, global_dir: Path | None = None) -> None:
         self._log_path = agent_dir / "audit.jsonl"
         self._log_path.parent.mkdir(parents=True, exist_ok=True)
+        self._global_log_path = global_dir / "global_audit.jsonl" if global_dir else None
+        if self._global_log_path:
+            self._global_log_path.parent.mkdir(parents=True, exist_ok=True)
+            self._append_global(AuditEvent(kind="session_start", payload={"repo": str(agent_dir.parent)}, timestamp=self._now()))
 
     def _append(self, event: AuditEvent) -> None:
         with self._log_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(asdict(event)) + "\n")
+
+    def _append_global(self, event: AuditEvent) -> None:
+        if self._global_log_path:
+            with self._global_log_path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(asdict(event)) + "\n")
 
     def _now(self) -> str:
         return datetime.now(UTC).isoformat()
@@ -60,3 +69,4 @@ class AuditLogger:
                 kind=event.kind, payload=event.payload, timestamp=self._now()
             )
         self._append(event)
+        self._append_global(event)

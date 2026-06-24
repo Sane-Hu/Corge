@@ -20,9 +20,9 @@ _log = logging.getLogger(__name__)
 class BayesianUpdater:
     """Concrete implementation of HeuristicUpdaterPort."""
 
-    def __init__(self, agent_dir: Path, log_port: ArgumentationLogPort) -> None:
-        self._heuristics_file = agent_dir / "spec_wizard_heuristics.json"
-        self._config_path = agent_dir / "corge_heuristics.toml"
+    def __init__(self, global_dir: Path, log_port: ArgumentationLogPort) -> None:
+        self._heuristics_file = global_dir / "spec_wizard_heuristics.json"
+        self._config_path = global_dir / "corge_heuristics.toml"
         self._log_port = log_port
 
         # Default probabilities if file doesn't exist

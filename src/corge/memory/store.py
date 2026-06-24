@@ -75,13 +75,14 @@ class MemoryStore:
     ``root`` is the repository root.  All writes go under ``root/.agent/``.
     """
 
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, global_dir: Path | None = None) -> None:
         self._root = root
         self._agent_dir = root / ".agent"
         self._l0_dir = self._agent_dir / "memory" / "l0"
         self._l1_path = self._agent_dir / "memory.db"
         self._l2_dir = self._agent_dir / "memory" / "scenarios"
         self._l3_path = self._agent_dir / "engineering_profile.md"
+        self._global_l3_path = global_dir / "global_profile.md" if global_dir else None
         self._conn: sqlite3.Connection | None = None
         self._schema_initialized: bool = False
 
@@ -228,72 +229,65 @@ class MemoryStore:
     # ------------------------------------------------------------------
 
     def update_profile(self, profile: EngineeringProfile) -> None:
-        """Write the engineering profile to markdown (FR-006, FR-007 L3).
-
-        Rules with confidence below 0.5 are excluded — they are too
-        uncertain to include in Tier 1 context (09-context § Confidence
-        Scoring).
-
-        The file is always fully rewritten so there is one source of
-        truth and no append-accumulation drift.
-
-        Format:
-            # Engineering profile
-            <!-- confidence threshold: 0.5 -->
-
-            - <rule>  <!-- confidence: 0.92 -->
-            - <rule>  <!-- confidence: 0.75 -->
-        """
-        self._agent_dir.mkdir(parents=True, exist_ok=True)
-
+        """Write the engineering profile to markdown (FR-006, FR-007 L3)."""
         THRESHOLD = 0.5
 
-        # Filter and sort: highest confidence first.
-        qualified = [
-            (rule, profile.confidence.get(rule, 1.0))
-            for rule in profile.rules
-            if profile.confidence.get(rule, 1.0) >= THRESHOLD
-        ]
-        qualified.sort(key=lambda x: x[1], reverse=True)
+        def _write_profile(path: Path, conf_dict: dict[str, float]) -> None:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            qualified = [
+                (rule, conf)
+                for rule, conf in conf_dict.items()
+                if conf >= THRESHOLD
+            ]
+            qualified.sort(key=lambda x: x[1], reverse=True)
+            lines = [
+                "# Engineering profile",
+                f"<!-- confidence threshold: {THRESHOLD} -->",
+                f"<!-- updated: {_now()} -->",
+                "",
+            ]
+            if qualified:
+                for rule, conf in qualified:
+                    lines.append(f"- {rule}  <!-- confidence: {conf:.2f} -->")
+            else:
+                lines.append("<!-- no rules above confidence threshold -->")
+            lines.append("")
+            path.write_text("\n".join(lines), encoding="utf-8")
 
-        lines: list[str] = [
-            "# Engineering profile",
-            f"<!-- confidence threshold: {THRESHOLD} -->",
-            f"<!-- updated: {_now()} -->",
-            "",
-        ]
+        # 1. Update local
+        local_conf = {rule: profile.confidence.get(rule, 1.0) for rule in profile.rules}
+        _write_profile(self._l3_path, local_conf)
 
-        if qualified:
-            for rule, conf in qualified:
-                lines.append(f"- {rule}  <!-- confidence: {conf:.2f} -->")
-        else:
-            lines.append("<!-- no rules above confidence threshold -->")
+        # 2. Update global
+        if self._global_l3_path:
+            global_conf = self._read_profile_file(self._global_l3_path)
+            for rule, conf in local_conf.items():
+                global_conf[rule] = max(global_conf.get(rule, 0.0), conf)
+            _write_profile(self._global_l3_path, global_conf)
 
-        lines.append("")  # trailing newline
-        self._l3_path.write_text("\n".join(lines), encoding="utf-8")
-
-    def get_profile(self) -> EngineeringProfile:
-        """Return the engineering profile parsed from markdown.
-
-        Returns an empty profile if the file has never been written.
-        Used by the prompt assembler for Tier 1 context.
-        """
-        if not self._l3_path.exists():
-            return EngineeringProfile()
-
-        text = self._l3_path.read_text(encoding="utf-8")
-        rules = []
+    def _read_profile_file(self, path: Path) -> dict[str, float]:
+        if not path.exists():
+            return {}
+        text = path.read_text(encoding="utf-8")
         confidence = {}
         for line in text.splitlines():
             line = line.strip()
             if line.startswith("- ") and "<!-- confidence:" in line:
-                # e.g., "- Use DTOs  <!-- confidence: 0.95 -->"
                 rule_part = line[2 : line.index("<!--")].strip()
                 try:
                     conf_str = line.split("<!-- confidence:")[1].split("-->")[0].strip()
                     confidence[rule_part] = float(conf_str)
                 except (IndexError, ValueError):
                     confidence[rule_part] = 1.0
-                rules.append(rule_part)
+        return confidence
 
-        return EngineeringProfile(rules=tuple(rules), confidence=confidence)
+    def get_profile(self) -> EngineeringProfile:
+        """Return the engineering profile merged from global and local."""
+        conf: dict[str, float] = {}
+        
+        if self._global_l3_path:
+            conf.update(self._read_profile_file(self._global_l3_path))
+            
+        conf.update(self._read_profile_file(self._l3_path))
+        
+        return EngineeringProfile(rules=tuple(conf.keys()), confidence=conf)
