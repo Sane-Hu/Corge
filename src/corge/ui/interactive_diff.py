@@ -31,8 +31,20 @@ class InteractiveDiffScreen(Screen[str]):
         margin-bottom: 1;
     }
     .footer {
-        height: 3;
+        height: auto;
+        min-height: 4;
         align: center middle;
+        margin-bottom: 1;
+    }
+    .footer-buttons {
+        height: auto;
+        align: center middle;
+    }
+    .footer-prompt {
+        width: 100%;
+        text-align: center;
+        margin-bottom: 1;
+        color: $text-muted;
     }
     """
 
@@ -64,10 +76,11 @@ class InteractiveDiffScreen(Screen[str]):
                 yield Static(self._right_title, classes="pane-title")
                 self.right_area = TextArea(self._right_text)
                 yield self.right_area
-        with Horizontal(classes="footer"):
-            yield Static(self._prompt_text + "  ")
-            yield Button(self._approve_text, id="approve", variant="success")
-            yield Button(self._reject_text, id="reject", variant="error")
+        with Vertical(classes="footer"):
+            yield Static(self._prompt_text, classes="footer-prompt")
+            with Horizontal(classes="footer-buttons"):
+                yield Button(self._approve_text, id="approve", variant="success")
+                yield Button(self._reject_text, id="reject", variant="error")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "approve":
