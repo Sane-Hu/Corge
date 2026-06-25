@@ -52,8 +52,18 @@ def prompt_assembler():
 
 
 @pytest.fixture
+def audit_logger():
+    return MagicMock()
+
+
+@pytest.fixture
+def artifact_store():
+    return MagicMock()
+
+
+@pytest.fixture
 def coding_agent(
-    provider, tool_runtime, approval_gateway, context_service, knowledge_graph, prompt_assembler
+    provider, tool_runtime, approval_gateway, context_service, knowledge_graph, prompt_assembler, audit_logger, artifact_store
 ):
     return CodingAgent(
         provider=provider,
@@ -62,6 +72,8 @@ def coding_agent(
         context_service=context_service,
         knowledge_graph=knowledge_graph,
         prompt_assembler=prompt_assembler,
+        audit_logger=audit_logger,
+        artifact_store=artifact_store,
     )
 
 

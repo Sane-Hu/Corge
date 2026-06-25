@@ -99,6 +99,9 @@ class CodingAgent:
             if getattr(step, "completed", False):
                 return
 
+            context = self._context_service.retrieve_relevant_context(
+                context.specification, step
+            )
             prompt = self._prompt_assembler.assemble_coding_prompt(context)
 
             # Step 4: Reason & action selection
@@ -106,18 +109,14 @@ class CodingAgent:
             self._audit_logger.record_prompt(prompt)
             response = self._provider.chat((msg,), on_token=on_token)
 
-            match = re.search(r"```json\s*(.*?)\s*```", response.content, re.DOTALL)
-            if not match:
-                raise ToolExecutionError(
-                    f"Model response for step {step.identifier!r} "
-                    "contained no JSON block."
-                )
+            match = re.search(r"```(?:json)?\s*(.*?)\s*```", response.content, re.DOTALL)
+            json_text = match.group(1) if match else response.content
 
             try:
-                data = json.loads(match.group(1))
+                data = json.loads(json_text)
             except json.JSONDecodeError as exc:
                 raise ToolExecutionError(
-                    f"Malformed JSON in action block: {exc}"
+                    f"Malformed JSON in action block: {exc}\nResponse was:\n{response.content}"
                 ) from exc
 
             actions = data.get("actions", [])

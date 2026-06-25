@@ -288,14 +288,27 @@ class RealCorgeApp(CorgeApp):
                     except ToolExecutionError as e:
                         memory_store.store_scenario(
                             MemoryEvent(
-                                kind="tool_failure",
+                                kind=spec.title,
                                 payload={"step": step.identifier, "error": str(e)},
                                 timestamp=datetime.now(timezone.utc).isoformat(),
                             )
                         )
-                        raise
-                    finally:
                         ui.hide_loading()
+                        from corge.ui.cli import MessageScreen
+                        ui._run_screen(
+                            MessageScreen(
+                                "Execution Suspended",
+                                f"A tool failed during step {step.identifier}:\n\n{e}\n\nAutomated execution is suspended and the error has been recorded. You can restart Corge to let the agent try again with this new context."
+                            )
+                        )
+                        try:
+                            self.call_from_thread(self.exit)
+                        except Exception:
+                            pass
+                        return
+                    finally:
+                        if type(ui._app.screen).__name__ == "LoadingScreen":
+                            ui.hide_loading()
                     updated_steps[i] = dataclasses.replace(step, completed=True)
 
                 plan = dataclasses.replace(plan, steps=tuple(updated_steps))
