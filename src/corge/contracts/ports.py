@@ -110,6 +110,7 @@ class UiPort(Protocol):
 @runtime_checkable
 class StickyNoteValidatorPort(Protocol):
     def validate_node(self, node_id: str) -> StickyNoteStatus: ...
+    def fuzzy_search(self, keyword: str) -> GraphResult: ...
 
 
 # ---------------------------------------------------------------------------

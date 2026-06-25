@@ -129,3 +129,65 @@ def test_fuzzy_search_empty_keyword_returns_nothing(
 
     result = kg.fuzzy_search("")
     assert len(result.nodes) == 0
+
+
+def test_backlog_notes_parsed_correctly() -> None:
+    """Check that @later and @todo notes are parsed correctly without node_ids."""
+    from corge.ui.freestyle_canvas import CanvasScreen
+    canvas = CanvasScreen(validator=None)
+    notes = canvas._parse_sticky_notes(
+        "Some canvas text\n@later clean up tests\n@todo finalize implementation\n"
+    )
+    assert len(notes) == 2
+    assert notes[0].node_id == ""
+    assert notes[0].content == "clean up tests"
+    assert notes[1].node_id == ""
+    assert notes[1].content == "finalize implementation"
+
+
+def test_invalid_notes_block_submit_action() -> None:
+    """CanvasScreen blocks action_submit if validation fails."""
+    from corge.ui.freestyle_canvas import CanvasScreen
+    from unittest.mock import MagicMock
+    from corge.contracts import StickyNoteStatus
+
+    validator = MagicMock()
+    validator.validate_node.return_value = StickyNoteStatus.INVALID
+
+    canvas = CanvasScreen(validator=validator)
+    canvas._text_area = MagicMock()
+    canvas._text_area.text = "@node:bad_id some note content"
+    canvas._error_label = MagicMock()
+
+    canvas.dismiss = MagicMock()
+
+    canvas.action_submit()
+    canvas._error_label.update.assert_called_once()
+    canvas.dismiss.assert_not_called()
+
+
+def test_persistent_notes_save_and_load(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies that persistent notes are correctly written to and loaded from JSON."""
+    from corge.ui.freestyle_canvas import CanvasScreen
+    from unittest.mock import MagicMock
+
+    app_mock = MagicMock()
+    app_mock.target_repo = tmp_path
+
+    monkeypatch.setattr(CanvasScreen, "app", property(lambda self: app_mock))
+    canvas = CanvasScreen(validator=None)
+
+
+    assert canvas._load_persistent_notes() == []
+
+    test_notes = [
+        {"node_id": "file.py", "content": "note 1", "type": "active"},
+        {"node_id": "", "content": "note 2", "type": "later"}
+    ]
+    canvas._save_persistent_notes(test_notes)
+
+    loaded = canvas._load_persistent_notes()
+    assert len(loaded) == 2
+    assert loaded[0]["node_id"] == "file.py"
+    assert loaded[1]["content"] == "note 2"
+
