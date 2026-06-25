@@ -161,6 +161,17 @@ class SessionController:
         return self._phase
 
     @property
+    def active_agent_name(self) -> str:
+        """User-friendly name of the currently active agent."""
+        if self._phase == MasterPhase.SPECIFICATION:
+            return "Specification Agent"
+        elif self._phase == MasterPhase.PLANNING:
+            return "Planning Agent"
+        elif self._phase == MasterPhase.CODING:
+            return "Coding Agent"
+        return "System"
+
+    @property
     def spec_state(self) -> SpecState | None:
         """Active nested spec sub-state, or None outside spec phase."""
         return self._spec_state
@@ -206,12 +217,13 @@ class SessionController:
         next_state = _TRANSITIONS.get(self._state)
         if next_state is None:
             raise InvalidTransitionError(f"No transition defined from {self._state!r}")
-        self._state = next_state
-        self._phase = _STATE_PHASE[next_state]
+        return self.transition_to(next_state)
 
-        # Activate/deactivate nested state machines
+    def transition_to(self, target_state: LifecycleState) -> LifecycleState:
+        """Manually transition to a specific state (supports backward transitions)."""
+        self._state = target_state
+        self._phase = _STATE_PHASE[target_state]
         self._sync_nested_states()
-
         return self._state
 
     def _sync_nested_states(self) -> None:

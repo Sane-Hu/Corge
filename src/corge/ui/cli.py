@@ -8,12 +8,13 @@ Spec traceability:
 from __future__ import annotations
 
 import concurrent.futures
+from pathlib import Path
 from typing import Any
 
 from textual.app import App, ComposeResult
 from textual.containers import Vertical, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import Button, Static, TextArea, LoadingIndicator
+from textual.widgets import Button, Static, TextArea, LoadingIndicator, DirectoryTree, Header, Footer, RichLog
 
 from corge.contracts import (
     AcceptanceCriteria,
@@ -49,6 +50,7 @@ class MessageScreen(Screen[None]):
         self._message = message
 
     def compose(self) -> ComposeResult:
+        yield Header()
         with Vertical():
             yield Static(self._title, classes="title")
             yield TextArea(self._message, read_only=True)
@@ -65,23 +67,18 @@ class LoadingScreen(Screen[None]):
     def __init__(self, message: str) -> None:
         super().__init__()
         self._message = message
-        self._stream_content = ""
-        self.stream_static = Static("")
+        self._stream_log = RichLog(id="stream_log")
 
     def compose(self) -> ComposeResult:
+        yield Header()
         with Vertical(classes="loading-container"):
             yield Static(self._message, classes="title")
             yield LoadingIndicator()
-            with VerticalScroll(classes="stream-scroll"):
-                yield self.stream_static
+            yield self._stream_log
 
     def append_token(self, token: str) -> None:
-        self._stream_content += token
-        self.stream_static.update(self._stream_content)
-        try:
-            self.query_one(VerticalScroll).scroll_end(animate=False)
-        except Exception:
-            pass
+        if token:
+            self._stream_log.write(token)
 
 
 class CorgeApp(App[None]):
@@ -129,6 +126,20 @@ class CorgeApp(App[None]):
     """
 
 
+class DirectorySelectorApp(App[Path]):
+    """App to select a directory before starting Corge."""
+    BINDINGS = [("escape", "quit", "Quit")]
+
+    def compose(self) -> ComposeResult:
+        yield Header(show_clock=True, id="header")
+        yield Static("Select a repository directory. Use arrows to navigate, Enter to select.", classes="title")
+        yield DirectoryTree(str(Path.cwd()))
+        yield Footer()
+
+    def on_directory_tree_directory_selected(self, event: DirectoryTree.DirectorySelected) -> None:
+        self.exit(Path(event.path).resolve())
+
+
 class CliUi(UiPort):
     """Thread-safe UI port that delegates to the Textual app.
 
@@ -153,6 +164,12 @@ class CliUi(UiPort):
         self._app.call_from_thread(self._app.push_screen, screen, callback)
         return future.result()
 
+    def update_journey_state(self, agent_name: str, state_name: str) -> None:
+        def do_update() -> None:
+            self._app.title = f"Corge — {agent_name}"
+            self._app.sub_title = f"State: {state_name}"
+        self._app.call_from_thread(do_update)
+
     # ------------------------------------------------------------------
     # Specification phase screens
     # ------------------------------------------------------------------
@@ -169,7 +186,7 @@ class CliUi(UiPort):
 
     def show_argumentation_diff(
         self, canvas: CanvasSnapshot, spec: Specification, gaps: tuple[SemanticGap, ...]
-    ) -> Specification:
+    ) -> Specification | None:
         right_text = f"Title: {spec.title}\n\n{spec.body}\n"
         if gaps:
             right_text += "\nUnresolved Gaps:\n"
@@ -185,9 +202,11 @@ class CliUi(UiPort):
                 prompt_text="Resolve any gaps in the Specification.",
             )
         )
+        if result_text is None:
+            return None
         return Specification(
             title=spec.title,
-            body=result_text or spec.body,
+            body=result_text,
             acceptance_criteria=spec.acceptance_criteria,
         )
 
@@ -218,7 +237,7 @@ class CliUi(UiPort):
         )
         self._run_screen(MessageScreen("Execution Plan", msg or "(no steps)"))
 
-    def show_tech_plan_editor(self, plan: TechnicalPlan) -> TechnicalPlan:
+    def show_tech_plan_editor(self, plan: TechnicalPlan) -> TechnicalPlan | None:
         result_text = self._run_screen(
             InteractiveDiffScreen(
                 left_title="Approved Specification",
@@ -230,14 +249,16 @@ class CliUi(UiPort):
                 ),
             )
         )
+        if result_text is None:
+            return None
         return TechnicalPlan(
-            content=result_text or plan.content,
+            content=result_text,
             specification_ref=plan.specification_ref,
         )
 
     def show_procedural_steps_editor(
         self, steps: tuple[ProceduralStep, ...]
-    ) -> tuple[ProceduralStep, ...]:
+    ) -> tuple[ProceduralStep, ...] | None:
         steps_text = "\n".join(f"[{s.identifier}] {s.description}" for s in steps)
         result_text = self._run_screen(
             InteractiveDiffScreen(
@@ -248,10 +269,12 @@ class CliUi(UiPort):
                 prompt_text="Edit procedural steps. Each line becomes one step.",
             )
         )
+        if result_text is None:
+            return None
 
         new_steps = []
         step_count = 0
-        for line in (result_text or "").strip().split("\n"):
+        for line in result_text.strip().split("\n"):
             if line.strip():
                 step_count += 1
                 new_steps.append(

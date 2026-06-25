@@ -69,8 +69,8 @@ class RealCorgeApp(CorgeApp):
                 try:
                     with open(self.config_path, "rb") as f:
                         prefill = tomllib.load(f)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    print(f"Warning: failed to load config {self.config_path}: {exc}")
 
             if prefill.get("api_key") == "your-api-key-here":
                 prefill["api_key"] = ""
@@ -93,8 +93,8 @@ class RealCorgeApp(CorgeApp):
                 if not new_cfg:
                     try:
                         self.call_from_thread(self.exit)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        print(f"Warning: error during app exit: {exc}")
                     return
                 self._update_config_toml(new_cfg)
                 error_message = None
@@ -139,6 +139,8 @@ class RealCorgeApp(CorgeApp):
         plan: Plan | None = None
 
         while controller.state != LifecycleState.DONE:
+            ui.update_journey_state(controller.active_agent_name, controller.state.name)
+            
             if controller.state == LifecycleState.START:
                 controller.advance()
 
@@ -171,14 +173,20 @@ class RealCorgeApp(CorgeApp):
 
             elif controller.state == LifecycleState.SPEC_VALIDATION:
                 assert spec is not None
-                spec, gaps = controller.run_socratic_loop(
+                new_spec_body, gaps = controller.run_socratic_loop(
                     spec.body, argumentation_log, ui
                 )
+                import dataclasses
+                spec = dataclasses.replace(spec, body=new_spec_body.body)
 
                 if gaps:
                     controller.advance_spec_state(SpecState.ARGUMENTATION_DIFF)
                     canvas = CanvasSnapshot(text=spec.body, timestamp="now")
-                    spec = ui.show_argumentation_diff(canvas, spec, gaps)
+                    new_spec = ui.show_argumentation_diff(canvas, spec, gaps)
+                    if new_spec is None:
+                        controller.transition_to(LifecycleState.SPEC_ENTRY)
+                        continue
+                    spec = new_spec
 
                 controller.advance()
 
@@ -192,7 +200,12 @@ class RealCorgeApp(CorgeApp):
                     tech_plan = controller.generate_technical_plan(spec, on_token=ui.stream_token)
                 finally:
                     ui.hide_loading()
-                tech_plan = ui.show_tech_plan_editor(tech_plan)
+                
+                new_tech_plan = ui.show_tech_plan_editor(tech_plan)
+                if new_tech_plan is None:
+                    controller.transition_to(LifecycleState.SPEC_VALIDATION)
+                    continue
+                tech_plan = new_tech_plan
                 controller.advance()
 
             elif controller.state == LifecycleState.PLAN_REVIEW:
@@ -203,7 +216,12 @@ class RealCorgeApp(CorgeApp):
                     proc_steps = controller.generate_procedural_steps(tech_plan, on_token=ui.stream_token)
                 finally:
                     ui.hide_loading()
-                proc_steps = ui.show_procedural_steps_editor(proc_steps)
+                
+                new_proc_steps = ui.show_procedural_steps_editor(proc_steps)
+                if new_proc_steps is None:
+                    controller.transition_to(LifecycleState.PLAN_GENERATION)
+                    continue
+                proc_steps = new_proc_steps
 
                 plan = Plan(
                     steps=tuple(
@@ -267,8 +285,8 @@ class RealCorgeApp(CorgeApp):
 
         try:
             self.call_from_thread(self.exit)
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"Warning: error during app exit: {exc}")
 
     def _update_config_toml(self, new_cfg: dict[str, str]) -> None:
         import tomllib
@@ -279,8 +297,8 @@ class RealCorgeApp(CorgeApp):
             try:
                 with open(self.config_path, "rb") as f:
                     existing = tomllib.load(f)
-            except Exception:
-                pass
+            except Exception as exc:
+                print(f"Warning: failed to load config {self.config_path}: {exc}")
         else:
             # Prefill from config.toml.example
             template_path = (
@@ -292,8 +310,8 @@ class RealCorgeApp(CorgeApp):
                 try:
                     with open(template_path, "rb") as f:
                         existing = tomllib.load(f)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    print(f"Warning: failed to load template config {template_path}: {exc}")
 
         # Update fields from editor
         existing["model"] = new_cfg["model"]
@@ -339,9 +357,10 @@ def main() -> None:
     if len(sys.argv) > 1:
         target_path = Path(sys.argv[1]).resolve()
     else:
-        from corge.ui.directory_selector import choose_directory_cli
-
-        target_path = choose_directory_cli()
+        from corge.ui.cli import DirectorySelectorApp
+        target_path = DirectorySelectorApp().run()
+        if not target_path:
+            sys.exit(0)
 
     if not target_path.exists():
         print(f"Error: Target path '{target_path}' does not exist.", file=sys.stderr)

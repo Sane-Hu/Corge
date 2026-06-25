@@ -158,8 +158,8 @@ def load_session(agent_dir: Path) -> SessionState | None:
                 constraints=sd.get("constraints", ""),
                 testing_expectations=sd.get("testing_expectations", ""),
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"Warning: failed to parse specification from session: {exc}")
 
     repo_root: Path | None = None
     if raw.get("repo_root"):
@@ -184,8 +184,8 @@ def load_session(agent_dir: Path) -> SessionState | None:
             plan = Plan(
                 steps=tuple(steps), specification_ref=pd.get("specification_ref", "")
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"Warning: failed to parse plan from session: {exc}")
 
     technical_plan: TechnicalPlan | None = None
     if raw.get("technical_plan"):
@@ -195,8 +195,8 @@ def load_session(agent_dir: Path) -> SessionState | None:
                 content=td.get("content", ""),
                 specification_ref=td.get("specification_ref", ""),
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"Warning: failed to parse technical plan from session: {exc}")
 
     procedural_steps: tuple[ProceduralStep, ...] = ()
     if raw.get("procedural_steps"):
@@ -212,8 +212,8 @@ def load_session(agent_dir: Path) -> SessionState | None:
                     )
                 )
             procedural_steps = tuple(p_steps)
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"Warning: failed to parse procedural steps from session: {exc}")
 
     return SessionState(
         lifecycle_state=lifecycle_state,

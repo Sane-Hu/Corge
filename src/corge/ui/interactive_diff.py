@@ -1,9 +1,12 @@
 """Interactive side-by-side diff component for textual UI."""
 
+import difflib
+from rich.syntax import Syntax
+from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Static, TextArea
+from textual.widgets import Button, Static, TextArea, Header, RichLog
 
 
 class InteractiveDiffScreen(Screen[str]):
@@ -66,21 +69,45 @@ class InteractiveDiffScreen(Screen[str]):
         self._prompt_text = prompt_text
         self._approve_text = approve_text
         self._reject_text = reject_text
+        self.left_log = RichLog(id="left_log", highlight=True, markup=True)
+        self.right_area = TextArea(self._right_text, id="right_area")
 
     def compose(self) -> ComposeResult:
+        yield Header()
         with Horizontal(classes="panes"):
             with Vertical(classes="pane"):
-                yield Static(self._left_title, classes="pane-title")
-                yield TextArea(self._left_text, read_only=True)
+                yield Static(f"Diff vs {self._left_title}", classes="pane-title")
+                yield self.left_log
             with Vertical(classes="pane"):
                 yield Static(self._right_title, classes="pane-title")
-                self.right_area = TextArea(self._right_text)
                 yield self.right_area
         with Vertical(classes="footer"):
             yield Static(self._prompt_text, classes="footer-prompt")
             with Horizontal(classes="footer-buttons"):
                 yield Button(self._approve_text, id="approve", variant="success")
                 yield Button(self._reject_text, id="reject", variant="error")
+
+    def on_mount(self) -> None:
+        self.update_diff()
+
+    @on(TextArea.Changed, "#right_area")
+    def update_diff(self) -> None:
+        left_lines = self._left_text.splitlines(keepends=True)
+        right_lines = self.right_area.text.splitlines(keepends=True)
+        diff = "".join(
+            difflib.unified_diff(
+                left_lines,
+                right_lines,
+                fromfile="Original",
+                tofile="Proposed",
+                n=3,
+            )
+        )
+        self.left_log.clear()
+        if not diff.strip():
+            self.left_log.write("No differences.")
+        else:
+            self.left_log.write(Syntax(diff, "diff", theme="monokai", word_wrap=True))
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "approve":

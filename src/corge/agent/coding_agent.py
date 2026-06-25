@@ -155,8 +155,10 @@ class CodingAgent:
                     )
 
                 # Step 8: Update Markov state for the next step's context
+                # Truncate output to prevent context window explosion
+                safe_output = result.output[:3000] + ("\n...[truncated]" if len(result.output) > 3000 else "")
                 self._context_service.update_markov_state(
-                    result=result.output, correction=""
+                    result=safe_output, correction=""
                 )
 
                 if action in (ToolAction.WRITE, ToolAction.EDIT):
@@ -231,8 +233,10 @@ class CodingAgent:
 
                 data = json.loads(match.group(0))
                 return bool(data.get("all_satisfied", False))
-            except Exception:
-                pass
+            except json.JSONDecodeError as exc:
+                # Log JSON parsing error and return False to allow retry
+                print(f"Warning: JSON decode error in evaluate_completion: {exc}")
+                return False
 
         # Conservative fallback: if we can't parse the answer, don't claim done
         return False

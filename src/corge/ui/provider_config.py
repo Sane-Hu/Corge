@@ -5,7 +5,7 @@ from __future__ import annotations
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Input, Label, Static
+from textual.widgets import Button, Header, Input, Label, Static
 
 
 class ProviderConfigScreen(Screen[dict[str, str]]):
@@ -62,6 +62,7 @@ class ProviderConfigScreen(Screen[dict[str, str]]):
         self.prefill = prefill or {}
 
     def compose(self) -> ComposeResult:
+        yield Header()
         with Vertical(classes="config-container"):
             yield Static("Corge LLM Provider Configuration", classes="config-title")
 
