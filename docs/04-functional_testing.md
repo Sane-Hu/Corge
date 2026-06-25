@@ -210,6 +210,17 @@ The `SpecificationAgent` compiles the freeform canvas into a structured specific
 
 No manual input is required in this sub-state.
 
+#### 4.2.a Socratic Spec Wizard Clarifying Questions (Opt-in)
+
+If the concretization agent identifies semantic gaps in the specification draft, a `ConfirmScreen` dialog will ask: "Would you like to run the Socratic Spec Wizard to answer clarifying questions? (Select 'No' to skip and proceed directly to manual refinement.)"
+
+**Functional checks**:
+- Selecting **No** (Opt-out) immediately bypasses Socratic questions and proceeds directly to the `InteractiveDiffScreen` (Phase 4.3).
+- Selecting **Yes** (Opt-in) displays the Socratic questions screen. Provide answers and press **Submit Answers** (or select **Skip** / `Escape` to skip).
+- If answers are submitted, the UI shows "Refining specification with answers..." and automatically generates a refined specification incorporating the user answers.
+
+**Expected**: The Socratic questions screen is displayed only on opt-in. Submitted answers are merged into the specification body by the LLM before showing the final diff screen.
+
 ### 4.3 Argumentation Diff (`ARGUMENTATION_DIFF`)
 
 The TUI opens the `InteractiveDiffScreen`. The left pane shows a read-only highlighted unified diff (`difflib`) between the original canvas text and the concretized spec draft; the right pane is an editable text area containing the concretized spec draft with any unresolved semantic gaps highlighted.
@@ -218,7 +229,9 @@ The TUI opens the `InteractiveDiffScreen`. The left pane shows a read-only highl
 
 **Functional check — no gaps**: If the spec is complete, press **Approve** without edits.
 
-**Expected**: The spec transitions to `SPEC_METASTABLE`. The `ArgumentationLog` writes the Socratic Q&A log to `.agent/` for future heuristic updates.
+**Functional check — rejection**: Press **Reject** (or `Escape`). Verify that the application navigates backward to the canvas screen (`SPEC_ENTRY`).
+
+**Expected**: The spec transitions to `SPEC_METASTABLE` upon Approve. The `ArgumentationLog` writes the Socratic Q&A log to `.agent/` for future heuristic updates. If rejected, the controller transitions back to spec entry.
 
 #### 4.3.a Argumentation log inspection (`logging/argumentation_log.py`)
 
@@ -248,6 +261,7 @@ The `PlanningAgent` drafts the architectural `TechnicalPlan` in markdown. The `I
 - The plan is readable and addresses the accepted spec requirements.
 - The plan can be edited in the right pane before approval.
 - Pressing **Approve** locks the technical plan.
+- Pressing **Reject** (or `Escape`). Verify that the application navigates backward to the specification validation state (`SPEC_VALIDATION`).
 
 ### 5.2 Procedural Steps generation (`STEPS_REITERATION`)
 
@@ -257,8 +271,9 @@ The agent translates the technical plan into granular, sequenced `ProceduralStep
 - Each step has a sequential identifier.
 - Steps are granular enough to be individually executable.
 - The right pane is editable; modifications are respected on approval.
+- Pressing **Reject** (or `Escape`). Verify that the application navigates backward to the technical plan generation state (`PLAN_GENERATION`).
 
-**Expected**: On approval, the agent advances to `MasterPhase.CODING`. The `Plan` (containing all `ProceduralStep` entries) is passed to the `CodingAgent`.
+**Expected**: On approval, the agent advances to `MasterPhase.CODING`. The `Plan` (containing all `ProceduralStep` entries) is passed to the `CodingAgent`. If rejected, the controller transitions to the previous phase.
 
 ---
 
@@ -346,7 +361,8 @@ The agent issues a `bash` action (e.g. to run tests or install a dependency).
 **Expected**:
 - Same approval flow as `write`.
 - The `ToolRuntime` streams output in real time.
-- On a non-zero exit code, a `ToolExecutionError` is raised, scenario memory is updated with the blocker, and the agent suspends automated execution pending human intervention.
+- On a non-zero exit code or compilation error, a `ToolExecutionError` is raised and automated execution is suspended. A `ConfirmScreen` dialog is displayed: "Step <identifier> failed with error... Would you like to retry this step?". 
+- You can fix the bug in another window, select **Yes** (to retry), and verify that the agent re-runs the failed step successfully. If you select **No**, automated execution suspends and the application exits.
 
 ### 6.6 Rejection flow
 
@@ -416,6 +432,14 @@ cat <target-repo>/.agent/audit.jsonl | python3 -m json.tool | head -100
 - Each tool invocation (action type, target, timestamp)
 - Each human approval/rejection decision
 - Completion event
+
+### 7.4 Audit Logs TUI Viewer (UX-005)
+
+When completing a session, or when invoking the log display command inside the TUI.
+
+**Expected**:
+- The log display screen (MessageScreen) shows the log history parsed into a clean, human-readable bulleted summary of event timestamps, action types (e.g. `PROPOSE_ACTION`), execution status, reasons, and decisions.
+- Confirms that raw JSON/JSONL dumps are not displayed directly to the developer.
 
 ---
 

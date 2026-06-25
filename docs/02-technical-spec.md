@@ -23,7 +23,7 @@ This document consolidates the functional requirements, architectural subsystems
 - **FR-013 Audit Logging**: Records prompts, plans, tools, approvals, and completions for accountability. Detailed tool execution is stored locally in `.agent/audit.jsonl`, while high-level session events are tracked globally in `~/.config/corge/global_audit.jsonl`.
 - **FR-014 Provider Abstraction**: Single integration point for models (DeepSeek, Ollama, OpenAI-compat) that automatically strips `<think>` tags and populates standardized usage fields.
 - **FR-015 Empty Repository Bootstrapping**: Allows complete project scaffolding starting from specification.
-- **FR-016 Argument of Specs (Wizard)**: Interactive Socratic specification wizard with schema tailoring based on framework.
+- **FR-016 Argument of Specs (Wizard)**: Interactive Socratic specification wizard with schema tailoring based on framework. Clarifying questions are opt-in and answers are dynamically integrated via the LLM to refine the spec.
 - **FR-017 Heuristic Learning**: Bayesian self-improvement via `~/.config/corge/spec_wizard_heuristics.json` to optimize spec generation across all projects based on user overrides and abandonment (using local `ArgumentationLog`).
 - **FR-018 Freestyle Canvas**: Immutable snapshots, sticky notes with live graph validation, and semantic gap blocking.
 
@@ -279,7 +279,7 @@ The presentation layer utilizes a native Textual `DirectorySelectorApp` and seve
         *   *Socratic Argumentation Diff*: Left pane displays raw Canvas text; right pane displays the Concretized Specification draft with unresolved semantic gaps. Prompt: "Resolve any gaps in the Specification."
         *   *Technical Plan Editor*: Left pane shows previous approved 'conceretized specification'; right pane displays the draft `TechnicalPlan` in custom `Corge`'s markdown format.
         *   *Procedural Steps Editor*: Left pane maps the `TechnicalPlan` draft; right pane renders editable `ProceduralStep` identifiers and lines.
-        *   *Human Approval Gateway*: Left pane defaults to the approval request context, toggling via `Ctrl+D` to a live diff of the proposed code change; right pane details the requested `ToolAction` parameter payload.
+        *   *Human Approval Gateway*: Left pane defaults to the approval request context, toggling via `Ctrl+D` to a live diff of the proposed code change; right pane details the requested `ToolAction` parameter payload. The right pane details are set to read-only during tool approvals to prevent misleading edit text from being discarded.
     *   **Key Widgets**: Left pane defaults to a read-only `TextArea` showing reference material, but toggles via `Ctrl+D` to a hidden `RichLog` displaying a `difflib.unified_diff` of the current draft against the original draft (with syntax highlighting). Right pane is a `TextArea` for editable content, with "Approve" and "Reject" buttons.
     *   **Transition**: On pressing Approve (or `Ctrl+A`), returning the modified content to the caller and proceeding to the next step. Pressing Reject (or `Escape`) returns `None`, signaling the `SessionController` to execute a backward transition and request an updated plan/spec from the agent.
 3.  **`MessageScreen` (Read-Only Dialogs / Alerts)**
@@ -288,7 +288,16 @@ The presentation layer utilizes a native Textual `DirectorySelectorApp` and seve
     *   **Reused Cases**:
         *   *Execution Plan View*: Renders the plan steps layout while Corge's coding agent is executing the execution cycle.
         *   *Completion Review*: Notifies that the implementation has successfully passed all acceptance and verification tests. (TODO: Add implementation status tracking and verification results in the message, per plan step)
+        *   *Audit Logs view*: Parses JSONL records from `.agent/audit.jsonl` and formats them into a clean, human-readable bulleted list of proposed actions, approvals, and outcomes.
     *   **Transition**: Blocks execution until the Continue button/user input is provided. If there are pending approvals, it will display a message asking to approve or reject the pending approvals first with what the agent should realize first. If there are no pending approvals, it will proceed to the next step.
+4.  **`ConfirmScreen` (Confirmation Dialog / Prompts)**
+    *   **Purpose**: Dialog box asking for user confirmation before executing potentially destructive actions or opting into interactive workflows.
+    *   **Key Widgets**: Title `Static` label, Message `TextArea`, and `Button` controls ("Yes", "No").
+    *   **Reused Cases**:
+        *   *Socratic Validation Opt-In*: Prompting the developer to run the clarifying questions loop when semantic gaps are detected.
+        *   *Clear Backlog Notes*: Requiring verification before permanently erasing the persistent `.agent/sticky_notes.json` database.
+        *   *Tool Execution Failures*: Prompting the developer to retry the active execution step after making code fixes inside their editor.
+    *   **Transition**: Returns `True` (Yes) or `False` (No/Cancel/Escape) synchronously to the caller.
 
 ---
 

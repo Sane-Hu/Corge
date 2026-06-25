@@ -58,11 +58,11 @@ through a provider abstraction layer.
 
 A user must be able to:
 1. Load a repository or initialize from an empty directory.
-2. Create a specification interactively using the Socratic Spec-Wizard with framework-aware schemas and interactive validation (Freestyle Canvas).
+2. Create a specification interactively using the Socratic Spec-Wizard with framework-aware schemas and interactive validation (Freestyle Canvas), where clarifying questions are opt-in and answers are dynamically integrated.
 3. Generate an architectural and procedural implementation plan through iterative refinement loops.
 4. Approve the generated plan.
 5. Observe the agent's step-by-step implementation.
-6. Approve individual tool actions (write, edit, bash) with the ability to preview live code diffs interactively.
+6. Approve individual tool actions (write, edit, bash) with the ability to preview live code diffs interactively and retry failed execution steps directly.
 7. Run tests to verify the changes.
 8. Validate and complete the delivery.
 9. Save and resume/recover sessions later.
