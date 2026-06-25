@@ -33,6 +33,7 @@ from corge.logging.argumentation_log import ArgumentationLog
 from corge.logging.audit import AuditLogger
 from corge.memory.store import MemoryStore
 from corge.providers.provider import bootstrap_provider
+from corge.artifacts.store import ArtifactStore
 from corge.tools.runtime import ToolRuntime
 from corge.ui.cli import CliUi, CorgeApp
 
@@ -117,6 +118,7 @@ class RealCorgeApp(CorgeApp):
         audit_logger = AuditLogger(agent_dir, self.global_dir)
         argumentation_log = ArgumentationLog(agent_dir)
         tool_runtime = ToolRuntime()
+        artifact_store = ArtifactStore(agent_dir / "artifacts")
 
         approval_gateway = ApprovalGateway(ui, audit_logger)
         heuristic_updater = BayesianUpdater(self.global_dir, argumentation_log)
@@ -131,6 +133,8 @@ class RealCorgeApp(CorgeApp):
             knowledge_graph=knowledge_graph,
             schema_tailor=schema_tailor,
             budget_manager=budget_manager,
+            audit_logger=audit_logger,
+            artifact_store=artifact_store,
         )
 
         spec: Specification | None = None
@@ -138,9 +142,31 @@ class RealCorgeApp(CorgeApp):
         proc_steps: tuple[ProceduralStep, ...] = ()
         plan: Plan | None = None
 
+        from corge.agent.session import SessionState, load_session, save_session
+        session_state = load_session(agent_dir)
+        if session_state:
+            controller.load_from_session(session_state)
+            spec = session_state.specification
+            tech_plan = session_state.technical_plan
+            proc_steps = session_state.procedural_steps
+            plan = session_state.plan
+
         while controller.state != LifecycleState.DONE:
             ui.update_journey_state(controller.active_agent_name, controller.state.name)
             
+            current_session_state = SessionState(
+                lifecycle_state=controller.state,
+                master_phase=controller.phase,
+                spec_state=controller.spec_state,
+                plan_state=controller.plan_state,
+                specification=spec,
+                plan=plan,
+                technical_plan=tech_plan,
+                procedural_steps=proc_steps,
+                repo_root=self.target_repo,
+            )
+            save_session(agent_dir, current_session_state)
+
             if controller.state == LifecycleState.START:
                 controller.advance()
 
@@ -165,6 +191,8 @@ class RealCorgeApp(CorgeApp):
                     finally:
                         ui.hide_loading()
                 ui.show_repository_understanding(bundle.repository_context)
+                ui.show_repository_analysis(bundle.repository_context)
+                ui.show_engineering_profile(bundle.engineering_profile)
                 controller.advance()
 
             elif controller.state == LifecycleState.SPEC_ENTRY:
@@ -191,6 +219,7 @@ class RealCorgeApp(CorgeApp):
                 controller.advance()
 
             elif controller.state == LifecycleState.SPEC_APPROVAL:
+                controller.finalize_spec_phase(abandoned=False)
                 controller.advance()
 
             elif controller.state == LifecycleState.PLAN_GENERATION:
@@ -244,11 +273,26 @@ class RealCorgeApp(CorgeApp):
 
                 updated_steps = list(plan.steps)
                 for i, step in enumerate(plan.steps):
+                    if getattr(step, "completed", False):
+                        continue
                     bundle = context_service.retrieve_relevant_context(spec, step)
+                    ui.show_memory(bundle.scenario_memory)
                     ui.show_execution(bundle)
                     ui.show_loading(f"Executing step: {step.identifier}...")
+                    from corge.agent.coding_agent import ToolExecutionError
+                    from corge.contracts import MemoryEvent
+                    from datetime import datetime, timezone
                     try:
                         controller.execute_step(step, bundle, on_token=ui.stream_token)
+                    except ToolExecutionError as e:
+                        memory_store.store_scenario(
+                            MemoryEvent(
+                                kind="tool_failure",
+                                payload={"step": step.identifier, "error": str(e)},
+                                timestamp=datetime.now(timezone.utc).isoformat(),
+                            )
+                        )
+                        raise
                     finally:
                         ui.hide_loading()
                     updated_steps[i] = dataclasses.replace(step, completed=True)
@@ -270,7 +314,16 @@ class RealCorgeApp(CorgeApp):
                 bundle = context_service.retrieve_relevant_context(spec, step)
                 ui.show_loading("Verifying completion...")
                 try:
-                    controller.evaluate_completion(plan, bundle, on_token=ui.stream_token)
+                    success = controller.evaluate_completion(plan, bundle, on_token=ui.stream_token)
+                    from corge.contracts import AuditEvent
+                    from datetime import datetime, timezone
+                    audit_logger.record_completion(
+                        AuditEvent(
+                            kind="evaluate_completion",
+                            payload={"success": success, "step": step.identifier},
+                            timestamp=datetime.now(timezone.utc).isoformat()
+                        )
+                    )
                 finally:
                     ui.hide_loading()
                 controller.advance()
@@ -278,6 +331,7 @@ class RealCorgeApp(CorgeApp):
             elif controller.state == LifecycleState.COMPLETION_REVIEW:
                 assert plan is not None
                 ui.show_completion_review(plan)
+                ui.show_logs()
                 controller.advance()
 
             else:

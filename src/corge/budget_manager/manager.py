@@ -37,6 +37,7 @@ class BudgetManager:
             return len(text) // 4
 
     def rank_context(self, context: ContextBundle) -> ContextBundle:
+        # todo: implement semantic ranking (e.g. TF-IDF or vector similarity) 
         # Tiers are structurally ranked in the ContextBundle definition.
         return context
 
@@ -88,6 +89,7 @@ class BudgetManager:
         )
 
     def summarize(self, context: ContextBundle) -> str:
+        # todo: implement LLM-based summarization for massive context
         step_id = context.current_step_id or "unknown"
         return f"Context for Step {step_id}: {context.specification.title}"
 

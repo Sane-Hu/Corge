@@ -30,6 +30,8 @@ from corge.contracts import (
     ToolResult,
     ToolRuntimePort,
     PromptAssemblerPort,
+    AuditLoggerPort,
+    ArtifactStorePort,
 )
 
 
@@ -56,6 +58,8 @@ class CodingAgent:
         context_service: ContextPort,
         knowledge_graph: KnowledgeGraphPort,
         prompt_assembler: PromptAssemblerPort,
+        audit_logger: AuditLoggerPort,
+        artifact_store: ArtifactStorePort,
     ) -> None:
         self._provider = provider
         self._tool_runtime = tool_runtime
@@ -63,6 +67,8 @@ class CodingAgent:
         self._context_service = context_service
         self._knowledge_graph = knowledge_graph
         self._prompt_assembler = prompt_assembler
+        self._audit_logger = audit_logger
+        self._artifact_store = artifact_store
 
     # ------------------------------------------------------------------
     # Steps 1–9 (Tech-spec §3 §9-Step Execution Cycle)
@@ -91,6 +97,7 @@ class CodingAgent:
 
             # Step 4: Reason & action selection
             msg = ProviderMessage(role="user", content=prompt)
+            self._audit_logger.record_prompt(prompt)
             response = self._provider.chat((msg,), on_token=on_token)
 
             match = re.search(r"```json\s*(.*?)\s*```", response.content, re.DOTALL)
@@ -146,6 +153,7 @@ class CodingAgent:
 
                 # Step 6: Execute tool
                 result = self._dispatch(action_dict)
+                self._audit_logger.record_tool_call(result)
 
                 # Step 7: Verify progress
                 if not result.success:
@@ -155,8 +163,19 @@ class CodingAgent:
                     )
 
                 # Step 8: Update Markov state for the next step's context
-                # Truncate output to prevent context window explosion
-                safe_output = result.output[:3000] + ("\n...[truncated]" if len(result.output) > 3000 else "")
+                # Truncate output to prevent context window explosion or offload to artifact
+                if len(result.output) > 3000:
+                    try:
+                        # Path structure for artifacts: use step identifier
+                        artifact_path = Path(f"{step.identifier}_{action.value}.out")
+                        summary = f"Truncated output from {action.value} on {target}"
+                        ref = self._artifact_store.store_artifact(artifact_path, result.output)
+                        safe_output = result.output[:3000] + f"\n...[output truncated, see artifact: {ref.uri}]"
+                    except Exception as e:
+                        safe_output = result.output[:3000] + f"\n...[output truncated, artifact store failed: {e}]"
+                else:
+                    safe_output = result.output
+
                 self._context_service.update_markov_state(
                     result=safe_output, correction=""
                 )

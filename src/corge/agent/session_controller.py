@@ -38,6 +38,8 @@ from corge.contracts import (
     TechnicalPlan,
     ToolRuntimePort,
     UiPort,
+    AuditLoggerPort,
+    ArtifactStorePort,
 )
 from corge.prompt_assembler import PromptAssembler
 
@@ -112,6 +114,8 @@ class SessionController:
         knowledge_graph: KnowledgeGraphPort,
         schema_tailor: SchemaTailorPort,
         budget_manager: BudgetManagerPort,
+        audit_logger: AuditLoggerPort,
+        artifact_store: ArtifactStorePort,
     ) -> None:
         # Sub-agents (intra-module wiring)
         self._prompt_assembler = PromptAssembler(
@@ -123,9 +127,8 @@ class SessionController:
         self._spec_agent = SpecificationAgent(provider, context_service, self._prompt_assembler)
         self._plan_agent = PlanningAgent(provider, context_service, self._prompt_assembler)
         self._code_agent = CodingAgent(
-            provider, tool_runtime, approval_gateway, context_service, knowledge_graph, self._prompt_assembler
+            provider, tool_runtime, approval_gateway, context_service, knowledge_graph, self._prompt_assembler, audit_logger, artifact_store
         )
-
 
         # External port dependencies
         self._memory_store = memory_store
