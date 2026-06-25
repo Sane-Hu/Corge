@@ -14,7 +14,7 @@ from typing import Any
 from textual.app import App, ComposeResult
 from textual.containers import Vertical, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import Button, Static, TextArea, LoadingIndicator, DirectoryTree, Header, Footer, RichLog
+from textual.widgets import Button, Static, TextArea, LoadingIndicator, DirectoryTree, Header, Footer, RichLog, Input
 
 from corge.contracts import (
     AcceptanceCriteria,
