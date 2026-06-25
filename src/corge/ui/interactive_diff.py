@@ -1,16 +1,22 @@
 """Interactive side-by-side diff component for textual UI."""
 
 import difflib
+
 from rich.syntax import Syntax
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Static, TextArea, Header, RichLog
+from textual.widgets import Button, Footer, Header, RichLog, Static, TextArea
 
 
-class InteractiveDiffScreen(Screen[str]):
+class InteractiveDiffScreen(Screen[str | None]):
     """Side-by-side diff for review and override."""
+
+    BINDINGS = [
+        ("ctrl+a", "approve", "Approve"),
+        ("escape", "reject", "Reject"),
+    ]
 
     CSS = """
     InteractiveDiffScreen {
@@ -86,6 +92,13 @@ class InteractiveDiffScreen(Screen[str]):
             with Horizontal(classes="footer-buttons"):
                 yield Button(self._approve_text, id="approve", variant="success")
                 yield Button(self._reject_text, id="reject", variant="error")
+        yield Footer()
+
+    def action_approve(self) -> None:
+        self.dismiss(self.right_area.text)
+
+    def action_reject(self) -> None:
+        self.dismiss(None)
 
     def on_mount(self) -> None:
         self.update_diff()

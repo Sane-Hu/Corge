@@ -5,11 +5,16 @@ from __future__ import annotations
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Header, Input, Label, Static
+from textual.widgets import Button, Footer, Header, Input, Label, Static
 
 
-class ProviderConfigScreen(Screen[dict[str, str]]):
+class ProviderConfigScreen(Screen[dict[str, str] | None]):
     """Screen for interactive provider configuration inputs."""
+
+    BINDINGS = [
+        ("ctrl+s", "save", "Save & Connect"),
+        ("escape", "exit", "Exit"),
+    ]
 
     CSS = """
     ProviderConfigScreen {
@@ -106,6 +111,22 @@ class ProviderConfigScreen(Screen[dict[str, str]]):
             with Horizontal(classes="buttons"):
                 yield Button("Save & Connect", id="save_btn", variant="success")
                 yield Button("Exit", id="exit_btn", variant="error")
+        yield Footer()
+
+    def action_save(self) -> None:
+        model = self.query_one("#model_input", Input).value.strip()
+        api_key = self.query_one("#api_key_input", Input).value.strip()
+        base_url = self.query_one("#base_url_input", Input).value.strip()
+        self.dismiss(
+            {
+                "model": model,
+                "api_key": api_key,
+                "base_url": base_url,
+            }
+        )
+
+    def action_exit(self) -> None:
+        self.dismiss(None)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "save_btn":

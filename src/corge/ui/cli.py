@@ -12,9 +12,19 @@ from pathlib import Path
 from typing import Any
 
 from textual.app import App, ComposeResult
-from textual.containers import Vertical, VerticalScroll
+from textual.containers import Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Static, TextArea, LoadingIndicator, DirectoryTree, Header, Footer, RichLog, Input
+from textual.widgets import (
+    Button,
+    DirectoryTree,
+    Footer,
+    Header,
+    Input,
+    LoadingIndicator,
+    RichLog,
+    Static,
+    TextArea,
+)
 
 from corge.contracts import (
     AcceptanceCriteria,
@@ -44,6 +54,11 @@ class MessageScreen(Screen[None]):
     Used for: execution plan view, errors, completion review.
     """
 
+    BINDINGS = [
+        ("escape", "continue", "Continue"),
+        ("enter", "continue", "Continue"),
+    ]
+
     def __init__(self, title: str, message: str) -> None:
         super().__init__()
         self._title = title
@@ -55,6 +70,10 @@ class MessageScreen(Screen[None]):
             yield Static(self._title, classes="title")
             yield TextArea(self._message, read_only=True)
             yield Button("Continue", id="continue", variant="primary")
+        yield Footer()
+
+    def action_continue(self) -> None:
+        self.dismiss(None)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "continue":
@@ -128,7 +147,7 @@ class CorgeApp(App[None]):
 
 class DirectorySelectorApp(App[Path]):
     """App to select a directory before starting Corge."""
-    
+
     CSS = """
     .title { padding: 1; background: $boost; }
     .hidden { display: none; }
@@ -145,7 +164,9 @@ class DirectorySelectorApp(App[Path]):
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True, id="header")
-        yield Static("Select a repository directory. Use arrows to navigate, Enter to select.", classes="title")
+        yield Static(
+            "Select a repository directory. See footer for shortcuts.", classes="title"
+        )
         inp = Input(id="action_input")
         inp.styles.display = "none"
         yield inp
@@ -181,14 +202,14 @@ class DirectorySelectorApp(App[Path]):
         val = event.value.strip()
         inp = event.input
         tree = self.query_one(DirectoryTree)
-        
+
         if not val:
             inp.styles.display = "none"
             inp.value = ""
             tree.display = True
             tree.focus()
             return
-            
+
         if inp.id == "create_input":
             new_path = Path(tree.path) / val
             new_path.mkdir(parents=True, exist_ok=True)
@@ -203,13 +224,15 @@ class DirectorySelectorApp(App[Path]):
                 inp.value = ""
                 inp.placeholder = f"Error: '{val}' is not a valid directory!"
                 return
-                
+
         inp.styles.display = "none"
         inp.value = ""
         tree.display = True
         tree.focus()
 
-    def on_directory_tree_directory_selected(self, event: DirectoryTree.DirectorySelected) -> None:
+    def on_directory_tree_directory_selected(
+        self, event: DirectoryTree.DirectorySelected
+    ) -> None:
         self.exit(Path(event.path).resolve())
 
 
@@ -241,6 +264,7 @@ class CliUi(UiPort):
         def do_update() -> None:
             self._app.title = f"Corge — {agent_name}"
             self._app.sub_title = f"State: {state_name}"
+
         self._app.call_from_thread(do_update)
 
     # ------------------------------------------------------------------
@@ -259,7 +283,7 @@ class CliUi(UiPort):
 
     def show_argumentation_diff(
         self, canvas: CanvasSnapshot, spec: Specification, gaps: tuple[SemanticGap, ...]
-    ) -> Specification | None:
+    ) -> Specification:
         right_text = f"Title: {spec.title}\n\n{spec.body}\n"
         if gaps:
             right_text += "\nUnresolved Gaps:\n"
@@ -276,7 +300,7 @@ class CliUi(UiPort):
             )
         )
         if result_text is None:
-            return None
+            return spec
         return Specification(
             title=spec.title,
             body=result_text,
@@ -310,7 +334,7 @@ class CliUi(UiPort):
         )
         self._run_screen(MessageScreen("Execution Plan", msg or "(no steps)"))
 
-    def show_tech_plan_editor(self, plan: TechnicalPlan) -> TechnicalPlan | None:
+    def show_tech_plan_editor(self, plan: TechnicalPlan) -> TechnicalPlan:
         result_text = self._run_screen(
             InteractiveDiffScreen(
                 left_title="Approved Specification",
@@ -323,7 +347,7 @@ class CliUi(UiPort):
             )
         )
         if result_text is None:
-            return None
+            return plan
         return TechnicalPlan(
             content=result_text,
             specification_ref=plan.specification_ref,
@@ -331,7 +355,7 @@ class CliUi(UiPort):
 
     def show_procedural_steps_editor(
         self, steps: tuple[ProceduralStep, ...]
-    ) -> tuple[ProceduralStep, ...] | None:
+    ) -> tuple[ProceduralStep, ...]:
         steps_text = "\n".join(f"[{s.identifier}] {s.description}" for s in steps)
         result_text = self._run_screen(
             InteractiveDiffScreen(
@@ -343,7 +367,7 @@ class CliUi(UiPort):
             )
         )
         if result_text is None:
-            return None
+            return steps
 
         new_steps = []
         step_count = 0
@@ -498,7 +522,9 @@ class CliUi(UiPort):
 
     def stream_token(self, token: str) -> None:
         """Stream an LLM generation token directly to the UI."""
+
         def do_update() -> None:
             if isinstance(self._app.screen, LoadingScreen):
                 self._app.screen.append_token(token)
+
         self._app.call_from_thread(do_update)

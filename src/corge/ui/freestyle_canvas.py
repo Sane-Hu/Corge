@@ -13,7 +13,7 @@ from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Label, Static, TextArea, Header
+from textual.widgets import Button, Footer, Header, Label, Static, TextArea
 
 from corge.contracts import (
     StickyNote,
@@ -50,6 +50,11 @@ class CanvasScreen(Screen[str]):
     - Sticky note parsing with live KG node validation (FR-018)
     - Submit button that dismisses with the canvas text
     """
+
+    BINDINGS = [
+        ("ctrl+s", "submit", "Submit Canvas"),
+        ("escape", "cancel", "Cancel"),
+    ]
 
     CSS = """
     CanvasScreen {
@@ -123,6 +128,15 @@ class CanvasScreen(Screen[str]):
             yield self._sticky_label
         with Horizontal(classes="footer"):
             yield Button("Submit to Concretization", id="submit", variant="primary")
+        yield Footer()
+
+    def action_submit(self) -> None:
+        text = self._text_area.text
+        self._sticky_notes = self._parse_sticky_notes(text)
+        self.dismiss(text)
+
+    def action_cancel(self) -> None:
+        self.dismiss("")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "submit":
@@ -133,11 +147,15 @@ class CanvasScreen(Screen[str]):
     @on(TextArea.Changed)
     def handle_text_changed(self) -> None:
         text = self._text_area.text
-        if text.strip() and hasattr(self, "_ghost_static") and self._ghost_static.styles.display != "none":
+        if (
+            text.strip()
+            and hasattr(self, "_ghost_static")
+            and self._ghost_static.styles.display != "none"
+        ):
             self._ghost_static.styles.display = "none"
         elif not text.strip() and hasattr(self, "_ghost_static"):
             self._ghost_static.styles.display = "block"
-        
+
         self._sticky_notes = self._parse_sticky_notes(text)
         self._refresh_sticky_display()
 
