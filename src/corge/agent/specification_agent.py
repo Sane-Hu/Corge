@@ -23,14 +23,20 @@ from corge.contracts import (
     SemanticGap,
     Specification,
     UiPort,
+    ContextPort,
+    PromptAssemblerPort,
+    RepositoryContext,
 )
+from pathlib import Path
 
 
 class SpecificationAgent:
     """Manages the interactive specification wizard and semantic gaps."""
 
-    def __init__(self, provider: ProviderPort) -> None:
+    def __init__(self, provider: ProviderPort, context_service: ContextPort, prompt_assembler: PromptAssemblerPort) -> None:
         self._provider = provider
+        self._context_service = context_service
+        self._prompt_assembler = prompt_assembler
 
     # ------------------------------------------------------------------
     # CONCRETIZATION sub-state (Tech-spec §3 SpecState)
@@ -43,10 +49,9 @@ class SpecificationAgent:
         title, body, acceptance criteria, constraints, testing expectations.
         Returns a best-effort Specification; gaps remain for ARGUMENTATION_DIFF.
         """
-        prompt = (
-            "You are a strict specification compiler.\n"
+        instruction = (
             "Extract the following structured fields from the raw "
-            "brainstorming text below.\n"
+            "brainstorming text below. Ensure you respect the engineering profile and repository facts.\n"
             "Return ONLY a JSON object with these exact keys:\n"
             '  "title": string — the main business goal (one sentence)\n'
             '  "body": string — narrative of user stories and functional requirements\n'
@@ -57,6 +62,8 @@ class SpecificationAgent:
             "string or empty list.\n\n"
             f"Brainstorming text:\n{canvas_text}"
         )
+        ctx_bundle = self._context_service.load_context(RepositoryContext(root=Path(".")))
+        prompt = self._prompt_assembler.assemble_spec_prompt(ctx_bundle, instruction)
         msg = ProviderMessage(role="user", content=prompt)
         response = self._provider.chat((msg,), on_token=on_token)
 
@@ -95,13 +102,14 @@ class SpecificationAgent:
 
         Returns a tuple of unresolved SemanticGap objects.
         """
-        prompt = (
-            "You are a strict system architect.\n"
+        instruction = (
             "Analyze the following drafted specification for semantic gaps, "
-            "missing logic, or undefined edge cases.\n"
+            "missing logic, or undefined edge cases. Apply rules from the engineering profile.\n"
             "Return ONLY a JSON array of objects with a 'topic' key.\n\n"
             f"Draft:\n{canvas_text}"
         )
+        ctx_bundle = self._context_service.load_context(RepositoryContext(root=Path(".")))
+        prompt = self._prompt_assembler.assemble_spec_prompt(ctx_bundle, instruction)
         msg = ProviderMessage(role="user", content=prompt)
         response = self._provider.chat((msg,), on_token=on_token)
 
@@ -170,14 +178,15 @@ class SpecificationAgent:
     ) -> str:
         """Ask the model to generate a targeted clarifying question for all gaps."""
         topics = "\n".join(f"- {gap.topic}" for gap in gaps)
-        prompt = (
-            "You are a Socratic specification reviewer.\n"
+        instruction = (
             f"The following specification has unresolved gaps:\n{topics}\n\n"
             f"Specification title: {spec.title}\n"
             f"Specification body: {spec.body[:500]}\n\n"
             "Write a concise numbered list of clarifying questions to resolve these gaps.\n"
             "Return ONLY the questions, no preamble."
         )
+        ctx_bundle = self._context_service.load_context(RepositoryContext(root=Path(".")))
+        prompt = self._prompt_assembler.assemble_spec_prompt(ctx_bundle, instruction)
         msg = ProviderMessage(role="user", content=prompt)
         response = self._provider.chat((msg,), on_token=on_token)
         return response.content.strip()

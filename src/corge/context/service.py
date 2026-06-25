@@ -163,11 +163,12 @@ class ContextService:
         """
         # Tier 2a — repo file list from KG
         relevant_files: tuple[str, ...] = ()
-        try:
-            result = self._kg.query_graph(GraphQuery(expression="files"))
-            relevant_files = tuple(n.node_id for n in result.nodes[:50])
-        except (RuntimeError, sqlite3.OperationalError, ValueError) as exc:
-            _log.warning("KG query failed during context assembly: %s", exc)
+        if phase != MasterPhase.SPECIFICATION:
+            try:
+                result = self._kg.query_graph(GraphQuery(expression="files"))
+                relevant_files = tuple(n.node_id for n in result.nodes[:50])
+            except (RuntimeError, sqlite3.OperationalError, ValueError) as exc:
+                _log.warning("KG query failed during context assembly: %s", exc)
 
         # Tier 2 — repo conventions + local rules
         engineering_facts: tuple[str, ...] = ()

@@ -8,26 +8,35 @@ from corge.contracts import (
     ProviderPort,
     Specification,
     TechnicalPlan,
+    ContextPort,
+    PromptAssemblerPort,
+    RepositoryContext,
 )
+from pathlib import Path
+from dataclasses import replace
 
 
 class PlanningAgent:
     """Translates specifications into Technical and Procedural plans."""
 
-    def __init__(self, provider: ProviderPort) -> None:
+    def __init__(self, provider: ProviderPort, context_service: ContextPort, prompt_assembler: PromptAssemblerPort) -> None:
         self._provider = provider
+        self._context_service = context_service
+        self._prompt_assembler = prompt_assembler
 
     def generate_technical_plan(
         self, specification: Specification, on_token: Callable[[str], None] | None = None
     ) -> TechnicalPlan:
-        prompt = (
-            "You are a technical planner.\n"
-            "Create an architectural blueprint for the following specification.\n"
+        instruction = (
+            "Create an architectural blueprint for the specification provided in the context.\n"
             "Focus STRICTLY on system architecture, database schema changes, "
-            "and API contracts. Do NOT provide procedural steps or bash scripts here.\n"
-            f"Title: {specification.title}\n"
-            f"Body: {specification.body}"
+            "and API contracts. Ensure you respect the engineering profile and repository facts.\n"
+            "Do NOT provide procedural steps or bash scripts here."
         )
+        
+        ctx_bundle = self._context_service.refresh_context(RepositoryContext(root=Path(".")))
+        ctx_bundle = replace(ctx_bundle, specification=specification)
+        prompt = self._prompt_assembler.assemble_plan_prompt(ctx_bundle, instruction)
         msg = ProviderMessage(role="user", content=prompt)
         response = self._provider.chat((msg,), on_token=on_token)
         return TechnicalPlan(
@@ -37,13 +46,15 @@ class PlanningAgent:
     def generate_procedural_steps(
         self, technical_plan: TechnicalPlan, on_token: Callable[[str], None] | None = None
     ) -> tuple[ProceduralStep, ...]:
-        prompt = (
-            "You are an execution planner.\n"
-            "Break down the following technical plan into strict procedural steps.\n"
-            "Each step must be an actionable, sequential chunk of work. "
+        instruction = (
+            "Break down the technical plan below into strict procedural steps.\n"
+            "Each step must be an actionable, sequential chunk of work aligned with repository facts.\n"
             "Output each step on a new line starting with STEP: \n\n"
             f"Plan:\n{technical_plan.content}"
         )
+
+        ctx_bundle = self._context_service.refresh_context(RepositoryContext(root=Path(".")))
+        prompt = self._prompt_assembler.assemble_plan_prompt(ctx_bundle, instruction)
         msg = ProviderMessage(role="user", content=prompt)
         response = self._provider.chat((msg,), on_token=on_token)
 

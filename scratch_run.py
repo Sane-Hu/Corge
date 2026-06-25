@@ -31,8 +31,9 @@ from corge.tools.runtime import ToolRuntime
 from corge.ui.cli import CliUi, CorgeApp
 
 
+from typing import Callable
 class MockProvider(ProviderPort):
-    def chat(self, messages: tuple[ProviderMessage, ...]) -> ChatResponse:
+    def chat(self, messages: tuple[ProviderMessage, ...], on_token: Callable[[str], None] | None = None) -> ChatResponse:
         text = " ".join(m.content.lower() for m in messages)
 
         if "analyze the following canvas text" in text or "gaps" in text:

@@ -12,7 +12,7 @@ be verified in tests without importing concrete implementations.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Callable, Protocol, runtime_checkable
 
 from corge.contracts.models import (
     ApprovalDecision,
@@ -174,7 +174,11 @@ class PromptAssemblerPort(Protocol):
         self, step: PlanStep, specification: Specification
     ) -> ContextBundle: ...
 
-    def assemble_prompt(self, context: ContextBundle) -> str: ...
+    def assemble_spec_prompt(self, context: ContextBundle, instruction: str) -> str: ...
+
+    def assemble_plan_prompt(self, context: ContextBundle, instruction: str) -> str: ...
+
+    def assemble_coding_prompt(self, context: ContextBundle) -> str: ...
 
 
 # ---------------------------------------------------------------------------
@@ -296,7 +300,7 @@ class ToolRuntimePort(Protocol):
 class ProviderPort(Protocol):
     """External model integration boundary."""
 
-    from typing import Callable
+
 
     def chat(
         self,

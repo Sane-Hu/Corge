@@ -29,6 +29,7 @@ from corge.contracts import (
     ToolAction,
     ToolResult,
     ToolRuntimePort,
+    PromptAssemblerPort,
 )
 
 
@@ -54,12 +55,14 @@ class CodingAgent:
         approval_gateway: ApprovalGatewayPort,
         context_service: ContextPort,
         knowledge_graph: KnowledgeGraphPort,
+        prompt_assembler: PromptAssemblerPort,
     ) -> None:
         self._provider = provider
         self._tool_runtime = tool_runtime
         self._approval_gateway = approval_gateway
         self._context_service = context_service
         self._knowledge_graph = knowledge_graph
+        self._prompt_assembler = prompt_assembler
 
     # ------------------------------------------------------------------
     # Steps 1–9 (Tech-spec §3 §9-Step Execution Cycle)
@@ -84,46 +87,7 @@ class CodingAgent:
             if getattr(step, "completed", False):
                 return
 
-            # Step 2-3: Assemble ephemeral prompt with Markov context
-            markov_text = ""
-            if context.markov_context:
-                markov_text = (
-                    f"\nN-1 Markov Context:\n"
-                    f"  Agent proposal: {context.markov_context.agent_proposal}\n"
-                    f"  User correction: {context.markov_context.user_correction}\n"
-                    f"  Prior trajectory: "
-                    f"{context.markov_context.compressed_trajectory}"
-                )
-
-            prompt = (
-                "You are a coding agent executing a precise implementation plan.\n"
-                f"Current step: {step.description}\n"
-                f"Step identifier: {step.identifier}\n"
-                f"{markov_text}\n\n"
-                "Determine the next tool action required. Respond with a JSON block:\n"
-                "```json\n"
-                "{\n"
-                '  "done": false,\n'
-                '  "actions": [\n'
-                "    {\n"
-                '      "action": "READ|WRITE|EDIT|BASH",\n'
-                '      "target": "<path or shell command>",\n'
-                '      "content": "<full file content for WRITE>",\n'
-                '      "old": "<exact substring to replace for EDIT '
-                '— include 3+ lines of context>",\n'
-                '      "new": "<replacement substring for EDIT>"\n'
-                "    }\n"
-                "  ]\n"
-                "}\n"
-                "```\n"
-                "Rules:\n"
-                "- 'content' is required for WRITE.\n"
-                "- 'old' and 'new' are required for EDIT. "
-                "'old' must be unique in the file.\n"
-                "- For BASH, 'target' is the command string.\n"
-                "- For READ, request all needed files at once.\n"
-                "- Set 'done': true when the step is complete."
-            )
+            prompt = self._prompt_assembler.assemble_coding_prompt(context)
 
             # Step 4: Reason & action selection
             msg = ProviderMessage(role="user", content=prompt)

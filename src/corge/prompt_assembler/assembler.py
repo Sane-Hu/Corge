@@ -12,14 +12,14 @@ from corge.contracts import (
     Specification,
 )
 
-# Rules below this confidence are excluded from Tier 1 prompt output.
+# Rules below this confidence are excluded from prompt output.
 # Defined in 02-technical-spec.md Section 4 (Engineering Profile).
 _ENGINEERING_PROFILE_CONFIDENCE_THRESHOLD = 0.5
 _TOKEN_BUDGET = 100_000
 
 
 class PromptAssembler:
-    """Builds the ephemeral execution prompt from a context bundle."""
+    """Builds the ephemeral execution prompt from a context bundle using semantic tagging."""
 
     def __init__(
         self,
@@ -37,124 +37,193 @@ class PromptAssembler:
         """Fetch all required context layers for the current plan step."""
         return self._context_port.retrieve_relevant_context(specification, step)
 
-    def assemble_prompt(self, context: ContextBundle) -> str:
-        """Render the structured context bundle into the ephemeral markdown prompt."""
-        if self._budget_manager.estimate_tokens(context) > _TOKEN_BUDGET:
-            context = self._budget_manager.compact(context)
+    def assemble_spec_prompt(self, context: ContextBundle, instruction: str) -> str:
+        """Assemble the objective/constraint-based prompt for the Specification phase."""
+        context = self._enforce_budget(context)
+        sections = [
+            f"<objective>\n{instruction}\n</objective>",
+            self._render_engineering_profile(context),
+            self._render_repository_facts(context),
+            self._render_schema(context),
+        ]
+        return "\n\n".join(filter(bool, sections))
 
-        sections: list[str] = []
+    def assemble_plan_prompt(self, context: ContextBundle, instruction: str) -> str:
+        """Assemble the objective/constraint-based prompt for the Planning phase."""
+        context = self._enforce_budget(context)
+        sections = [
+            f"<objective>\n{instruction}\n</objective>",
+            self._render_specification(context),
+            self._render_engineering_profile(context),
+            self._render_repository_facts(context),
+            self._render_relevant_files(context),
+            self._render_schema(context),
+        ]
+        return "\n\n".join(filter(bool, sections))
 
-        tier1 = self._render_tier1(context)
-        if tier1:
-            sections.append(tier1)
-
-        tier2 = self._render_tier2(context)
-        if tier2:
-            sections.append(tier2)
-
-        tier3 = self._render_tier3(context)
-        if tier3:
-            sections.append(tier3)
-
-        tier4 = self._render_tier4(context)
-        if tier4:
-            sections.append(tier4)
-
-        tier5 = self._render_tier5(context)
-        if tier5:
-            sections.append(tier5)
-
-        return "\n\n".join(sections)
-
-    # -- Tier renderers -----------------------------------------------
-
-    def _render_tier1(self, context: ContextBundle) -> str:
-        spec = context.specification
+    def assemble_coding_prompt(self, context: ContextBundle) -> str:
+        """Assemble the semantic prompt for the Coding phase (9-step execution)."""
+        context = self._enforce_budget(context)
+        
         step = self._current_step(context)
+        step_desc = step.description if step else "Execute step"
+        step_id = step.identifier if step else "unknown"
+        
+        instruction = (
+            "You are a coding agent executing a precise implementation plan.\n"
+            f"Current step: {step_desc}\n"
+            f"Step identifier: {step_id}\n\n"
+            "Determine the next tool action required. Respond with a JSON block:\n"
+            "```json\n"
+            "{\n"
+            '  "done": false,\n'
+            '  "actions": [\n'
+            "    {\n"
+            '      "action": "READ|WRITE|EDIT|BASH",\n'
+            '      "target": "<path or shell command>",\n'
+            '      "content": "<full file content for WRITE>",\n'
+            '      "old": "<exact substring to replace for EDIT '
+            '— include 3+ lines of context>",\n'
+            '      "new": "<replacement substring for EDIT>"\n'
+            "    }\n"
+            "  ]\n"
+            "}\n"
+            "```\n"
+            "Rules:\n"
+            "- 'content' is required for WRITE.\n"
+            "- 'old' and 'new' are required for EDIT. "
+            "'old' must be unique in the file.\n"
+            "- For BASH, 'target' is the command string.\n"
+            "- For READ, request all needed files at once.\n"
+            "- Set 'done': true when the step is complete."
+        )
+
+        sections = [
+            f"<objective>\n{instruction}\n</objective>",
+            self._render_specification(context),
+            self._render_engineering_profile(context),
+            self._render_repository_facts(context),
+            self._render_relevant_files(context),
+            self._render_schema(context),
+            self._render_scenario_memory(context),
+            self._render_recent_activity(context),
+            self._render_artifacts(context),
+        ]
+        return "\n\n".join(filter(bool, sections))
+
+    # -- Internal Renderers ---------------------------------------------
+
+    def _enforce_budget(self, context: ContextBundle) -> ContextBundle:
+        """Ensure context fits within the token limit."""
+        if self._budget_manager.estimate_tokens(context) > _TOKEN_BUDGET:
+            return self._budget_manager.compact(context)
+        return context
+
+    def _render_specification(self, context: ContextBundle) -> str:
+        spec = context.specification
+        if not spec or not spec.title:
+            return ""
 
         lines = [
-            "## Tier 1: Specification",
+            "<specification>",
             f"Title: {spec.title}",
             f"Goal: {spec.body}",
         ]
-
-        framework_id = self._schema_tailor.detect_framework()
-        schema = self._schema_tailor.fetch_schema(framework_id)
-        if schema:
-            lines.append("Schema:")
-            for key, val in schema.items():
-                lines.append(f"  {key}: {val}")
-
         if spec.constraints:
             lines.append(f"Constraints: {spec.constraints}")
         if spec.testing_expectations:
             lines.append(f"Testing Expectations: {spec.testing_expectations}")
-
         if spec.acceptance_criteria.items:
             lines.append("Acceptance Criteria:")
             for item in spec.acceptance_criteria.items:
                 lines.append(f"- {item}")
+        lines.append("</specification>")
+        return "\n".join(lines)
 
-        if step is not None:
-            lines.append(f"Current Plan Step: {step.identifier} — {step.description}")
-            if step.action is not None:
-                lines.append(f"Action: {step.action.value} Target: {step.target}")
+    def _render_schema(self, context: ContextBundle) -> str:
+        framework_id = self._schema_tailor.detect_framework()
+        schema = self._schema_tailor.fetch_schema(framework_id)
+        if not schema:
+            return ""
+        
+        lines = ["<framework_schema>"]
+        for key, val in schema.items():
+            lines.append(f"  {key}: {val}")
+        lines.append("</framework_schema>")
+        return "\n".join(lines)
 
+    def _render_engineering_profile(self, context: ContextBundle) -> str:
         profile_rules = self._confident_profile_rules(context.engineering_profile)
-        if profile_rules:
-            lines.append("Engineering Profile:")
-            for rule in profile_rules:
-                lines.append(f"- {rule}")
+        if not profile_rules:
+            return ""
 
+        lines = ["<engineering_profile>"]
+        for rule in profile_rules:
+            lines.append(f"- {rule}")
+        lines.append("</engineering_profile>")
         return "\n".join(lines)
 
-    def _render_tier2(self, context: ContextBundle) -> str:
-        lines: list[str] = []
+    def _render_repository_facts(self, context: ContextBundle) -> str:
+        if not context.engineering_facts:
+            return ""
 
-        if context.engineering_facts or context.relevant_files:
-            lines.append("## Tier 2: Repository")
-            if context.engineering_facts:
-                lines.append("Engineering Facts:")
-                for fact in context.engineering_facts:
-                    lines.append(f"- {fact}")
-            if context.relevant_files:
-                lines.append("Relevant Files:")
-                for path in context.relevant_files:
-                    lines.append(f"- {path}")
-
+        lines = ["<repository_facts>"]
+        for fact in context.engineering_facts:
+            lines.append(f"- {fact}")
+        lines.append("</repository_facts>")
         return "\n".join(lines)
 
-    def _render_tier3(self, context: ContextBundle) -> str:
+    def _render_relevant_files(self, context: ContextBundle) -> str:
+        if not context.relevant_files:
+            return ""
+
+        lines = ["<relevant_files>"]
+        for path in context.relevant_files:
+            lines.append(f"- {path}")
+        lines.append("</relevant_files>")
+        return "\n".join(lines)
+
+    def _render_scenario_memory(self, context: ContextBundle) -> str:
         if not context.scenario_memory:
             return ""
 
-        lines = ["## Tier 3: Task Memory"]
+        lines = ["<task_memory>"]
         for event in context.scenario_memory:
             lines.append(f"- [{event.kind}] {event.payload}")
+        lines.append("</task_memory>")
         return "\n".join(lines)
 
-    def _render_tier4(self, context: ContextBundle) -> str:
-        if not context.recent_actions:
-            return ""
+    def _render_recent_activity(self, context: ContextBundle) -> str:
+        lines = []
+        if context.markov_context:
+            lines.append("<markov_context>")
+            lines.append(f"Agent proposal: {context.markov_context.agent_proposal}")
+            lines.append(f"User correction: {context.markov_context.user_correction}")
+            lines.append(f"Prior trajectory: {context.markov_context.compressed_trajectory}")
+            lines.append("</markov_context>")
 
-        lines = ["## Tier 4: Recent Activity"]
-        for action in context.recent_actions:
-            lines.append(f"- {action}")
+        if context.recent_actions:
+            lines.append("<recent_actions>")
+            for action in context.recent_actions:
+                lines.append(f"- {action}")
+            lines.append("</recent_actions>")
+            
         return "\n".join(lines)
 
-    def _render_tier5(self, context: ContextBundle) -> str:
+    def _render_artifacts(self, context: ContextBundle) -> str:
         if not context.artifact_refs:
             return ""
 
-        lines = ["## Tier 5: Artifacts"]
+        lines = ["<artifacts>"]
         for ref in context.artifact_refs:
             lines.append(f"- {ref.uri}: {ref.summary}")
+        lines.append("</artifacts>")
         return "\n".join(lines)
 
     # -- Helpers --------------------------------------------------------
 
     def _current_step(self, context: ContextBundle) -> PlanStep | None:
-        if not context.current_step_id:
+        if not context.current_step_id or not context.plan:
             return None
         for step in context.plan.steps:
             if step.identifier == context.current_step_id:
@@ -162,7 +231,7 @@ class PromptAssembler:
         return None
 
     def _confident_profile_rules(self, profile: EngineeringProfile) -> tuple[str, ...]:
-        if not profile.rules:
+        if not profile or not profile.rules:
             return ()
         return tuple(
             rule

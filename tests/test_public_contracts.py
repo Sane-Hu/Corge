@@ -181,7 +181,7 @@ def test_documented_public_classes_exist() -> None:
             "refresh_context",
             "retrieve_relevant_context",
         },
-        PromptAssembler: {"collect_context", "assemble_prompt"},
+        PromptAssembler: {"collect_context", "assemble_spec_prompt", "assemble_plan_prompt", "assemble_coding_prompt"},
         BudgetManager: {
             "estimate_tokens",
             "rank_context",

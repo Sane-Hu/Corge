@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 
 from corge.agent.specification_agent import SpecificationAgent
-from corge.contracts import ChatResponse, ProviderPort
+from corge.contracts import ChatResponse, ProviderPort, ContextPort, PromptAssemblerPort
 
 
 def test_draft_specification_parses_json():
@@ -18,7 +18,9 @@ def test_draft_specification_parses_json():
 ```""",
         usage={},
     )
-    agent = SpecificationAgent(mock_provider)
+    mock_ctx = Mock(spec=ContextPort)
+    mock_pa = Mock(spec=PromptAssemblerPort)
+    agent = SpecificationAgent(mock_provider, mock_ctx, mock_pa)
     spec = agent.concretize("canvas")
     assert spec.title == "Test Title"
     assert spec.body == "Test Body"
@@ -30,7 +32,9 @@ def test_draft_specification_parses_json():
 def test_draft_specification_fallback():
     mock_provider = Mock(spec=ProviderPort)
     mock_provider.chat.return_value = ChatResponse(content="No JSON here", usage={})
-    agent = SpecificationAgent(mock_provider)
+    mock_ctx = Mock(spec=ContextPort)
+    mock_pa = Mock(spec=PromptAssemblerPort)
+    agent = SpecificationAgent(mock_provider, mock_ctx, mock_pa)
     spec = agent.concretize("canvas text")
     assert spec.title == "Untitled Feature"
     assert spec.body == "canvas text"
@@ -49,7 +53,9 @@ def test_analyze_specification_gaps_parses_json():
 ```""",
         usage={},
     )
-    agent = SpecificationAgent(mock_provider)
+    mock_ctx = Mock(spec=ContextPort)
+    mock_pa = Mock(spec=PromptAssemblerPort)
+    agent = SpecificationAgent(mock_provider, mock_ctx, mock_pa)
     gaps = agent.analyze_specification_gaps("canvas")
     assert len(gaps) == 1
     assert gaps[0].topic == "Missing auth logic"
@@ -58,7 +64,9 @@ def test_analyze_specification_gaps_parses_json():
 def test_analyze_specification_gaps_fallback():
     mock_provider = Mock(spec=ProviderPort)
     mock_provider.chat.return_value = ChatResponse(content="No JSON here", usage={})
-    agent = SpecificationAgent(mock_provider)
+    mock_ctx = Mock(spec=ContextPort)
+    mock_pa = Mock(spec=PromptAssemblerPort)
+    agent = SpecificationAgent(mock_provider, mock_ctx, mock_pa)
     gaps = agent.analyze_specification_gaps("canvas")
     assert gaps == ()
 
@@ -78,7 +86,9 @@ def test_socratic_loop_records_real_answer():
 
     mock_arg_log = Mock(spec=ArgumentationLogPort)
 
-    agent = SpecificationAgent(mock_provider)
+    mock_ctx = Mock(spec=ContextPort)
+    mock_pa = Mock(spec=PromptAssemblerPort)
+    agent = SpecificationAgent(mock_provider, mock_ctx, mock_pa)
     agent.run_socratic_loop("canvas", mock_arg_log, mock_ui)
 
     mock_arg_log.record_entry.assert_called_once()

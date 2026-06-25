@@ -114,16 +114,18 @@ class SessionController:
         budget_manager: BudgetManagerPort,
     ) -> None:
         # Sub-agents (intra-module wiring)
-        self._spec_agent = SpecificationAgent(provider)
-        self._plan_agent = PlanningAgent(provider)
-        self._code_agent = CodingAgent(
-            provider, tool_runtime, approval_gateway, context_service, knowledge_graph
-        )
         self._prompt_assembler = PromptAssembler(
             context_port=context_service,
             schema_tailor=schema_tailor,
             budget_manager=budget_manager,
         )
+
+        self._spec_agent = SpecificationAgent(provider, context_service, self._prompt_assembler)
+        self._plan_agent = PlanningAgent(provider, context_service, self._prompt_assembler)
+        self._code_agent = CodingAgent(
+            provider, tool_runtime, approval_gateway, context_service, knowledge_graph, self._prompt_assembler
+        )
+
 
         # External port dependencies
         self._memory_store = memory_store

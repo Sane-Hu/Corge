@@ -45,8 +45,15 @@ def knowledge_graph():
 
 
 @pytest.fixture
+def prompt_assembler():
+    pa = MagicMock()
+    pa.assemble_coding_prompt.return_value = "Mocked coding prompt"
+    return pa
+
+
+@pytest.fixture
 def coding_agent(
-    provider, tool_runtime, approval_gateway, context_service, knowledge_graph
+    provider, tool_runtime, approval_gateway, context_service, knowledge_graph, prompt_assembler
 ):
     return CodingAgent(
         provider=provider,
@@ -54,6 +61,7 @@ def coding_agent(
         approval_gateway=approval_gateway,
         context_service=context_service,
         knowledge_graph=knowledge_graph,
+        prompt_assembler=prompt_assembler,
     )
 
 
