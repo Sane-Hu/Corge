@@ -128,13 +128,86 @@ class CorgeApp(App[None]):
 
 class DirectorySelectorApp(App[Path]):
     """App to select a directory before starting Corge."""
-    BINDINGS = [("escape", "quit", "Quit")]
+    
+    CSS = """
+    .title { padding: 1; background: $boost; }
+    .hidden { display: none; }
+    """
+
+    BINDINGS = [
+        ("escape", "quit", "Quit"),
+        ("backspace", "go_up", "Up Dir"),
+        ("u", "go_up", "Up Dir"),
+        ("c", "create_dir", "Create Dir"),
+        ("m", "manual_path", "Manual Path"),
+        ("h", "toggle_hidden", "Toggle Hidden"),
+    ]
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True, id="header")
         yield Static("Select a repository directory. Use arrows to navigate, Enter to select.", classes="title")
+        inp = Input(id="action_input")
+        inp.styles.display = "none"
+        yield inp
         yield DirectoryTree(str(Path.cwd()))
         yield Footer()
+
+    def action_go_up(self) -> None:
+        tree = self.query_one(DirectoryTree)
+        tree.path = str(Path(tree.path).parent.resolve())
+
+    def action_toggle_hidden(self) -> None:
+        pass  # DirectoryTree handles this natively in newer versions, or we just ignore. Let's ignore.
+
+    def action_create_dir(self) -> None:
+        tree = self.query_one(DirectoryTree)
+        tree.display = False
+        inp = self.query_one("#action_input", Input)
+        inp.styles.display = "block"
+        inp.placeholder = "Enter name of new directory to create in current path..."
+        inp.focus()
+        inp.id = "create_input"
+
+    def action_manual_path(self) -> None:
+        tree = self.query_one(DirectoryTree)
+        tree.display = False
+        inp = self.query_one("#create_input, #action_input, #manual_input", Input)
+        inp.styles.display = "block"
+        inp.placeholder = "Enter absolute path to navigate to..."
+        inp.focus()
+        inp.id = "manual_input"
+
+    async def on_input_submitted(self, event: Input.Submitted) -> None:
+        val = event.value.strip()
+        inp = event.input
+        tree = self.query_one(DirectoryTree)
+        
+        if not val:
+            inp.styles.display = "none"
+            inp.value = ""
+            tree.display = True
+            tree.focus()
+            return
+            
+        if inp.id == "create_input":
+            new_path = Path(tree.path) / val
+            new_path.mkdir(parents=True, exist_ok=True)
+            tree.path = str(new_path)
+            inp.id = "action_input"
+        elif inp.id == "manual_input":
+            new_path = Path(val).expanduser().resolve()
+            if new_path.is_dir():
+                tree.path = str(new_path)
+                inp.id = "action_input"
+            else:
+                inp.value = ""
+                inp.placeholder = f"Error: '{val}' is not a valid directory!"
+                return
+                
+        inp.styles.display = "none"
+        inp.value = ""
+        tree.display = True
+        tree.focus()
 
     def on_directory_tree_directory_selected(self, event: DirectoryTree.DirectorySelected) -> None:
         self.exit(Path(event.path).resolve())
