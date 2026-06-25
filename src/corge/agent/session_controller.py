@@ -127,7 +127,8 @@ class SessionController:
         self._spec_agent = SpecificationAgent(provider, context_service, self._prompt_assembler)
         self._plan_agent = PlanningAgent(provider, context_service, self._prompt_assembler)
         self._code_agent = CodingAgent(
-            provider, tool_runtime, approval_gateway, context_service, knowledge_graph, self._prompt_assembler, audit_logger, artifact_store
+            provider, tool_runtime, approval_gateway, context_service, knowledge_graph, self._prompt_assembler, audit_logger, artifact_store,
+            on_knowledge_extracted=self._handle_extracted_knowledge
         )
 
         # External port dependencies
@@ -152,6 +153,30 @@ class SessionController:
     # ------------------------------------------------------------------
     # State machine accessors
     # ------------------------------------------------------------------
+
+    @property
+    def specification(self) -> Specification | None:
+        """The active specification (FR-001)."""
+        return self._specification
+
+    @property
+    def plan(self) -> Plan | None:
+        """The active execution plan (FR-008)."""
+        return self._plan
+
+    @property
+    def technical_plan(self) -> TechnicalPlan | None:
+        """The active technical architecture plan."""
+        return self._technical_plan
+
+    @property
+    def procedural_steps(self) -> tuple[ProceduralStep, ...]:
+        """The active procedural steps."""
+        return self._procedural_steps
+
+    def set_approved_plan(self, plan: Plan) -> None:
+        """Set the approved execution plan."""
+        self._plan = plan
 
     @property
     def state(self) -> LifecycleState:
@@ -269,7 +294,9 @@ class SessionController:
 
     def concretize(self, canvas_text: str) -> Specification:
         """Compile raw canvas text into a structured Specification."""
-        return self._spec_agent.concretize(canvas_text)
+        spec = self._spec_agent.concretize(canvas_text)
+        self._specification = spec
+        return spec
 
     def run_socratic_loop(
         self, canvas_text: str, argumentation_log: ArgumentationLogPort, ui: UiPort
@@ -279,7 +306,15 @@ class SessionController:
         Delegates to the internal SpecificationAgent and returns the updated
         specification and any unresolved gaps.
         """
-        return self._spec_agent.run_socratic_loop(canvas_text, argumentation_log, ui)
+        from datetime import datetime, timezone
+        from corge.contracts.models import CanvasSnapshot
+        snapshot = CanvasSnapshot(text=canvas_text, timestamp=datetime.now(timezone.utc).isoformat())
+        argumentation_log.record_canvas_snapshot(snapshot)
+
+        spec, gaps = self._spec_agent.run_socratic_loop(canvas_text, argumentation_log, ui)
+        self._specification = spec
+        self._pending_gaps = gaps
+        return spec, gaps
 
     # ------------------------------------------------------------------
     # AgentPort delegation — Planning phase
@@ -288,16 +323,23 @@ class SessionController:
     def generate_technical_plan(
         self, specification: Specification, on_token: Callable[[str], None] | None = None
     ) -> TechnicalPlan:
-        return self._plan_agent.generate_technical_plan(specification, on_token=on_token)
+        plan = self._plan_agent.generate_technical_plan(specification, on_token=on_token)
+        self._technical_plan = plan
+        return plan
 
     def generate_procedural_steps(
         self, technical_plan: TechnicalPlan, on_token: Callable[[str], None] | None = None
     ) -> tuple[ProceduralStep, ...]:
-        return self._plan_agent.generate_procedural_steps(technical_plan, on_token=on_token)
+        steps = self._plan_agent.generate_procedural_steps(technical_plan, on_token=on_token)
+        self._procedural_steps = steps
+        return steps
 
     # ------------------------------------------------------------------
     # AgentPort delegation — Coding phase
     # ------------------------------------------------------------------
+
+    def collect_context(self, step: PlanStep, specification: Specification) -> ContextBundle:
+        return self._prompt_assembler.collect_context(step, specification)
 
     def execute_step(
         self, step: PlanStep, context: ContextBundle, on_token: Callable[[str], None] | None = None
@@ -316,6 +358,16 @@ class SessionController:
     def update_memory(self, event: MemoryEvent) -> None:
         """Persist a memory event to the pyramid (spec §3 step 8)."""
         self._memory_store.store_event(event)
+
+    def _handle_extracted_knowledge(self, facts: list[str], rules: list[str]) -> None:
+        """Process knowledge extracted by the coding agent during execution."""
+        for fact in facts:
+            if isinstance(fact, str) and fact.strip():
+                self._memory_store.store_fact(fact.strip(), source="execution")
+        if rules:
+            from corge.contracts.models import EngineeringProfile
+            profile = EngineeringProfile(rules=tuple(rules))
+            self._memory_store.update_profile(profile)
 
     # ------------------------------------------------------------------
     # Heuristic learning (sysdesign AG_CTRL → AG_LEARN)

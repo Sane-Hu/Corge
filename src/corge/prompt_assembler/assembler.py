@@ -86,7 +86,9 @@ class PromptAssembler:
             '— include 3+ lines of context>",\n'
             '      "new": "<replacement substring for EDIT>"\n'
             "    }\n"
-            "  ]\n"
+            "  ],\n"
+            '  "facts_learned": ["<optional list of new repository facts discovered>"],\n'
+            '  "profile_rules_learned": ["<optional list of new coding style rules discovered>"]\n'
             "}\n"
             "```\n"
             "Rules:\n"

@@ -421,5 +421,17 @@ def _execute_query(
             (nid,),
         ).fetchall()
 
+    if expr.startswith("search:"):
+        keyword = expr[len("search:") :].strip()
+        if keyword:
+            pattern = f"%{keyword}%"
+            return conn.execute(
+                "SELECT node_id, kind, path, name FROM nodes"
+                " WHERE node_id LIKE ? COLLATE NOCASE"
+                "    OR name LIKE ? COLLATE NOCASE"
+                " ORDER BY node_id",
+                (pattern, pattern),
+            ).fetchall()
+
     # Unknown expression → empty result (safe, no exception)
     return []

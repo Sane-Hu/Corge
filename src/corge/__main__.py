@@ -260,6 +260,7 @@ class RealCorgeApp(CorgeApp):
                     specification_ref=spec.title,
                 )
                 ui.show_plan(plan)
+                controller.set_approved_plan(plan)
                 controller.advance()
 
             elif controller.state == LifecycleState.PLAN_APPROVAL:
@@ -275,7 +276,7 @@ class RealCorgeApp(CorgeApp):
                 for i, step in enumerate(plan.steps):
                     if getattr(step, "completed", False):
                         continue
-                    bundle = context_service.retrieve_relevant_context(spec, step)
+                    bundle = controller.collect_context(step, spec)
                     ui.show_memory(bundle.scenario_memory)
                     ui.show_execution(bundle)
                     ui.show_loading(f"Executing step: {step.identifier}...")
@@ -311,7 +312,7 @@ class RealCorgeApp(CorgeApp):
                         description="Verification of acceptance criteria",
                     )
                 )
-                bundle = context_service.retrieve_relevant_context(spec, step)
+                bundle = controller.collect_context(step, spec)
                 ui.show_loading("Verifying completion...")
                 try:
                     success = controller.evaluate_completion(plan, bundle, on_token=ui.stream_token)

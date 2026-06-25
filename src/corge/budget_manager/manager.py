@@ -34,7 +34,7 @@ class BudgetManager:
             return len(enc.encode(text))
         except ImportError:
             # todo: fallback heuristic; upgrade path: install tiktoken for ±1% accuracy
-            return len(text) // 4
+            return self._estimate_str(text)
 
     def rank_context(self, context: ContextBundle) -> ContextBundle:
         # todo: implement semantic ranking (e.g. TF-IDF or vector similarity) 
@@ -97,4 +97,11 @@ class BudgetManager:
         context = self.deduplicate(context)
         # We aggressively compact to save usage costs in large-context models.
         # token_limit acts as an emergency hard ceiling.
-        return self.clip(context, token_limit=128000)
+        compacted = self.clip(context, token_limit=128000)
+        if len(compacted.scenario_memory) < len(context.scenario_memory):
+            # We dropped some memory; prepend a summary of the full context to the recent actions
+            summary = self.summarize(context)
+            actions = list(compacted.recent_actions)
+            actions.insert(0, f"[System]: Compacted prior context. Summary: {summary}")
+            compacted = dataclasses.replace(compacted, recent_actions=tuple(actions))
+        return compacted

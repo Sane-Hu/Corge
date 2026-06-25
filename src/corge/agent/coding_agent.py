@@ -60,6 +60,7 @@ class CodingAgent:
         prompt_assembler: PromptAssemblerPort,
         audit_logger: AuditLoggerPort,
         artifact_store: ArtifactStorePort,
+        on_knowledge_extracted: Callable[[list[str], list[str]], None] | None = None,
     ) -> None:
         self._provider = provider
         self._tool_runtime = tool_runtime
@@ -69,6 +70,7 @@ class CodingAgent:
         self._prompt_assembler = prompt_assembler
         self._audit_logger = audit_logger
         self._artifact_store = artifact_store
+        self._on_knowledge_extracted = on_knowledge_extracted
 
     # ------------------------------------------------------------------
     # Steps 1–9 (Tech-spec §3 §9-Step Execution Cycle)
@@ -185,6 +187,11 @@ class CodingAgent:
                         GraphUpdate(paths=(Path(target),))
                     )
 
+            facts = data.get("facts_learned", [])
+            rules = data.get("profile_rules_learned", [])
+            if (facts or rules) and self._on_knowledge_extracted:
+                self._on_knowledge_extracted(facts, rules)
+
             if data.get("done"):
                 return
             if not actions:
@@ -198,6 +205,14 @@ class CodingAgent:
         target = action_dict["target"]
         path = Path(target)
         if action == ToolAction.READ:
+            if target.startswith("artifact://"):
+                from corge.contracts.models import ArtifactReference
+                try:
+                    ref = ArtifactReference(uri=target, summary="Requested via tool")
+                    content = self._artifact_store.retrieve_artifact(ref)
+                    return ToolResult(action=action, output=content, success=True)
+                except Exception as e:
+                    return ToolResult(action=action, output="", success=False, stderr=str(e))
             return self._tool_runtime.read(path)
         if action == ToolAction.BASH:
             return self._tool_runtime.bash(target, Path("."))
