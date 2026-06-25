@@ -57,9 +57,9 @@ through a provider abstraction layer.
 ## POC Exit & Success Criteria
 
 A user must be able to:
-1. Load a repository or initialize from an empty directory.
-2. Create a specification interactively using the Socratic Spec-Wizard with framework-aware schemas and interactive validation (Freestyle Canvas), where clarifying questions are opt-in and answers are dynamically integrated.
-3. Generate an architectural and procedural implementation plan through iterative refinement loops.
+1. Load a repository or initialize from an empty directory using a keyboard-friendly directory selector supporting visual context, safe folder creation, escape-based cancellation, and hidden files toggles.
+2. Create a specification interactively using the Socratic Spec-Wizard with framework-aware schemas and interactive validation (Freestyle Canvas), where clarifying questions are opt-in, answers are dynamically integrated, and screens automatically focus the primary inputs on mount.
+3. Generate an architectural and procedural implementation plan through iterative refinement loops, preserving custom bracketed step identifiers during procedural steps editing.
 4. Approve the generated plan.
 5. Observe the agent's step-by-step implementation.
 6. Approve individual tool actions (write, edit, bash) with the ability to preview live code diffs interactively and retry failed execution steps directly.

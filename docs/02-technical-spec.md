@@ -38,7 +38,7 @@ The directory structure maps directly to the 8 logical modules defined in the sy
 *   **1. Shared Contracts Layer (`src/corge/contracts/`)**
     *   Defines the public interfaces ([ports.py](src/corge/contracts/ports.py)), dataclasses ([models.py](src/corge/contracts/models.py)), and enum states ([lifecycle.py](src/corge/contracts/lifecycle.py)).
 *   **2. UI Module (`src/corge/ui/`)**
-    *   A pure CLI presentation layer ([cli.py](src/corge/ui/cli.py)) with zero business logic. Contains the `DirectorySelectorApp` (using a native `DirectoryTree`), and the Textual screens: `CanvasScreen`, `InteractiveDiffScreen`, and `MessageScreen`.
+    *   A pure CLI presentation layer ([cli.py](src/corge/ui/cli.py)) with zero business logic. Contains the `DirectorySelectorApp` (using `CorgeDirectoryTree` with hidden files toggles, escape-based cancellation, and visual context preservation), and the Textual screens: `CanvasScreen`, `InteractiveDiffScreen`, `MessageScreen`, and `ConfirmScreen`.
 *   **3. Agent Modules (`src/corge/agent/`)**
     *   Orchestration state machines (`SessionController`, `SpecificationAgent`, `PlanningAgent`, `CodingAgent`) and utility services (`SchemaTailor` for stack detection and YAML parser, `HeuristicUpdater` for spec optimization). The `SessionController` explicitly supports manual and backward lifecycle transitions (`transition_to()`) to gracefully handle rejections.
 *   **4. Context Engineering Modules**
@@ -227,7 +227,7 @@ Instead of numbered tiers, the prompt assembler constructs ephemeral prompts usi
 
 ## 5. TUI Screen Map
 
-The presentation layer utilizes a native Textual `DirectorySelectorApp` and several fundamental UI screens within [cli.py](src/corge/ui/cli.py) to manage the interactive user loops. All screens are overlaid with a global persistent `Header` that tracks the current agent phase and lifecycle state:
+The presentation layer utilizes the `DirectorySelectorApp` and several fundamental UI screens within [cli.py](src/corge/ui/cli.py) to manage the interactive user loops. All screens are designed for keyboard-only efficiency by automatically focusing their primary interactive widgets on mount (e.g. text areas in `CanvasScreen`/`InteractiveDiffScreen`, model configuration inputs in `ProviderConfigScreen`, and the "No/Continue" buttons in `ConfirmScreen`/`MessageScreen`). All screens are overlaid with a global persistent `Header` that tracks the current agent phase and lifecycle state:
 
 ```text
                             ┌────────────────────────────────────────┐
@@ -270,18 +270,27 @@ The presentation layer utilizes a native Textual `DirectorySelectorApp` and seve
 ```
 
 ### Screen Details and Transitions
+0.  **`DirectorySelectorApp` (Repository Browser / Start Screen)**
+    *   **Purpose**: Allows browsing and selecting the repository root directory before entering the agent orchestrator.
+    *   **Key Widgets**: `CorgeDirectoryTree` (subclass of `DirectoryTree` filtering out hidden paths by default), `Input` for folder creation or manual path selection, and a "Select" button.
+    *   **Interactive Features**:
+        *   Pressing `h` toggles visibility of hidden files/folders (e.g. `.agent`, `.git`) in the directory tree.
+        *   Pressing `Escape` while inputting folder paths/names safely cancels the input mode and refocuses the tree.
+        *   Fails gracefully if folder creation raises an OS permission/invalid character error, showing a description inline.
+        *   Maintains the directory tree visible at all times during folder input.
+        *   Automatically focuses the directory tree on app mount.
 1.  **`CanvasScreen` (Freestyle Brainstorming / Spec Entry)**
     *   **Purpose**: Captured during the `CANVAS_FREESTYLE` sub-state. Allows free-form writing of feature goals, user stories, and technical requirements.
     *   **Key Widgets**: `TextArea` for raw text input, `Button` ("Submit to Concretization").
-    *   **Transition**: On pressing Submit, dismisses canvas text to advance the agent to the `CONCRETIZATION` state.
+    *   **Transition**: On pressing Submit, dismisses canvas text to advance the agent to the `CONCRETIZATION` state. Automatically focuses the text area on mount.
 2.  **`InteractiveDiffScreen` (Reused Split-Pane Editor)**
     *   **Purpose**: Side-by-side display of context references against editable drafts. This screen is highly parameterized and reused dynamically for:
         *   *Socratic Argumentation Diff*: Left pane displays raw Canvas text; right pane displays the Concretized Specification draft with unresolved semantic gaps. Prompt: "Resolve any gaps in the Specification."
         *   *Technical Plan Editor*: Left pane shows previous approved 'conceretized specification'; right pane displays the draft `TechnicalPlan` in custom `Corge`'s markdown format.
-        *   *Procedural Steps Editor*: Left pane maps the `TechnicalPlan` draft; right pane renders editable `ProceduralStep` identifiers and lines.
+        *   *Procedural Steps Editor*: Left pane maps the `TechnicalPlan` draft; right pane renders editable `ProceduralStep` identifiers and lines. The editor parses bracketed step identifiers (e.g. `[step-auth] description`) using regex to preserve them rather than overwriting them with sequential IDs.
         *   *Human Approval Gateway*: Left pane defaults to the approval request context, toggling via `Ctrl+D` to a live diff of the proposed code change; right pane details the requested `ToolAction` parameter payload. The right pane details are set to read-only during tool approvals to prevent misleading edit text from being discarded.
     *   **Key Widgets**: Left pane defaults to a read-only `TextArea` showing reference material, but toggles via `Ctrl+D` to a hidden `RichLog` displaying a `difflib.unified_diff` of the current draft against the original draft (with syntax highlighting). Right pane is a `TextArea` for editable content, with "Approve" and "Reject" buttons.
-    *   **Transition**: On pressing Approve (or `Ctrl+A`), returning the modified content to the caller and proceeding to the next step. Pressing Reject (or `Escape`) returns `None`, signaling the `SessionController` to execute a backward transition and request an updated plan/spec from the agent.
+    *   **Transition**: On pressing Approve (or `Ctrl+A`), returning the modified content to the caller and proceeding to the next step. Pressing Reject (or `Escape`) returns `None`, signaling the `SessionController` to execute a backward transition and request an updated plan/spec from the agent. Automatically focuses the interactive edit area on mount.
 3.  **`MessageScreen` (Read-Only Dialogs / Alerts)**
     *   **Purpose**: Simulates modal notifications or summaries to the engineer.
     *   **Key Widgets**: Header `Static` title, Read-only `TextArea` showing messaging, and `Button` ("Continue").

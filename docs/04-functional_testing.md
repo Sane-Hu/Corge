@@ -129,8 +129,11 @@ uv run python -m corge
 > **Note**: Replace `python -m corge` with the actual entry-point command once the CLI entrypoint is finalized in `pyproject.toml`. The invocation may also be `uv run corge` if a `[project.scripts]` entry exists.
 
 **Expected (Option B)**: A Textual `DirectorySelectorApp` is displayed in the terminal where you can:
-- Use the arrow keys to navigate the file system tree.
-- Press `Enter` to select the currently highlighted directory.
+- Use the arrow keys to navigate the file system tree (automatically focused on mount).
+- Press `Enter` or `s` to select the currently highlighted directory.
+- Press `h` to toggle the visibility of hidden files/folders.
+- Press `c` to create a directory or `m` to manually enter a path. Hitting `Escape` while typing inside these inputs will safely cancel the input and refocus the tree, rather than quitting the entire application.
+- Verify that directory creation errors (like writing to write-protected paths) show a clean inline error message instead of crashing the app.
 
 ### 3.2 Select the target repository
 
@@ -269,6 +272,7 @@ The agent translates the technical plan into granular, sequenced `ProceduralStep
 
 **Functional checks**:
 - Each step has a sequential identifier.
+- Custom bracketed step identifiers (e.g. `[step-auth] authentication`) can be manually typed in the editor. Verify that they are parsed and preserved in the final plan rather than overwritten with sequential `step-N` IDs.
 - Steps are granular enough to be individually executable.
 - The right pane is editable; modifications are respected on approval.
 - Pressing **Reject** (or `Escape`). Verify that the application navigates backward to the technical plan generation state (`PLAN_GENERATION`).
