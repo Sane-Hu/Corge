@@ -164,6 +164,8 @@ class DirectorySelectorApp(App[Path]):
         ("h", "toggle_hidden", "Toggle Hidden"),
     ]
 
+    _input_mode: str | None = None
+
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True, id="header")
         yield Static(
@@ -189,16 +191,16 @@ class DirectorySelectorApp(App[Path]):
         inp.styles.display = "block"
         inp.placeholder = "Enter name of new directory to create in current path..."
         inp.focus()
-        inp.id = "create_input"
+        self._input_mode = "create"
 
     def action_manual_path(self) -> None:
         tree = self.query_one(DirectoryTree)
         tree.display = False
-        inp = self.query_one("#create_input, #action_input, #manual_input", Input)
+        inp = self.query_one("#action_input", Input)
         inp.styles.display = "block"
         inp.placeholder = "Enter absolute path to navigate to..."
         inp.focus()
-        inp.id = "manual_input"
+        self._input_mode = "manual"
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         val = event.value.strip()
@@ -210,18 +212,19 @@ class DirectorySelectorApp(App[Path]):
             inp.value = ""
             tree.display = True
             tree.focus()
+            self._input_mode = None
             return
 
-        if inp.id == "create_input":
+        if self._input_mode == "create":
             new_path = Path(tree.path) / val
             new_path.mkdir(parents=True, exist_ok=True)
             tree.path = str(new_path)
-            inp.id = "action_input"
-        elif inp.id == "manual_input":
+            self._input_mode = None
+        elif self._input_mode == "manual":
             new_path = Path(val).expanduser().resolve()
             if new_path.is_dir():
                 tree.path = str(new_path)
-                inp.id = "action_input"
+                self._input_mode = None
             else:
                 inp.value = ""
                 inp.placeholder = f"Error: '{val}' is not a valid directory!"
