@@ -113,6 +113,9 @@ class ProviderConfigScreen(Screen[dict[str, str] | None]):
                 yield Button("Exit", id="exit_btn", variant="error")
         yield Footer()
 
+    def on_mount(self) -> None:
+        self.query_one("#model_input", Input).focus()
+
     def action_save(self) -> None:
         model = self.query_one("#model_input", Input).value.strip()
         api_key = self.query_one("#api_key_input", Input).value.strip()

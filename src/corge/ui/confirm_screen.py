@@ -59,6 +59,9 @@ class ConfirmScreen(Screen[bool]):
                 yield Button("No (n/esc)", id="no", variant="error")
         yield Footer()
 
+    def on_mount(self) -> None:
+        self.query_one("#no", Button).focus()
+
     def action_yes(self) -> None:
         self.dismiss(True)
 

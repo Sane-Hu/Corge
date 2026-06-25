@@ -107,7 +107,12 @@ class RealCorgeApp(CorgeApp):
                 finally:
                     ui.hide_loading()
             except (FileNotFoundError, ValueError, ConnectionError) as e:
-                error_message = str(e)
+                msg = str(e)
+                if isinstance(e, ConnectionError) or "connection" in msg.lower() or "refused" in msg.lower():
+                    msg += "\n\n(Please verify that your local LLM server/Ollama is running and the base URL override is correct.)"
+                elif isinstance(e, ValueError) or "api key" in msg.lower() or "api_key" in msg.lower():
+                    msg += "\n\n(Please verify that your API key is correct and not empty.)"
+                error_message = msg
 
         memory_store = MemoryStore(self.target_repo, self.global_dir)
         context_service = ContextService(

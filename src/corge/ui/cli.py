@@ -8,6 +8,7 @@ Spec traceability:
 from __future__ import annotations
 
 import concurrent.futures
+from collections.abc import Iterable
 import difflib
 from pathlib import Path
 from typing import Any
@@ -75,6 +76,9 @@ class MessageScreen(Screen[None]):
             yield TextArea(self._message, read_only=True)
             yield Button("Continue", id="continue", variant="primary")
         yield Footer()
+
+    def on_mount(self) -> None:
+        self.query_one("#continue", Button).focus()
 
     def action_continue(self) -> None:
         self.dismiss(None)
@@ -149,6 +153,17 @@ class CorgeApp(App[None]):
     """
 
 
+class CorgeDirectoryTree(DirectoryTree):
+    """Subclass of DirectoryTree that allows toggling hidden files/folders."""
+
+    show_hidden: bool = False
+
+    def filter_paths(self, paths: Iterable[Path]) -> Iterable[Path]:
+        if self.show_hidden:
+            return paths
+        return [p for p in paths if not p.name.startswith(".")]
+
+
 class DirectorySelectorApp(App[Path]):
     """App to select a directory before starting Corge."""
 
@@ -162,7 +177,7 @@ class DirectorySelectorApp(App[Path]):
     """
 
     BINDINGS = [
-        ("escape", "quit", "Quit"),
+        ("escape", "escape_key", "Back/Quit"),
         ("backspace", "go_up", "Up Dir"),
         ("u", "go_up", "Up Dir"),
         ("s", "select_current", "Select Highlighted Dir"),
@@ -182,19 +197,35 @@ class DirectorySelectorApp(App[Path]):
         inp = Input(id="action_input")
         inp.styles.display = "none"
         yield inp
-        yield DirectoryTree(str(Path.cwd()))
+        yield CorgeDirectoryTree(str(Path.cwd()))
         yield Button("Select Highlighted Directory (s)", id="select_btn", variant="success")
         yield Footer()
 
+    def on_mount(self) -> None:
+        self.query_one(CorgeDirectoryTree).focus()
+
     def action_go_up(self) -> None:
-        tree = self.query_one(DirectoryTree)
+        tree = self.query_one(CorgeDirectoryTree)
         tree.path = str(Path(tree.path).parent.resolve())
 
     def action_toggle_hidden(self) -> None:
-        pass  # DirectoryTree handles this natively in newer versions, or we just ignore. Let's ignore.
+        tree = self.query_one(CorgeDirectoryTree)
+        tree.show_hidden = not tree.show_hidden
+        tree.path = tree.path
+
+    def action_escape_key(self) -> None:
+        inp = self.query_one("#action_input", Input)
+        if inp.styles.display == "block":
+            inp.styles.display = "none"
+            inp.value = ""
+            tree = self.query_one(CorgeDirectoryTree)
+            tree.focus()
+            self._input_mode = None
+        else:
+            self.exit(None)
 
     def action_select_current(self) -> None:
-        tree = self.query_one(DirectoryTree)
+        tree = self.query_one(CorgeDirectoryTree)
         if tree.cursor_node and tree.cursor_node.data:
             path = Path(tree.cursor_node.data.path)
             if path.is_dir():
@@ -207,8 +238,6 @@ class DirectorySelectorApp(App[Path]):
         self.action_select_current()
 
     def action_create_dir(self) -> None:
-        tree = self.query_one(DirectoryTree)
-        tree.display = False
         inp = self.query_one("#action_input", Input)
         inp.styles.display = "block"
         inp.placeholder = "Enter name of new directory to create in current path..."
@@ -216,8 +245,6 @@ class DirectorySelectorApp(App[Path]):
         self._input_mode = "create"
 
     def action_manual_path(self) -> None:
-        tree = self.query_one(DirectoryTree)
-        tree.display = False
         inp = self.query_one("#action_input", Input)
         inp.styles.display = "block"
         inp.placeholder = "Enter absolute path to navigate to..."
@@ -227,34 +254,42 @@ class DirectorySelectorApp(App[Path]):
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         val = event.value.strip()
         inp = event.input
-        tree = self.query_one(DirectoryTree)
+        tree = self.query_one(CorgeDirectoryTree)
 
         if not val:
             inp.styles.display = "none"
             inp.value = ""
-            tree.display = True
             tree.focus()
             self._input_mode = None
             return
 
         if self._input_mode == "create":
             new_path = Path(tree.path) / val
-            new_path.mkdir(parents=True, exist_ok=True)
-            tree.path = str(new_path)
-            self._input_mode = None
-        elif self._input_mode == "manual":
-            new_path = Path(val).expanduser().resolve()
-            if new_path.is_dir():
+            try:
+                new_path.mkdir(parents=True, exist_ok=True)
                 tree.path = str(new_path)
                 self._input_mode = None
-            else:
+            except OSError as e:
                 inp.value = ""
-                inp.placeholder = f"Error: '{val}' is not a valid directory!"
+                inp.placeholder = f"Error creating directory: {e.strerror or str(e)}"
+                return
+        elif self._input_mode == "manual":
+            try:
+                new_path = Path(val).expanduser().resolve()
+                if new_path.is_dir():
+                    tree.path = str(new_path)
+                    self._input_mode = None
+                else:
+                    inp.value = ""
+                    inp.placeholder = f"Error: '{val}' is not a valid directory!"
+                    return
+            except Exception as e:
+                inp.value = ""
+                inp.placeholder = f"Error: {str(e)}"
                 return
 
         inp.styles.display = "none"
         inp.value = ""
-        tree.display = True
         tree.focus()
 
 
@@ -397,15 +432,24 @@ class CliUi(UiPort):
         if result_text is None:
             return None
 
+        import re
         new_steps = []
         step_count = 0
         for line in result_text.strip().split("\n"):
-            if line.strip():
+            stripped = line.strip()
+            if stripped:
                 step_count += 1
+                match = re.match(r"^\[([^\]]+)\]\s*(.*)$", stripped)
+                if match:
+                    identifier = match.group(1).strip()
+                    description = match.group(2).strip()
+                else:
+                    identifier = f"step-{step_count}"
+                    description = stripped
                 new_steps.append(
                     ProceduralStep(
-                        identifier=f"step-{step_count}",
-                        description=line.strip(),
+                        identifier=identifier,
+                        description=description,
                     )
                 )
         return tuple(new_steps) if new_steps else steps

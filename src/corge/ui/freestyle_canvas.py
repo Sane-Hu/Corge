@@ -219,6 +219,7 @@ class CanvasScreen(Screen[str]):
     def on_mount(self) -> None:
         self._refresh_backlog_display()
         self._refresh_draft_notes_display()
+        self._text_area.focus()
 
     def action_submit(self) -> None:
         text = self._text_area.text

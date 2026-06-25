@@ -125,6 +125,10 @@ class InteractiveDiffScreen(Screen[str | None]):
 
     def on_mount(self) -> None:
         self.update_diff()
+        if not self.right_area.read_only:
+            self.right_area.focus()
+        else:
+            self.left_area.focus()
 
     @on(TextArea.Changed, "#right_area")
     def update_diff(self) -> None:
