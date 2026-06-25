@@ -245,6 +245,7 @@ class KnowledgeGraph:
 
             for item in _walk(root):
                 self._ingest_path(root, item, conn)
+            conn.commit()
 
     def update_graph(self, update: GraphUpdate) -> None:
         """Reprocess only the supplied paths (FR-004 incremental updates)."""
@@ -270,6 +271,7 @@ class KnowledgeGraph:
                 self._delete_path(rel, conn)
                 if path.exists():
                     self._ingest_path(root, path, conn)
+            conn.commit()
 
     def query_graph(self, query: GraphQuery) -> GraphResult:
         """Return nodes matching a simple text expression (FR-005).
