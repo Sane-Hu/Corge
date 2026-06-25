@@ -12,6 +12,7 @@ import difflib
 from pathlib import Path
 from typing import Any
 
+from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import Vertical
 from textual.screen import Screen
@@ -153,12 +154,17 @@ class DirectorySelectorApp(App[Path]):
     CSS = """
     .title { padding: 1; background: $boost; }
     .hidden { display: none; }
+    #select_btn {
+        margin: 1 2;
+        width: 100%;
+    }
     """
 
     BINDINGS = [
         ("escape", "quit", "Quit"),
         ("backspace", "go_up", "Up Dir"),
         ("u", "go_up", "Up Dir"),
+        ("s", "select_current", "Select Highlighted Dir"),
         ("c", "create_dir", "Create Dir"),
         ("m", "manual_path", "Manual Path"),
         ("h", "toggle_hidden", "Toggle Hidden"),
@@ -169,12 +175,14 @@ class DirectorySelectorApp(App[Path]):
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True, id="header")
         yield Static(
-            "Select a repository directory. See footer for shortcuts.", classes="title"
+            "Browse to your repository folder. Highlight it and press 's' or click 'Select' to confirm.",
+            classes="title"
         )
         inp = Input(id="action_input")
         inp.styles.display = "none"
         yield inp
         yield DirectoryTree(str(Path.cwd()))
+        yield Button("Select Highlighted Directory (s)", id="select_btn", variant="success")
         yield Footer()
 
     def action_go_up(self) -> None:
@@ -183,6 +191,19 @@ class DirectorySelectorApp(App[Path]):
 
     def action_toggle_hidden(self) -> None:
         pass  # DirectoryTree handles this natively in newer versions, or we just ignore. Let's ignore.
+
+    def action_select_current(self) -> None:
+        tree = self.query_one(DirectoryTree)
+        if tree.cursor_node and tree.cursor_node.data:
+            path = Path(tree.cursor_node.data.path)
+            if path.is_dir():
+                self.exit(path.resolve())
+            else:
+                self.exit(path.parent.resolve())
+
+    @on(Button.Pressed, "#select_btn")
+    def handle_select_btn(self) -> None:
+        self.action_select_current()
 
     def action_create_dir(self) -> None:
         tree = self.query_one(DirectoryTree)
@@ -235,10 +256,6 @@ class DirectorySelectorApp(App[Path]):
         tree.display = True
         tree.focus()
 
-    def on_directory_tree_directory_selected(
-        self, event: DirectoryTree.DirectorySelected
-    ) -> None:
-        self.exit(Path(event.path).resolve())
 
 
 class CliUi(UiPort):
