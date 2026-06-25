@@ -19,9 +19,7 @@ def test_scratch_orchestration_loop(monkeypatch, tmp_path):
         "Test Title", "Test Body", AcceptanceCriteria(())
     )
     mock_ui.show_tech_plan_editor.return_value = TechnicalPlan("content", "Test Title")
-    mock_ui.show_argumentation_diff.return_value = Specification(
-        "Test Title", "Test Body", AcceptanceCriteria(())
-    )
+    mock_ui.show_argumentation_diff.return_value = "Test Body"
     mock_ui.show_procedural_steps_editor.return_value = ()
     mock_ui.request_approval.return_value = ApprovalDecision.APPROVED
     mock_ui.show_question.return_value = "mock answer"

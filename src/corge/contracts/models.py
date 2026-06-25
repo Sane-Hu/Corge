@@ -452,3 +452,4 @@ class HeuristicConfig:
     delta_clip_max: float = 0.05
     abandonment_penalty: float = -0.15
     decay_rate: float = 0.99
+    max_socratic_questions: int = 3

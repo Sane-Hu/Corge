@@ -125,3 +125,89 @@ def test_socratic_loop_opt_out():
     mock_ui.show_confirm.assert_called_once()
     mock_ui.show_question.assert_not_called()
 
+
+def test_socratic_loop_cap():
+    from corge.contracts import ArgumentationLogPort, UiPort
+
+    mock_provider = Mock(spec=ProviderPort)
+    mock_provider.chat.side_effect = [
+        ChatResponse(content='{"title": "Title"}', usage={}),
+        ChatResponse(content='[{"topic": "Gap1"}, {"topic": "Gap2"}, {"topic": "Gap3"}]', usage={}),
+        ChatResponse(content="Questions?", usage={}),
+        ChatResponse(content='{"title": "Title", "body": "Refined spec"}', usage={}),
+        ChatResponse(content='[]', usage={}),
+    ]
+
+    mock_ui = Mock(spec=UiPort)
+    mock_ui.show_confirm.return_value = True
+    mock_ui.show_question.return_value = "Answers"
+
+    mock_arg_log = Mock(spec=ArgumentationLogPort)
+    mock_ctx = Mock(spec=ContextPort)
+    mock_pa = Mock(spec=PromptAssemblerPort)
+    mock_pa.assemble_spec_prompt.side_effect = lambda ctx, inst: inst
+
+    agent = SpecificationAgent(mock_provider, mock_ctx, mock_pa)
+    spec, gaps = agent.run_socratic_loop("canvas", mock_arg_log, mock_ui, max_questions=2)
+
+    # Verify that only the first 2 gaps were formulated/asked
+    args = mock_provider.chat.call_args_list[2][0][0]
+    prompt_content = args[0].content
+    assert "Gap1" in prompt_content
+    assert "Gap2" in prompt_content
+    assert "Gap3" not in prompt_content
+
+
+def test_format_spec_to_text():
+    from corge.contracts import Specification, AcceptanceCriteria, SemanticGap
+
+    mock_provider = Mock(spec=ProviderPort)
+    mock_ctx = Mock(spec=ContextPort)
+    mock_pa = Mock(spec=PromptAssemblerPort)
+    agent = SpecificationAgent(mock_provider, mock_ctx, mock_pa)
+
+    spec = Specification(
+        title="Title",
+        body="Body Text",
+        acceptance_criteria=AcceptanceCriteria(items=("Crit A",)),
+        constraints="Constraint Text",
+        testing_expectations="Testing Expect Text"
+    )
+    gaps = (SemanticGap(topic="Gap X"),)
+
+    text = agent.format_spec_to_text(spec, gaps)
+    assert "# Title: Title" in text
+    assert "# Requirements & User Stories\nBody Text" in text
+    assert "# Constraints\nConstraint Text" in text
+    assert "# Testing Expectations\nTesting Expect Text" in text
+    assert "# Acceptance Criteria\n- Crit A" in text
+    assert "=== UNRESOLVED SEMANTIC GAPS ===" in text
+    assert "[GAP: Gap X]" in text
+
+
+def test_merge_templated_responses():
+    from corge.contracts import Specification, AcceptanceCriteria
+
+    mock_provider = Mock(spec=ProviderPort)
+    mock_provider.chat.return_value = ChatResponse(
+        content="""{
+          "title": "Merged Title",
+          "body": "Merged Body",
+          "acceptance_criteria": ["Merged Crit"],
+          "constraints": "Merged Constraint",
+          "testing_expectations": "Merged Test"
+        }""",
+        usage={}
+    )
+    mock_ctx = Mock(spec=ContextPort)
+    mock_pa = Mock(spec=PromptAssemblerPort)
+    agent = SpecificationAgent(mock_provider, mock_ctx, mock_pa)
+
+    spec = Specification(title="Orig", body="Orig body", acceptance_criteria=AcceptanceCriteria(items=()))
+    updated = agent.merge_templated_responses(spec, "Some edited text")
+    assert updated.title == "Merged Title"
+    assert updated.body == "Merged Body"
+    assert updated.constraints == "Merged Constraint"
+    assert updated.testing_expectations == "Merged Test"
+    assert updated.acceptance_criteria.items == ("Merged Crit",)
+

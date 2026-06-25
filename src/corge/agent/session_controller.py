@@ -312,7 +312,11 @@ class SessionController:
         return spec
 
     def run_socratic_loop(
-        self, canvas_text: str, argumentation_log: ArgumentationLogPort, ui: UiPort
+        self,
+        canvas_text: str,
+        argumentation_log: ArgumentationLogPort,
+        ui: UiPort,
+        max_questions: int = 3,
     ) -> tuple[Specification, tuple[SemanticGap, ...]]:
         """Run the interactive specification refinement loop.
 
@@ -329,11 +333,29 @@ class SessionController:
         argumentation_log.record_canvas_snapshot(snapshot)
 
         spec, gaps = self._spec_agent.run_socratic_loop(
-            canvas_text, argumentation_log, ui
+            canvas_text, argumentation_log, ui, max_questions=max_questions
         )
         self._specification = spec
         self._pending_gaps = gaps
         return spec, gaps
+
+    def load_heuristic_config(self) -> HeuristicConfig:
+        """Load heuristic configuration settings."""
+        return self._heuristic_updater.load_config()
+
+    def format_spec_to_text(
+        self, spec: Specification, gaps: tuple[SemanticGap, ...]
+    ) -> str:
+        """Format specification and gaps into a markdown template."""
+        return self._spec_agent.format_spec_to_text(spec, gaps)
+
+    def merge_templated_responses(
+        self, spec: Specification, edited_text: str
+    ) -> Specification:
+        """Merge resolved gap templates back into structured specification fields."""
+        updated_spec = self._spec_agent.merge_templated_responses(spec, edited_text)
+        self._specification = updated_spec
+        return updated_spec
 
     # ------------------------------------------------------------------
     # AgentPort delegation — Planning phase

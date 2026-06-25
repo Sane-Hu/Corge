@@ -206,20 +206,33 @@ class RealCorgeApp(CorgeApp):
 
             elif controller.state == LifecycleState.SPEC_VALIDATION:
                 assert spec is not None
+                # Load configured max socratic questions
+                heuristics_cfg = controller.load_heuristic_config()
+                max_questions = heuristics_cfg.max_socratic_questions
+
+                # Run the iterative and capped Socratic wizard loop
                 new_spec_body, gaps = controller.run_socratic_loop(
-                    spec.body, argumentation_log, ui
+                    spec.body, argumentation_log, ui, max_questions=max_questions
                 )
                 import dataclasses
                 spec = dataclasses.replace(spec, body=new_spec_body.body)
 
-                if gaps:
-                    controller.advance_spec_state(SpecState.ARGUMENTATION_DIFF)
-                    canvas = CanvasSnapshot(text=spec.body, timestamp="now")
-                    new_spec = ui.show_argumentation_diff(canvas, spec, gaps)
-                    if new_spec is None:
-                        controller.transition_to(LifecycleState.SPEC_ENTRY)
-                        continue
-                    spec = new_spec
+                # Always show the manual refinement editor (Choice 1.2 Option A)
+                controller.advance_spec_state(SpecState.ARGUMENTATION_DIFF)
+                formatted_spec_text = controller.format_spec_to_text(spec, gaps)
+                
+                user_edited_spec = ui.show_argumentation_diff(spec.body, formatted_spec_text)
+                if user_edited_spec is None:
+                    # User clicked Reject or Escape, transition back to Spec Entry
+                    controller.transition_to(LifecycleState.SPEC_ENTRY)
+                    continue
+                
+                # Merge user edited text back to Specification fields (Choice 1.1 Option A)
+                ui.show_loading("Processing specification edits...")
+                try:
+                    spec = controller.merge_templated_responses(spec, user_edited_spec)
+                finally:
+                    ui.hide_loading()
 
                 controller.advance()
 

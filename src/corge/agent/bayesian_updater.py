@@ -58,10 +58,14 @@ class BayesianUpdater:
                 "abandonment_penalty", default_config.abandonment_penalty
             )
             decay = data.get("decay_rate", default_config.decay_rate)
+            max_questions = data.get(
+                "max_socratic_questions", default_config.max_socratic_questions
+            )
             return HeuristicConfig(
                 delta_clip_max=delta_clip,
                 abandonment_penalty=penalty,
                 decay_rate=decay,
+                max_socratic_questions=max_questions,
             )
         except Exception as exc:
             _log.warning("Failed to load heuristics config: %s", exc)

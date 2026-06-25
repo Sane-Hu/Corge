@@ -144,6 +144,7 @@ class SpecificationAgent:
         canvas_text: str,
         argumentation_log: ArgumentationLogPort,
         ui: UiPort,
+        max_questions: int = 3,
     ) -> tuple[Specification, tuple[SemanticGap, ...]]:
         """Iterative Socratic Q&A loop to resolve specification gaps (FR-016).
 
@@ -164,53 +165,151 @@ class SpecificationAgent:
         finally:
             ui.hide_loading()
 
-        if not gaps:
-            return spec, gaps
+        while gaps:
+            # Enforce max_questions cap
+            gaps_to_ask = gaps[:max_questions]
+            remaining_gaps_count = len(gaps) - len(gaps_to_ask)
 
-        # UX-002: Make Socratic questions opt-in rather than mandatory
-        opt_in = ui.show_confirm(
-            "Socratic Spec Wizard",
-            f"The agent detected {len(gaps)} potential semantic gap(s) in your specification.\n\n"
-            "Would you like to run the Socratic Spec Wizard to answer clarifying questions? "
-            "(Select 'No' to skip and proceed directly to manual refinement.)"
-        )
-        if not opt_in:
-            return spec, gaps
-
-        # Step 3: Formulate and log bulk Socratic questions
-        now = datetime.now(UTC).isoformat()
-        ui.show_loading("Formulating clarifying questions...")
-        try:
-            questions = self._formulate_bulk_questions(
-                gaps, spec, on_token=ui.stream_token
+            # UX-002: Make Socratic questions opt-in rather than mandatory
+            prompt_msg = (
+                f"The agent detected {len(gaps)} potential semantic gap(s) in your specification.\n\n"
+                f"Would you like to run the Socratic Spec Wizard to answer clarifying questions for the top {len(gaps_to_ask)} gap(s)?"
             )
-        finally:
-            ui.hide_loading()
+            if remaining_gaps_count > 0:
+                prompt_msg += f" (The remaining {remaining_gaps_count} gap(s) will be refined manually later.)"
+            prompt_msg += "\n\n(Select 'No' to skip and proceed directly to manual refinement.)"
 
-        answers = ui.show_question(questions, canvas_text)
-
-        argumentation_log.record_entry(
-            ArgumentationEntry(
-                question=questions,
-                answer=answers,
-                timestamp=now,
-                was_user_override=False,
+            opt_in = ui.show_confirm(
+                "Socratic Spec Wizard",
+                prompt_msg
             )
-        )
+            if not opt_in:
+                break
 
-        if answers.strip():
-            ui.show_loading("Refining specification with answers...")
+            # Step 3: Formulate and log bulk Socratic questions
+            now = datetime.now(UTC).isoformat()
+            ui.show_loading("Formulating clarifying questions...")
             try:
-                spec = self.refine_spec_with_answers(
-                    spec, questions, answers, on_token=ui.stream_token
-                )
-                gaps = self.analyze_specification_gaps(
-                    spec.body, on_token=ui.stream_token
+                questions = self._formulate_bulk_questions(
+                    gaps_to_ask, spec, on_token=ui.stream_token
                 )
             finally:
                 ui.hide_loading()
 
+            answers = ui.show_question(questions, canvas_text)
+
+            argumentation_log.record_entry(
+                ArgumentationEntry(
+                    question=questions,
+                    answer=answers,
+                    timestamp=now,
+                    was_user_override=False,
+                )
+            )
+
+            if answers.strip():
+                ui.show_loading("Refining specification with answers...")
+                try:
+                    spec = self.refine_spec_with_answers(
+                        spec, questions, answers, on_token=ui.stream_token
+                    )
+                    gaps = self.analyze_specification_gaps(
+                        spec.body, on_token=ui.stream_token
+                    )
+                finally:
+                    ui.hide_loading()
+            else:
+                break
+
         return spec, gaps
+
+    def format_spec_to_text(
+        self, spec: Specification, gaps: tuple[SemanticGap, ...]
+    ) -> str:
+        """Format a Specification and unresolved gaps into a clean markdown template for manual editing."""
+        lines = []
+        lines.append(f"# Title: {spec.title}")
+        lines.append("")
+        lines.append("# Requirements & User Stories")
+        lines.append(spec.body)
+        lines.append("")
+        if spec.constraints:
+            lines.append("# Constraints")
+            lines.append(spec.constraints)
+            lines.append("")
+        if spec.testing_expectations:
+            lines.append("# Testing Expectations")
+            lines.append(spec.testing_expectations)
+            lines.append("")
+        if spec.acceptance_criteria.items:
+            lines.append("# Acceptance Criteria")
+            for item in spec.acceptance_criteria.items:
+                lines.append(f"- {item}")
+            lines.append("")
+        if gaps:
+            lines.append("=== UNRESOLVED SEMANTIC GAPS ===")
+            lines.append("Please resolve the following gaps by editing the text below:")
+            lines.append("")
+            for gap in gaps:
+                lines.append(f"[GAP: {gap.topic}]")
+                lines.append("Resolution: <Enter details here>")
+                lines.append("")
+        return "\n".join(lines)
+
+    def merge_templated_responses(
+        self,
+        spec: Specification,
+        edited_text: str,
+        on_token: Callable[[str], None] | None = None,
+    ) -> Specification:
+        """Merge inline manual gap responses back into structured specification fields."""
+        instruction = (
+            "You are finalizing a structured specification. The user has filled in inline gap resolution templates "
+            "and possibly edited the specification text. Merge their edits and any filled-in gap sections back into "
+            "the structured specification fields.\n"
+            "Return ONLY a JSON object with these exact keys:\n"
+            '  "title": string — finalized business goal\n'
+            '  "body": string — finalized narrative of user stories and requirements\n'
+            '  "acceptance_criteria": list of strings — finalized verifiable criteria\n'
+            '  "constraints": string — finalized constraints\n'
+            '  "testing_expectations": string — finalized testing expectations\n\n'
+            f"Original Title: {spec.title}\n"
+            f"Original Constraints: {spec.constraints}\n"
+            f"Original Testing Expectations: {spec.testing_expectations}\n\n"
+            f"User's edited text:\n{edited_text}"
+        )
+        ctx_bundle = self._context_service.load_context(
+            RepositoryContext(root=Path("."))
+        )
+        prompt = self._prompt_assembler.assemble_spec_prompt(ctx_bundle, instruction)
+        msg = ProviderMessage(role="user", content=prompt)
+        response = self._provider.chat((msg,), on_token=on_token)
+
+        match = re.search(r"\{.*\}", response.content, re.DOTALL)
+        if match:
+            try:
+                data = json.loads(match.group(0))
+                criteria_items = tuple(
+                    str(c) for c in data.get("acceptance_criteria", [])
+                )
+                return Specification(
+                    title=str(data.get("title", spec.title)).strip(),
+                    body=str(data.get("body", spec.body)).strip(),
+                    acceptance_criteria=AcceptanceCriteria(items=criteria_items),
+                    constraints=str(data.get("constraints", spec.constraints)).strip(),
+                    testing_expectations=str(
+                        data.get("testing_expectations", spec.testing_expectations)
+                    ).strip(),
+                )
+            except Exception:
+                pass
+        return Specification(
+            title=spec.title,
+            body=edited_text,
+            acceptance_criteria=spec.acceptance_criteria,
+            constraints=spec.constraints,
+            testing_expectations=spec.testing_expectations,
+        )
 
     def refine_spec_with_answers(
         self,

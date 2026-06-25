@@ -34,13 +34,22 @@ from corge.artifacts.store import ArtifactStore
 
 from typing import Callable
 class MockProvider(ProviderPort):
+    def __init__(self) -> None:
+        self.gap_calls = 0
+
     def chat(self, messages: tuple[ProviderMessage, ...], on_token: Callable[[str], None] | None = None) -> ChatResponse:
         text = " ".join(m.content.lower() for m in messages)
 
         if "analyze the following canvas text" in text or "gaps" in text:
-            return ChatResponse(
-                content='```json\n[{"topic": "Mock Gap"}]\n```', usage={}
-            )
+            self.gap_calls += 1
+            if self.gap_calls <= 1:
+                return ChatResponse(
+                    content='```json\n[{"topic": "Mock Gap"}]\n```', usage={}
+                )
+            else:
+                return ChatResponse(
+                    content='```json\n[]\n```', usage={}
+                )
         elif "concretize" in text or "structure" in text:
             content = (
                 '```json\n{"title": "Mock Specification", '
@@ -134,14 +143,21 @@ class ScratchApp(CorgeApp):
 
             elif controller.state == LifecycleState.SPEC_VALIDATION:
                 assert spec is not None
-                spec, gaps = controller.run_socratic_loop(
-                    spec.body, argumentation_log, ui
-                )
+                heuristics_cfg = controller.load_heuristic_config()
+                max_questions = heuristics_cfg.max_socratic_questions
 
-                if gaps:
-                    controller.advance_spec_state(SpecState.ARGUMENTATION_DIFF)
-                    canvas = CanvasSnapshot(text=spec.body, timestamp="now")
-                    spec = ui.show_argumentation_diff(canvas, spec, gaps)
+                new_spec_body, gaps = controller.run_socratic_loop(
+                    spec.body, argumentation_log, ui, max_questions=max_questions
+                )
+                import dataclasses
+                spec = dataclasses.replace(spec, body=new_spec_body.body)
+
+                controller.advance_spec_state(SpecState.ARGUMENTATION_DIFF)
+                formatted_spec_text = controller.format_spec_to_text(spec, gaps)
+                
+                user_edited_spec = ui.show_argumentation_diff(spec.body, formatted_spec_text)
+                if user_edited_spec is not None:
+                    spec = controller.merge_templated_responses(spec, user_edited_spec)
 
                 controller.advance()
 

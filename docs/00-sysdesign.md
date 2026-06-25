@@ -181,7 +181,7 @@ To maintain the modular monolith, cross-communication is heavily restricted. Eac
 ### 2. Agent Modules (Yellow)
 - **Role**: The operational state machine and learning engine.
 - **Components**: Divided into three master phase-specific agents: 
-  - `Specification Agent`: handles SpecState reiterations, supporting opt-in Socratic spec questions and dynamic LLM refinement of spec content based on user answers.
+  - `Specification Agent`: handles SpecState reiterations, supporting opt-in Socratic spec questions (capped at a configurable threshold to prevent cognitive overload, with support for iterative rounds), dynamic LLM refinement of spec content based on user answers, formatting of remaining gaps into inline markdown templates, and merging user manual edits back into structured specification fields.
   - `Planning Agent`: handles PlanState reiterations (generating Technical Plans and Procedural Steps, parsing and preserving custom bracketed step identifiers in user-edited step descriptions).
   - `Coding Agent`: handles the tool execution loop. 
   - `Schema Tailor`: for framework-aware prompts 

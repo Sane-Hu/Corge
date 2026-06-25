@@ -340,30 +340,19 @@ class CliUi(UiPort):
         )
 
     def show_argumentation_diff(
-        self, canvas: CanvasSnapshot, spec: Specification, gaps: tuple[SemanticGap, ...]
-    ) -> Specification | None:
-        right_text = f"Title: {spec.title}\n\n{spec.body}\n"
-        if gaps:
-            right_text += "\nUnresolved Gaps:\n"
-            for gap in gaps:
-                right_text += f"  • {gap.topic}\n"
-
+        self, canvas_text: str, right_text: str
+    ) -> str | None:
+        """Display raw canvas text on the left and the editable spec template on the right."""
         result_text = self._run_screen(
             InteractiveDiffScreen(
                 left_title="Canvas",
-                left_text=canvas.text,
+                left_text=canvas_text,
                 right_title="Specification",
                 right_text=right_text,
                 prompt_text="Resolve any gaps in the Specification.",
             )
         )
-        if result_text is None:
-            return None
-        return Specification(
-            title=spec.title,
-            body=result_text,
-            acceptance_criteria=spec.acceptance_criteria,
-        )
+        return result_text
 
     def show_question(self, question: str, context: str) -> str:
         """Display a Socratic question and return the user's answer."""

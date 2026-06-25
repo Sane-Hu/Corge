@@ -58,7 +58,7 @@ through a provider abstraction layer.
 
 A user must be able to:
 1. Load a repository or initialize from an empty directory using a keyboard-friendly directory selector supporting visual context, safe folder creation, escape-based cancellation, and hidden files toggles.
-2. Create a specification interactively using the Socratic Spec-Wizard with framework-aware schemas and interactive validation (Freestyle Canvas), where clarifying questions are opt-in, answers are dynamically integrated, and screens automatically focus the primary inputs on mount.
+2. Create a specification interactively using the Socratic Spec-Wizard with framework-aware schemas and interactive validation (Freestyle Canvas), where clarifying questions are opt-in (capped at a configurable limit to prevent cognitive overload, with support for iterative rounds), answers are dynamically integrated, manual gap refinement is always available via inline placeholders, and screens automatically focus the primary inputs on mount.
 3. Generate an architectural and procedural implementation plan through iterative refinement loops, preserving custom bracketed step identifiers during procedural steps editing.
 4. Approve the generated plan.
 5. Observe the agent's step-by-step implementation.
