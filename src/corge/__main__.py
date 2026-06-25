@@ -434,7 +434,11 @@ def main() -> None:
         print(f"Error: Target path '{target_path}' does not exist.", file=sys.stderr)
         sys.exit(1)
 
+    print("\nInitializing Corge Coding Agent...")
+    print(f"Loading repository: {target_path}")
+
     global_dir = Path.home() / ".config" / "corge"
+
     global_dir.mkdir(parents=True, exist_ok=True)
 
     config_path = target_path / "CorgeAPIConfig.toml"

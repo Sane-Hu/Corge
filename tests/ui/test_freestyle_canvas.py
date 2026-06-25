@@ -191,3 +191,28 @@ def test_persistent_notes_save_and_load(tmp_path: Path, monkeypatch: pytest.Monk
     assert loaded[0]["node_id"] == "file.py"
     assert loaded[1]["content"] == "note 2"
 
+
+def test_invalid_notes_allowed_when_repo_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """CanvasScreen allows action_submit even with invalid notes if repository is empty."""
+    from corge.ui.freestyle_canvas import CanvasScreen
+    from unittest.mock import MagicMock
+    from corge.contracts import StickyNoteStatus
+
+    validator = MagicMock()
+    validator.validate_node.return_value = StickyNoteStatus.INVALID
+
+    app_mock = MagicMock()
+    app_mock.target_repo = tmp_path
+
+    monkeypatch.setattr(CanvasScreen, "app", property(lambda self: app_mock))
+    canvas = CanvasScreen(validator=validator)
+    canvas._text_area = MagicMock()
+    canvas._text_area.text = "@node:bad_id some note content"
+    canvas._error_label = MagicMock()
+
+    canvas.dismiss = MagicMock()
+
+    canvas.action_submit()
+    canvas.dismiss.assert_called_once_with("@node:bad_id some note content")
+
+

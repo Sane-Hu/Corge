@@ -100,14 +100,14 @@ class CanvasScreen(Screen[str]):
         width: 100%;
     }
     .left-column {
-        width: 60%;
+        width: 70%;
         height: 100%;
         border: round $accent;
         padding: 1 2;
         margin: 0 1;
     }
     .right-column {
-        width: 40%;
+        width: 30%;
         height: 100%;
         border: round $warning;
         padding: 1 2;
@@ -227,7 +227,7 @@ class CanvasScreen(Screen[str]):
         invalid_notes = [
             n for n in self._sticky_notes if n.status == StickyNoteStatus.INVALID
         ]
-        if invalid_notes:
+        if invalid_notes and not self._is_repo_empty():
             self._error_label.update(
                 f"Submission blocked: Canvas contains {len(invalid_notes)} invalid/unresolved @node tag(s)."
             )
@@ -284,6 +284,11 @@ class CanvasScreen(Screen[str]):
         except Exception:
             pass
 
+    @on(Input.Submitted, "#search-input")
+    def handle_search_submitted(self) -> None:
+        if self._search_results.children:
+            self._search_results.focus()
+
     @on(ListView.Selected)
     def handle_list_selected(self, event: ListView.Selected) -> None:
         if event.list_view == self._search_results:
@@ -296,6 +301,20 @@ class CanvasScreen(Screen[str]):
     # ------------------------------------------------------------------
     # Persistence Helpers
     # ------------------------------------------------------------------
+
+    def _is_repo_empty(self) -> bool:
+        try:
+            app = self.app
+            repo_root = getattr(app, "target_repo", Path.cwd())
+        except RuntimeError:
+            repo_root = Path.cwd()
+
+        if not repo_root.exists():
+            return True
+        for child in repo_root.iterdir():
+            if child.name not in (".git", ".agent"):
+                return False
+        return True
 
     def _get_sticky_notes_file(self) -> Path:
         try:
