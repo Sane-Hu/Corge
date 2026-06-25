@@ -279,7 +279,10 @@ class CanvasScreen(Screen[str]):
         try:
             result = self._validator.fuzzy_search(query)
             if not result.nodes:
-                self._search_results.append(ListItem(Label("No matches found.")))
+                if self._is_repo_empty():
+                    self._search_results.append(ListItem(Label("No matches found (directory is empty).")))
+                else:
+                    self._search_results.append(ListItem(Label("No matches found.")))
             else:
                 for node in result.nodes:
                     label = f"[{node.kind.upper()}] {node.node_id}"

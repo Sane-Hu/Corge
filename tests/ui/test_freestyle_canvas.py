@@ -216,3 +216,57 @@ def test_invalid_notes_allowed_when_repo_empty(tmp_path: Path, monkeypatch: pyte
     canvas.dismiss.assert_called_once_with("@node:bad_id some note content")
 
 
+def test_search_shows_empty_dir_message_when_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies that search results show '(directory is empty)' when search yields no matches in an empty repo."""
+    from corge.ui.freestyle_canvas import CanvasScreen
+    from unittest.mock import MagicMock
+    from corge.contracts import GraphResult
+
+    app_mock = MagicMock()
+    app_mock.target_repo = tmp_path
+
+    validator = MagicMock()
+    validator.fuzzy_search.return_value = GraphResult(nodes=())
+
+    monkeypatch.setattr(CanvasScreen, "app", property(lambda self: app_mock))
+    canvas = CanvasScreen(validator=validator)
+    canvas._search_results = MagicMock()
+
+    event = MagicMock()
+    event.value = "some_query"
+    canvas.handle_search_changed(event)
+
+    appended_item = canvas._search_results.append.call_args[0][0]
+    label_text = str(appended_item._pending_children[0].content)
+    assert "directory is empty" in label_text
+
+
+def test_search_shows_no_matches_only_when_not_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies that search results show 'No matches found.' (without empty dir message) in a non-empty repo."""
+    from corge.ui.freestyle_canvas import CanvasScreen
+    from unittest.mock import MagicMock
+    from corge.contracts import GraphResult
+
+    (tmp_path / "file.py").write_text("code", encoding="utf-8")
+
+    app_mock = MagicMock()
+    app_mock.target_repo = tmp_path
+
+    validator = MagicMock()
+    validator.fuzzy_search.return_value = GraphResult(nodes=())
+
+    monkeypatch.setattr(CanvasScreen, "app", property(lambda self: app_mock))
+    canvas = CanvasScreen(validator=validator)
+    canvas._search_results = MagicMock()
+
+    event = MagicMock()
+    event.value = "some_query"
+    canvas.handle_search_changed(event)
+
+    appended_item = canvas._search_results.append.call_args[0][0]
+    label_text = str(appended_item._pending_children[0].content)
+    assert "No matches found." in label_text
+    assert "directory is empty" not in label_text
+
+
+
