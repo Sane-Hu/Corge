@@ -121,19 +121,16 @@ uv run python -m corge /path/to/target/repository
 ```
 
 **Option B: Launch interactively**
-Run without arguments to launch the interactive CLI directory explorer:
+Run without arguments to launch the interactive directory explorer:
 ```bash
 uv run python -m corge
 ```
 
 > **Note**: Replace `python -m corge` with the actual entry-point command once the CLI entrypoint is finalized in `pyproject.toml`. The invocation may also be `uv run corge` if a `[project.scripts]` entry exists.
 
-**Expected (Option B)**: An interactive selection menu is displayed in the terminal where you can:
-- Press `0` to select the current directory.
-- Press `1` to navigate up a level.
-- Press `2` to create a new directory.
-- Press `3` to input a path manually.
-- Press any number `4` or greater to navigate into subdirectories.
+**Expected (Option B)**: A Textual `DirectorySelectorApp` is displayed in the terminal where you can:
+- Use the arrow keys to navigate the file system tree.
+- Press `Enter` to select the currently highlighted directory.
 
 ### 3.2 Select the target repository
 
@@ -215,7 +212,7 @@ No manual input is required in this sub-state.
 
 ### 4.3 Argumentation Diff (`ARGUMENTATION_DIFF`)
 
-The TUI opens the `InteractiveDiffScreen`. The left pane shows the raw canvas text; the right pane shows the concretized spec draft with any unresolved semantic gaps highlighted.
+The TUI opens the `InteractiveDiffScreen`. The left pane shows a read-only highlighted unified diff (`difflib`) between the original canvas text and the concretized spec draft; the right pane is an editable text area containing the concretized spec draft with any unresolved semantic gaps highlighted.
 
 **Functional check — gap resolution**: If gaps exist, edit the right pane to resolve them. Press **Approve**.
 
@@ -245,7 +242,7 @@ The `InteractiveDiffScreen` or a `MessageScreen` presents the final specificatio
 
 ### 5.1 Technical Plan generation (`TECH_PLAN_REITERATION`)
 
-The `PlanningAgent` drafts the architectural `TechnicalPlan` in markdown. The `InteractiveDiffScreen` opens with the approved spec on the left and the draft technical plan on the right.
+The `PlanningAgent` drafts the architectural `TechnicalPlan` in markdown. The `InteractiveDiffScreen` opens showing a live highlighted unified diff on the left and the editable draft technical plan on the right.
 
 **Functional checks**:
 - The plan is readable and addresses the accepted spec requirements.
@@ -254,7 +251,7 @@ The `PlanningAgent` drafts the architectural `TechnicalPlan` in markdown. The `I
 
 ### 5.2 Procedural Steps generation (`STEPS_REITERATION`)
 
-The agent translates the technical plan into granular, sequenced `ProceduralStep` entries. The `InteractiveDiffScreen` re-opens with the technical plan on the left and the procedural steps on the right.
+The agent translates the technical plan into granular, sequenced `ProceduralStep` entries. The `InteractiveDiffScreen` re-opens showing a highlighted unified diff on the left and the editable procedural steps on the right.
 
 **Functional checks**:
 - Each step has a sequential identifier.
@@ -325,7 +322,7 @@ The agent issues a `write` action to create or overwrite a file.
 
 **Expected**:
 1. The approval gateway intercepts the action and delegates to the UI.
-2. The `InteractiveDiffScreen` opens with approval context on the left and the `ToolAction` payload (target path, content) on the right.
+2. The `InteractiveDiffScreen` opens with a highlighted unified diff of the changes on the left and the editable `ToolAction` payload on the right.
 3. The engineer reviews and presses **Approve** (or **Reject**).
 4. On approval, the `ToolRuntime` writes the file. The change is visible on disk.
 5. The audit logger records the approval event.

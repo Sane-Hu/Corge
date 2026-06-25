@@ -38,9 +38,9 @@ The directory structure maps directly to the 8 logical modules defined in the sy
 *   **1. Shared Contracts Layer (`src/corge/contracts/`)**
     *   Defines the public interfaces ([ports.py](src/corge/contracts/ports.py)), dataclasses ([models.py](src/corge/contracts/models.py)), and enum states ([lifecycle.py](src/corge/contracts/lifecycle.py)).
 *   **2. UI Module (`src/corge/ui/`)**
-    *   A pure CLI presentation layer ([cli.py](src/corge/ui/cli.py)) with zero business logic. Contains the `CanvasScreen`, `InteractiveDiffScreen`, and `MessageScreen` Textual screens, and an interactive CLI directory selector and creator ([directory_selector.py](src/corge/ui/directory_selector.py)).
+    *   A pure CLI presentation layer ([cli.py](src/corge/ui/cli.py)) with zero business logic. Contains the `DirectorySelectorApp` (using a native `DirectoryTree`), and the Textual screens: `CanvasScreen`, `InteractiveDiffScreen`, and `MessageScreen`.
 *   **3. Agent Modules (`src/corge/agent/`)**
-    *   Orchestration state machines (`SessionController`, `SpecificationAgent`, `PlanningAgent`, `CodingAgent`) and utility services (`SchemaTailor` for stack detection and YAML parser, `HeuristicUpdater` for spec optimization).
+    *   Orchestration state machines (`SessionController`, `SpecificationAgent`, `PlanningAgent`, `CodingAgent`) and utility services (`SchemaTailor` for stack detection and YAML parser, `HeuristicUpdater` for spec optimization). The `SessionController` explicitly supports manual and backward lifecycle transitions (`transition_to()`) to gracefully handle rejections.
 *   **4. Context Engineering Modules**
     *   `src/corge/context/`: Context retrieval coordination and N-1 context caching.
     *   `src/corge/prompt_assembler/`: Constructing prompts for model consumption.
@@ -227,7 +227,7 @@ Instead of numbered tiers, the prompt assembler constructs ephemeral prompts usi
 
 ## 5. TUI Screen Map
 
-The presentation layer utilizes an interactive pre-TUI CLI directory selection menu ([directory_selector.py](src/corge/ui/directory_selector.py)) and three fundamental UI screens within [cli.py](src/corge/ui/cli.py) to manage the interactive user loops:
+The presentation layer utilizes a native Textual `DirectorySelectorApp` and several fundamental UI screens within [cli.py](src/corge/ui/cli.py) to manage the interactive user loops. All screens are overlaid with a global persistent `Header` that tracks the current agent phase and lifecycle state:
 
 ```text
                             ┌────────────────────────────────────────┐
@@ -249,8 +249,8 @@ The presentation layer utilizes an interactive pre-TUI CLI directory selection m
                             │     Procedural Steps, & Approvals)     │
                             │                                        │
                             │   ┌────────────────┬────────────────┐  │
-                            │   │ Left: Context  │ Right: Draft   │  │
-                            │   │ (Read-Only)    │ (Editable)     │  │
+                            │   │ Left: Diff vs  │ Right: Draft   │  │
+                            │   │ Prev (RichLog) │ (Editable)     │  │
                             │   └────────────────┴────────────────┘  │
                             │   │           [ Approve ]           │  │
                             │   └─────────────────────────────────┘  │
@@ -279,9 +279,9 @@ The presentation layer utilizes an interactive pre-TUI CLI directory selection m
         *   *Socratic Argumentation Diff*: Left pane displays raw Canvas text; right pane displays the Concretized Specification draft with unresolved semantic gaps. Prompt: "Resolve any gaps in the Specification."
         *   *Technical Plan Editor*: Left pane shows previous approved 'conceretized specification'; right pane displays the draft `TechnicalPlan` in custom `Corge`'s markdown format.
         *   *Procedural Steps Editor*: Left pane maps the `TechnicalPlan` draft; right pane renders editable `ProceduralStep` identifiers and lines.
-        *   *Human Approval Gateway*: Left pane lists approval context; right pane details the requested `ToolAction` parameter payload.
-    *   **Key Widgets**: Left `TextArea` (Read-only reference context), Right `TextArea` (Editable content), and `Button` ("Approve").
-    *   **Transition**: On pressing Approve, returning the modified content to the caller and proceeding to the next step.
+        *   *Human Approval Gateway*: Left pane lists a live diff of the proposed change; right pane details the requested `ToolAction` parameter payload.
+    *   **Key Widgets**: Left `RichLog` (Read-only dynamic `difflib.unified_diff` with syntax highlighting), Right `TextArea` (Editable content), and `Button`s ("Approve", "Reject").
+    *   **Transition**: On pressing Approve, returning the modified content to the caller and proceeding to the next step. Pressing Reject returns `None`, signaling the `SessionController` to execute a backward transition and request an updated plan/spec from the agent.
 3.  **`MessageScreen` (Read-Only Dialogs / Alerts)**
     *   **Purpose**: Simulates modal notifications or summaries to the engineer.
     *   **Key Widgets**: Header `Static` title, Read-only `TextArea` showing messaging, and `Button` ("Continue").
