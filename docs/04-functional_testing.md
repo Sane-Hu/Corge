@@ -271,11 +271,11 @@ The 9-Step execution cycle runs autonomously for each `ProceduralStep`. The test
 
 ### 6.1 Context hydration
 
-**Expected per step**: The `ContextService` queries the knowledge graph and memory pyramid and assembles a `ContextBundle`. The prompt assembler renders the five-tier ephemeral prompt. The budget manager clips and deduplicates content without destroying critical context.
+**Expected per step**: The `ContextService` queries the knowledge graph and memory pyramid and assembles a `ContextBundle`. The prompt assembler renders the semantically tagged ephemeral prompt. The budget manager clips and deduplicates content without destroying critical context.
 
-#### 6.1.a Prompt Assembler tier verification (`prompt_assembler/`)
+#### 6.1.a Prompt Assembler semantic verification (`prompt_assembler/`)
 
-After the first tool action executes, inspect the audit log or session L0 events to confirm all five prompt tiers are present in the assembled prompt:
+After the first tool action executes, inspect the audit log or session L0 events to confirm the expected XML-like tags are present in the assembled prompt:
 
 ```bash
 cat <target-repo>/.agent/memory/l0/<latest>.jsonl | python3 -c "
@@ -289,11 +289,13 @@ for line in sys.stdin:
 ```
 
 **Expected**: The payload shows non-empty content for:
-- Tier 1: current spec, acceptance criteria, current plan step, engineering profile
-- Tier 2: engineering facts, graph query results
-- Tier 3: scenario memory
-- Tier 4: recent action history
-- Tier 5: `artifact://` URIs (may be empty if no artifacts have been offloaded yet)
+- `<objective>`: current execution constraints
+- `<specification>`: current spec, acceptance criteria
+- `<engineering_profile>`: active engineering rules
+- `<repository_facts>`: engineering facts, graph query results
+- `<task_memory>`: scenario memory
+- `<recent_actions>`: recent action history
+- `<artifacts>`: `artifact://` URIs (may be empty if no artifacts have been offloaded yet)
 
 #### 6.1.b Budget Manager clipping verification (`budget_manager/`)
 
@@ -368,7 +370,7 @@ The artifact store activates when a tool output (e.g. a long `bash` log or a lar
 
 **Expected**:
 - The large output is written to `.agent/artifacts/` as a file (not inlined in the prompt).
-- The prompt for the subsequent step references the offloaded content using an `artifact://` URI (Tier 5), not the raw text.
+- The prompt for the subsequent step references the offloaded content using an `artifact://` URI (`<artifacts>` block), not the raw text.
 - The `.agent/artifacts/` directory is created automatically on first use.
 - The `artifact://` reference is resolvable — the agent can retrieve the content when needed.
 
@@ -482,7 +484,7 @@ The test suite covers:
 | :--- | :--- |
 | `tests/test_knowledge_graph.py` | Graph node/edge ingestion, query grammar |
 | `tests/test_memory.py` | L0–L3 memory pyramid read/write correctness |
-| `tests/test_prompt_assembler.py` | Five-tier ephemeral prompt rendering |
+| `tests/test_prompt_assembler.py` | Semantic tagged prompt rendering |
 | `tests/test_budget_manager.py` | Token clipping, deduplication, compaction |
 | `tests/test_gateway.py` | Approval gateway routing and auto-approve for reads |
 | `tests/test_agent.py` | Agent state machine transitions |

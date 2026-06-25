@@ -211,14 +211,17 @@ Where:
 
 ### Context Service & Isolation Policies
 - **Markov Context Chaining**: Injects the active state from step N-1 into step N. It packages step context into the `MarkovStepContext` dataclass containing `agent_proposal`, `user_correction` for the preceding step, and a `compressed_trajectory` of previous steps (N-2 to N-Start) to allow learning from past trajectory iterations.
-- **3-Layer Isolation**: Separates the specification, planning, and coding prompt contexts. Argumentation logs, AST graph relations, and architectural plans are strictly omitted from the coding prompt layout to optimize context window space and avoid instruction pollution.
+- **3-Layer Isolation**: Separates the specification, planning, and coding prompt contexts. To prevent overwhelming the model and instruction pollution, **Specification** phase prompts strictly omit file lists and repository facts. Detailed AST graphs, architectural files, and extensive codebases are injected only during the **Planning** and **Coding** phases. Argumentation logs and architectural plans are tailored explicitly to their active phase.
 
-### Ephemeral Prompt Tiers
-1. **Tier 1 (Always Present)**: Current Spec, Acceptance Criteria, Current Plan Step, Engineering Profile.
-2. **Tier 2 (Repository)**: Engineering Facts, Graph Queries, Relevant File Summaries.
-3. **Tier 3 (Task Memory)**: Scenario Memory (discoveries, decisions, blockers).
-4. **Tier 4 (History)**: Recent actions, approvals, and edits.
-5. **Tier 5 (Artifacts)**: URIs (`artifact://<id>`) and small summaries of large outputs.
+### Semantic Prompt Construction
+Instead of numbered tiers, the prompt assembler constructs ephemeral prompts using phase-specific methods (`assemble_spec_prompt`, `assemble_plan_prompt`, `assemble_coding_prompt`). Context is structurally packaged into semantic XML-like tags to align with objective and constraint-based generation methodologies:
+- `<objective>`: The immediate instruction or phase constraint.
+- `<specification>`: Current Spec and Acceptance Criteria.
+- `<engineering_profile>`: Engineering rules matching the threshold confidence.
+- `<repository_facts>`: Engineering facts, Graph Queries.
+- `<relevant_files>`: Relevant file paths or references.
+- `<task_memory>`: Scenario Memory (discoveries, decisions, blockers).
+- `<artifacts>`: URIs (`artifact://<id>`) and small summaries of large outputs.
 
 ---
 
