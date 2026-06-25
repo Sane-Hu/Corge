@@ -176,7 +176,7 @@ To maintain the modular monolith, cross-communication is heavily restricted. Eac
 
 ### 1. UI Module (Purple)
 - **Role**: Pure presentation layer with zero business logic.
-- **Components**: Handles the specification wizard, the interactive Freestyle Canvas with sticky notes, formatting repository analysis for the user, the step by step plan outputs side by side with structured specs output, throwing human-in-the-loop approval requests, and displaying completion review.
+- **Components**: Handles the specification wizard, the interactive Freestyle Canvas with sticky notes, formatting repository analysis for the user, the step by step plan outputs side by side with structured specs output, throwing human-in-the-loop approval requests (featuring live code diff toggles), and displaying completion review.
 
 ### 2. Agent Modules (Yellow)
 - **Role**: The operational state machine and learning engine.
@@ -205,7 +205,7 @@ To maintain the modular monolith, cross-communication is heavily restricted. Eac
 ### 5. Execution & Safety Modules (Red)
 - **Role**: The only module that modifies the local environment.
 - **Components**: 
-  - `Approval Gateway`: intercepts tool requests and guarantees nothing runs without consent. 
+  - `Approval Gateway`: intercepts tool requests and guarantees nothing runs without consent, presenting live diffs of proposed code edits for verification prior to execution.
   - `Tool Runtime`: blindly runs `read`, `write`, `edit`, and `bash` commands once authorized.
 
 ### 6. Shared Contracts Layer (Grey)

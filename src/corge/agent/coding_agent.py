@@ -11,27 +11,28 @@ Spec traceability:
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from corge.contracts import (
     ApprovalDecision,
     ApprovalGatewayPort,
     ApprovalRequest,
+    ArtifactStorePort,
+    AuditLoggerPort,
     ContextBundle,
     ContextPort,
     GraphUpdate,
     KnowledgeGraphPort,
     Plan,
     PlanStep,
+    PromptAssemblerPort,
     ProviderMessage,
     ProviderPort,
     ToolAction,
     ToolResult,
     ToolRuntimePort,
-    PromptAssemblerPort,
-    AuditLoggerPort,
-    ArtifactStorePort,
 )
 
 
@@ -79,7 +80,10 @@ class CodingAgent:
     _MAX_ACTIONS_PER_STEP = 20
 
     def execute_step(
-        self, step: PlanStep, context: ContextBundle, on_token: Callable[[str], None] | None = None
+        self,
+        step: PlanStep,
+        context: ContextBundle,
+        on_token: Callable[[str], None] | None = None,
     ) -> None:
         """Execute a single plan step through the full 9-step cycle.
 
@@ -145,6 +149,7 @@ class CodingAgent:
                     target=target,
                     reason=step.description,
                     step_ref=step.identifier,
+                    payload=action_dict,
                 )
                 decision = self._approval_gateway.approve(req)
                 if decision == ApprovalDecision.REJECTED:
@@ -171,10 +176,18 @@ class CodingAgent:
                         # Path structure for artifacts: use step identifier
                         artifact_path = Path(f"{step.identifier}_{action.value}.out")
                         summary = f"Truncated output from {action.value} on {target}"
-                        ref = self._artifact_store.store_artifact(artifact_path, result.output)
-                        safe_output = result.output[:3000] + f"\n...[output truncated, see artifact: {ref.uri}]"
+                        ref = self._artifact_store.store_artifact(
+                            artifact_path, result.output
+                        )
+                        safe_output = (
+                            result.output[:3000]
+                            + f"\n...[output truncated, see artifact: {ref.uri}]"
+                        )
                     except Exception as e:
-                        safe_output = result.output[:3000] + f"\n...[output truncated, artifact store failed: {e}]"
+                        safe_output = (
+                            result.output[:3000]
+                            + f"\n...[output truncated, artifact store failed: {e}]"
+                        )
                 else:
                     safe_output = result.output
 
@@ -207,12 +220,15 @@ class CodingAgent:
         if action == ToolAction.READ:
             if target.startswith("artifact://"):
                 from corge.contracts.models import ArtifactReference
+
                 try:
                     ref = ArtifactReference(uri=target, summary="Requested via tool")
                     content = self._artifact_store.retrieve_artifact(ref)
                     return ToolResult(action=action, output=content, success=True)
                 except Exception as e:
-                    return ToolResult(action=action, output="", success=False, stderr=str(e))
+                    return ToolResult(
+                        action=action, output="", success=False, stderr=str(e)
+                    )
             return self._tool_runtime.read(path)
         if action == ToolAction.BASH:
             return self._tool_runtime.bash(target, Path("."))
@@ -230,7 +246,10 @@ class CodingAgent:
     # ------------------------------------------------------------------
 
     def evaluate_completion(
-        self, plan: Plan, context: ContextBundle, on_token: Callable[[str], None] | None = None
+        self,
+        plan: Plan,
+        context: ContextBundle,
+        on_token: Callable[[str], None] | None = None,
     ) -> bool:
         """Verify that all acceptance criteria are satisfied (FR-012).
 

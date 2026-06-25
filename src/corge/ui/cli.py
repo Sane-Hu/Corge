@@ -8,6 +8,7 @@ Spec traceability:
 from __future__ import annotations
 
 import concurrent.futures
+import difflib
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +42,7 @@ from corge.contracts import (
     Specification,
     StickyNoteValidatorPort,
     TechnicalPlan,
+    ToolAction,
     UiPort,
 )
 from corge.ui.freestyle_canvas import CanvasScreen
@@ -408,15 +410,43 @@ class CliUi(UiPort):
             f"Action : {request.action}\n"
             f"Target : {request.target}\n"
             f"Reason : {request.reason}\n"
-            f"Step   : {request.step_ref or '—'}"
+            f"Step   : {request.step_ref or '—'}\n\n"
         )
+
+        override_diff = None
+        if request.action == ToolAction.EDIT:
+            old = request.payload.get("old", "")
+            new = request.payload.get("new", "")
+            diff_lines = list(
+                difflib.unified_diff(
+                    old.splitlines(keepends=True),
+                    new.splitlines(keepends=True),
+                    fromfile=f"{request.target} (Old)",
+                    tofile=f"{request.target} (New)",
+                    n=3,
+                )
+            )
+            override_diff = "".join(diff_lines) if diff_lines else "No differences."
+            detail += f"Old text length: {len(old)}\nNew text length: {len(new)}\n"
+        elif request.action == ToolAction.WRITE:
+            content = request.payload.get("content", "")
+            detail += f"Content length: {len(content)}\n"
+            override_diff = f"--- /dev/null\n+++ {request.target}\n@@ -0,0 +1,{len(content.splitlines())} @@\n"
+            override_diff += "".join(f"+{line}\n" for line in content.splitlines())
+        elif request.action == ToolAction.BASH:
+            detail += f"Command:\n{request.target}\n"
+            override_diff = (
+                f"Executing bash command in current directory:\n$ {request.target}\n"
+            )
+
         result = self._run_screen(
             InteractiveDiffScreen(
                 left_title="Request Context",
-                left_text="The agent requires authorization to perform an action.",
+                left_text="The agent requires authorization to perform an action.\n\nPress Ctrl+D to toggle live diff.",
                 right_title="Approval Request",
                 right_text=detail,
                 prompt_text="Review the requested action carefully.",
+                override_diff_text=override_diff,
             )
         )
         # InteractiveDiffScreen.dismiss(text) → APPROVED; dismiss(None) → REJECTED

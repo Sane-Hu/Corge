@@ -20,6 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Enumerations
@@ -259,6 +260,7 @@ class ApprovalRequest:
     target: str
     reason: str
     step_ref: str = ""
+    payload: dict[str, Any] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------

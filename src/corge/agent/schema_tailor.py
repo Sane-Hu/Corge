@@ -36,6 +36,7 @@ def _parse_schema_text(text: str) -> dict[str, Any]:
             result[key.strip()] = value.strip()
     return result
 
+
 def _load_schema_file(name: str, global_dir: Path | None = None) -> dict[str, Any]:
     """Load a schema file from global config or the schemas/stack package.
 
@@ -61,7 +62,9 @@ def _load_schema_file(name: str, global_dir: Path | None = None) -> dict[str, An
 class SchemaTailor:
     """Concrete schema tailor.  Satisfies ``contracts.SchemaTailorPort``."""
 
-    def __init__(self, knowledge_graph: KnowledgeGraphPort, global_dir: Path | None = None) -> None:
+    def __init__(
+        self, knowledge_graph: KnowledgeGraphPort, global_dir: Path | None = None
+    ) -> None:
         self._kg = knowledge_graph
         self._global_dir = global_dir
 

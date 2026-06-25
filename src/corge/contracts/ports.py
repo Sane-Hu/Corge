@@ -11,8 +11,9 @@ be verified in tests without importing concrete implementations.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from corge.contracts.models import (
     ApprovalDecision,
@@ -299,8 +300,6 @@ class ToolRuntimePort(Protocol):
 @runtime_checkable
 class ProviderPort(Protocol):
     """External model integration boundary."""
-
-
 
     def chat(
         self,

@@ -109,8 +109,8 @@ class BayesianUpdater:
 
         # Example heuristic extraction:
         # Evaluate how often the user manually overrode the agent's schema assumptions.
-        # todo: The BayesianUpdater currently ignores `e.answer` (the user's text). 
-        # Future optimization: perform text classification or extraction on `e.answer` 
+        # todo: The BayesianUpdater currently ignores `e.answer` (the user's text).
+        # Future optimization: perform text classification or extraction on `e.answer`
         # to generate finer-grained probability updates.
         override_count = sum(1 for e in entries if e.was_user_override)
         total_interactions = len(entries)

@@ -9,7 +9,9 @@ Spec traceability:
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
+from datetime import UTC
+
 from corge.agent.coding_agent import CodingAgent
 from corge.agent.planning_agent import PlanningAgent
 from corge.agent.session import SessionState
@@ -17,6 +19,8 @@ from corge.agent.specification_agent import SpecificationAgent
 from corge.contracts import (
     ApprovalGatewayPort,
     ArgumentationLogPort,
+    ArtifactStorePort,
+    AuditLoggerPort,
     BudgetManagerPort,
     ContextBundle,
     ContextPort,
@@ -38,8 +42,6 @@ from corge.contracts import (
     TechnicalPlan,
     ToolRuntimePort,
     UiPort,
-    AuditLoggerPort,
-    ArtifactStorePort,
 )
 from corge.prompt_assembler import PromptAssembler
 
@@ -124,11 +126,22 @@ class SessionController:
             budget_manager=budget_manager,
         )
 
-        self._spec_agent = SpecificationAgent(provider, context_service, self._prompt_assembler)
-        self._plan_agent = PlanningAgent(provider, context_service, self._prompt_assembler)
+        self._spec_agent = SpecificationAgent(
+            provider, context_service, self._prompt_assembler
+        )
+        self._plan_agent = PlanningAgent(
+            provider, context_service, self._prompt_assembler
+        )
         self._code_agent = CodingAgent(
-            provider, tool_runtime, approval_gateway, context_service, knowledge_graph, self._prompt_assembler, audit_logger, artifact_store,
-            on_knowledge_extracted=self._handle_extracted_knowledge
+            provider,
+            tool_runtime,
+            approval_gateway,
+            context_service,
+            knowledge_graph,
+            self._prompt_assembler,
+            audit_logger,
+            artifact_store,
+            on_knowledge_extracted=self._handle_extracted_knowledge,
         )
 
         # External port dependencies
@@ -306,12 +319,18 @@ class SessionController:
         Delegates to the internal SpecificationAgent and returns the updated
         specification and any unresolved gaps.
         """
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         from corge.contracts.models import CanvasSnapshot
-        snapshot = CanvasSnapshot(text=canvas_text, timestamp=datetime.now(timezone.utc).isoformat())
+
+        snapshot = CanvasSnapshot(
+            text=canvas_text, timestamp=datetime.now(UTC).isoformat()
+        )
         argumentation_log.record_canvas_snapshot(snapshot)
 
-        spec, gaps = self._spec_agent.run_socratic_loop(canvas_text, argumentation_log, ui)
+        spec, gaps = self._spec_agent.run_socratic_loop(
+            canvas_text, argumentation_log, ui
+        )
         self._specification = spec
         self._pending_gaps = gaps
         return spec, gaps
@@ -321,16 +340,24 @@ class SessionController:
     # ------------------------------------------------------------------
 
     def generate_technical_plan(
-        self, specification: Specification, on_token: Callable[[str], None] | None = None
+        self,
+        specification: Specification,
+        on_token: Callable[[str], None] | None = None,
     ) -> TechnicalPlan:
-        plan = self._plan_agent.generate_technical_plan(specification, on_token=on_token)
+        plan = self._plan_agent.generate_technical_plan(
+            specification, on_token=on_token
+        )
         self._technical_plan = plan
         return plan
 
     def generate_procedural_steps(
-        self, technical_plan: TechnicalPlan, on_token: Callable[[str], None] | None = None
+        self,
+        technical_plan: TechnicalPlan,
+        on_token: Callable[[str], None] | None = None,
     ) -> tuple[ProceduralStep, ...]:
-        steps = self._plan_agent.generate_procedural_steps(technical_plan, on_token=on_token)
+        steps = self._plan_agent.generate_procedural_steps(
+            technical_plan, on_token=on_token
+        )
         self._procedural_steps = steps
         return steps
 
@@ -338,16 +365,24 @@ class SessionController:
     # AgentPort delegation — Coding phase
     # ------------------------------------------------------------------
 
-    def collect_context(self, step: PlanStep, specification: Specification) -> ContextBundle:
+    def collect_context(
+        self, step: PlanStep, specification: Specification
+    ) -> ContextBundle:
         return self._prompt_assembler.collect_context(step, specification)
 
     def execute_step(
-        self, step: PlanStep, context: ContextBundle, on_token: Callable[[str], None] | None = None
+        self,
+        step: PlanStep,
+        context: ContextBundle,
+        on_token: Callable[[str], None] | None = None,
     ) -> None:
         self._code_agent.execute_step(step, context, on_token=on_token)
 
     def evaluate_completion(
-        self, plan: Plan, context: ContextBundle, on_token: Callable[[str], None] | None = None
+        self,
+        plan: Plan,
+        context: ContextBundle,
+        on_token: Callable[[str], None] | None = None,
     ) -> bool:
         return self._code_agent.evaluate_completion(plan, context, on_token=on_token)
 
@@ -366,6 +401,7 @@ class SessionController:
                 self._memory_store.store_fact(fact.strip(), source="execution")
         if rules:
             from corge.contracts.models import EngineeringProfile
+
             profile = EngineeringProfile(rules=tuple(rules))
             self._memory_store.update_profile(profile)
 

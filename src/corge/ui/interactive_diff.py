@@ -16,6 +16,7 @@ class InteractiveDiffScreen(Screen[str | None]):
     BINDINGS = [
         ("ctrl+a", "approve", "Approve"),
         ("escape", "reject", "Reject"),
+        ("ctrl+d", "toggle_diff", "Toggle Diff"),
     ]
 
     CSS = """
@@ -66,6 +67,7 @@ class InteractiveDiffScreen(Screen[str | None]):
         prompt_text: str = "Review and edit if needed. Click Approve to continue.",
         approve_text: str = "Approve",
         reject_text: str = "Reject",
+        override_diff_text: str | None = None,
     ) -> None:
         super().__init__()
         self._left_title = left_title
@@ -75,15 +77,23 @@ class InteractiveDiffScreen(Screen[str | None]):
         self._prompt_text = prompt_text
         self._approve_text = approve_text
         self._reject_text = reject_text
-        self.left_log = RichLog(id="left_log", highlight=True, markup=True)
+        self._override_diff_text = override_diff_text
+        self._original_right_text = right_text
+        self._showing_diff = False
+
+        self.left_area = TextArea(self._left_text, id="left_area", read_only=True)
+        self.diff_log = RichLog(id="diff_log", highlight=True, markup=True)
+        self.diff_log.styles.display = "none"
         self.right_area = TextArea(self._right_text, id="right_area")
 
     def compose(self) -> ComposeResult:
         yield Header()
         with Horizontal(classes="panes"):
             with Vertical(classes="pane"):
-                yield Static(f"Diff vs {self._left_title}", classes="pane-title")
-                yield self.left_log
+                self.left_title_widget = Static(self._left_title, classes="pane-title")
+                yield self.left_title_widget
+                yield self.left_area
+                yield self.diff_log
             with Vertical(classes="pane"):
                 yield Static(self._right_title, classes="pane-title")
                 yield self.right_area
@@ -100,12 +110,36 @@ class InteractiveDiffScreen(Screen[str | None]):
     def action_reject(self) -> None:
         self.dismiss(None)
 
+    def action_toggle_diff(self) -> None:
+        self._showing_diff = not self._showing_diff
+        if self._showing_diff:
+            self.left_area.styles.display = "none"
+            self.diff_log.styles.display = "block"
+            self.left_title_widget.update("Diff vs Original Draft")
+            self.update_diff()
+        else:
+            self.diff_log.styles.display = "none"
+            self.left_area.styles.display = "block"
+            self.left_title_widget.update(self._left_title)
+
     def on_mount(self) -> None:
         self.update_diff()
 
     @on(TextArea.Changed, "#right_area")
     def update_diff(self) -> None:
-        left_lines = self._left_text.splitlines(keepends=True)
+        if not self._showing_diff:
+            return
+
+        if self._override_diff_text is not None:
+            self.diff_log.clear()
+            self.diff_log.write(
+                Syntax(
+                    self._override_diff_text, "diff", theme="monokai", word_wrap=True
+                )
+            )
+            return
+
+        left_lines = self._original_right_text.splitlines(keepends=True)
         right_lines = self.right_area.text.splitlines(keepends=True)
         diff = "".join(
             difflib.unified_diff(
@@ -116,11 +150,11 @@ class InteractiveDiffScreen(Screen[str | None]):
                 n=3,
             )
         )
-        self.left_log.clear()
+        self.diff_log.clear()
         if not diff.strip():
-            self.left_log.write("No differences.")
+            self.diff_log.write("No differences.")
         else:
-            self.left_log.write(Syntax(diff, "diff", theme="monokai", word_wrap=True))
+            self.diff_log.write(Syntax(diff, "diff", theme="monokai", word_wrap=True))
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "approve":

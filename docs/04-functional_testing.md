@@ -336,6 +336,9 @@ The agent issues an `edit` action to modify a specific string in an existing fil
 - The `ToolRuntime` applies the edit only if the target string occurrence count matches exactly (ambiguous edits are rejected with an error, not silently applied).
 - The file on disk reflects the change after approval.
 
+> [!TIP]
+> Try performing an action with the coding agent that edits a file, and when prompted for approval, hit `Ctrl+D` to verify the code diff before hitting `Ctrl+A` to approve.
+
 ### 6.5 Tool action — `bash` (human approval required)
 
 The agent issues a `bash` action (e.g. to run tests or install a dependency).

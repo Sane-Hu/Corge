@@ -11,29 +11,34 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Callable
+from collections.abc import Callable
 from datetime import UTC, datetime
+from pathlib import Path
 
 from corge.contracts import (
     AcceptanceCriteria,
     ArgumentationEntry,
     ArgumentationLogPort,
+    ContextPort,
+    PromptAssemblerPort,
     ProviderMessage,
     ProviderPort,
+    RepositoryContext,
     SemanticGap,
     Specification,
     UiPort,
-    ContextPort,
-    PromptAssemblerPort,
-    RepositoryContext,
 )
-from pathlib import Path
 
 
 class SpecificationAgent:
     """Manages the interactive specification wizard and semantic gaps."""
 
-    def __init__(self, provider: ProviderPort, context_service: ContextPort, prompt_assembler: PromptAssemblerPort) -> None:
+    def __init__(
+        self,
+        provider: ProviderPort,
+        context_service: ContextPort,
+        prompt_assembler: PromptAssemblerPort,
+    ) -> None:
         self._provider = provider
         self._context_service = context_service
         self._prompt_assembler = prompt_assembler
@@ -42,7 +47,9 @@ class SpecificationAgent:
     # CONCRETIZATION sub-state (Tech-spec §3 SpecState)
     # ------------------------------------------------------------------
 
-    def concretize(self, canvas_text: str, on_token: Callable[[str], None] | None = None) -> Specification:
+    def concretize(
+        self, canvas_text: str, on_token: Callable[[str], None] | None = None
+    ) -> Specification:
         """Compile raw canvas text into a structured Specification (FR-002).
 
         Prompts the model to extract the structured wizard fields:
@@ -62,7 +69,9 @@ class SpecificationAgent:
             "string or empty list.\n\n"
             f"Brainstorming text:\n{canvas_text}"
         )
-        ctx_bundle = self._context_service.load_context(RepositoryContext(root=Path(".")))
+        ctx_bundle = self._context_service.load_context(
+            RepositoryContext(root=Path("."))
+        )
         prompt = self._prompt_assembler.assemble_spec_prompt(ctx_bundle, instruction)
         msg = ProviderMessage(role="user", content=prompt)
         response = self._provider.chat((msg,), on_token=on_token)
@@ -97,7 +106,9 @@ class SpecificationAgent:
     # ARGUMENTATION_DIFF sub-state (Tech-spec §3 SpecState)
     # ------------------------------------------------------------------
 
-    def analyze_specification_gaps(self, canvas_text: str, on_token: Callable[[str], None] | None = None) -> tuple[SemanticGap, ...]:
+    def analyze_specification_gaps(
+        self, canvas_text: str, on_token: Callable[[str], None] | None = None
+    ) -> tuple[SemanticGap, ...]:
         """Identify semantic gaps in a drafted specification (FR-016).
 
         Returns a tuple of unresolved SemanticGap objects.
@@ -108,7 +119,9 @@ class SpecificationAgent:
             "Return ONLY a JSON array of objects with a 'topic' key.\n\n"
             f"Draft:\n{canvas_text}"
         )
-        ctx_bundle = self._context_service.load_context(RepositoryContext(root=Path(".")))
+        ctx_bundle = self._context_service.load_context(
+            RepositoryContext(root=Path("."))
+        )
         prompt = self._prompt_assembler.assemble_spec_prompt(ctx_bundle, instruction)
         msg = ProviderMessage(role="user", content=prompt)
         response = self._provider.chat((msg,), on_token=on_token)
@@ -145,7 +158,9 @@ class SpecificationAgent:
         ui.show_loading("Concretizing specification...")
         try:
             spec = self.concretize(canvas_text, on_token=ui.stream_token)
-            gaps = self.analyze_specification_gaps(spec.body or canvas_text, on_token=ui.stream_token)
+            gaps = self.analyze_specification_gaps(
+                spec.body or canvas_text, on_token=ui.stream_token
+            )
         finally:
             ui.hide_loading()
 
@@ -156,7 +171,9 @@ class SpecificationAgent:
         now = datetime.now(UTC).isoformat()
         ui.show_loading("Formulating clarifying questions...")
         try:
-            questions = self._formulate_bulk_questions(gaps, spec, on_token=ui.stream_token)
+            questions = self._formulate_bulk_questions(
+                gaps, spec, on_token=ui.stream_token
+            )
         finally:
             ui.hide_loading()
 
@@ -174,7 +191,10 @@ class SpecificationAgent:
         return spec, gaps
 
     def _formulate_bulk_questions(
-        self, gaps: tuple[SemanticGap, ...], spec: Specification, on_token: Callable[[str], None] | None = None
+        self,
+        gaps: tuple[SemanticGap, ...],
+        spec: Specification,
+        on_token: Callable[[str], None] | None = None,
     ) -> str:
         """Ask the model to generate a targeted clarifying question for all gaps."""
         topics = "\n".join(f"- {gap.topic}" for gap in gaps)
@@ -185,7 +205,9 @@ class SpecificationAgent:
             "Write a concise numbered list of clarifying questions to resolve these gaps.\n"
             "Return ONLY the questions, no preamble."
         )
-        ctx_bundle = self._context_service.load_context(RepositoryContext(root=Path(".")))
+        ctx_bundle = self._context_service.load_context(
+            RepositoryContext(root=Path("."))
+        )
         prompt = self._prompt_assembler.assemble_spec_prompt(ctx_bundle, instruction)
         msg = ProviderMessage(role="user", content=prompt)
         response = self._provider.chat((msg,), on_token=on_token)

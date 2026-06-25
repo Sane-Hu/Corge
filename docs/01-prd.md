@@ -62,7 +62,7 @@ A user must be able to:
 3. Generate an architectural and procedural implementation plan through iterative refinement loops.
 4. Approve the generated plan.
 5. Observe the agent's step-by-step implementation.
-6. Approve individual tool actions (write, edit, bash).
+6. Approve individual tool actions (write, edit, bash) with the ability to preview live code diffs interactively.
 7. Run tests to verify the changes.
 8. Validate and complete the delivery.
 9. Save and resume/recover sessions later.

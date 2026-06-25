@@ -100,7 +100,7 @@ During the `EXECUTION` state, the agent loop runs the following synchronized loo
 2. **Refresh Context**: Hydrate context engine with repository updates, memory, and facts.
 3. **Assemble Prompt**: Compile the ephemeral model view.
 4. **Reason & Action Selection**: Model evaluates context and selects the next tool action.
-5. **Approval Gateway**: Check permissions; query user for approval if action is `write`, `edit`, or `bash`.
+5. **Approval Gateway**: Check permissions; query user for approval if action is `write`, `edit`, or `bash` (rendering live code diffs of the proposed edits via `Ctrl+D`).
 6. **Execute Tool**: Invoke the authorized runtime tool.
 7. **Verify Progress**: Evaluate tool output against step goals. If tool returns a non-zero exit code or error, immediately raise `ToolExecutionError`.
 8. **Update Knowledge**: Extract facts, update knowledge graph, write scenario memory, and update profile rules.
@@ -279,9 +279,9 @@ The presentation layer utilizes a native Textual `DirectorySelectorApp` and seve
         *   *Socratic Argumentation Diff*: Left pane displays raw Canvas text; right pane displays the Concretized Specification draft with unresolved semantic gaps. Prompt: "Resolve any gaps in the Specification."
         *   *Technical Plan Editor*: Left pane shows previous approved 'conceretized specification'; right pane displays the draft `TechnicalPlan` in custom `Corge`'s markdown format.
         *   *Procedural Steps Editor*: Left pane maps the `TechnicalPlan` draft; right pane renders editable `ProceduralStep` identifiers and lines.
-        *   *Human Approval Gateway*: Left pane lists a live diff of the proposed change; right pane details the requested `ToolAction` parameter payload.
-    *   **Key Widgets**: Left `RichLog` (Read-only dynamic `difflib.unified_diff` with syntax highlighting), Right `TextArea` (Editable content), and `Button`s ("Approve", "Reject").
-    *   **Transition**: On pressing Approve, returning the modified content to the caller and proceeding to the next step. Pressing Reject returns `None`, signaling the `SessionController` to execute a backward transition and request an updated plan/spec from the agent.
+        *   *Human Approval Gateway*: Left pane defaults to the approval request context, toggling via `Ctrl+D` to a live diff of the proposed code change; right pane details the requested `ToolAction` parameter payload.
+    *   **Key Widgets**: Left pane defaults to a read-only `TextArea` showing reference material, but toggles via `Ctrl+D` to a hidden `RichLog` displaying a `difflib.unified_diff` of the current draft against the original draft (with syntax highlighting). Right pane is a `TextArea` for editable content, with "Approve" and "Reject" buttons.
+    *   **Transition**: On pressing Approve (or `Ctrl+A`), returning the modified content to the caller and proceeding to the next step. Pressing Reject (or `Escape`) returns `None`, signaling the `SessionController` to execute a backward transition and request an updated plan/spec from the agent.
 3.  **`MessageScreen` (Read-Only Dialogs / Alerts)**
     *   **Purpose**: Simulates modal notifications or summaries to the engineer.
     *   **Key Widgets**: Header `Static` title, Read-only `TextArea` showing messaging, and `Button` ("Continue").
