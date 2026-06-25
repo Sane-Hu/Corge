@@ -33,6 +33,7 @@ from corge.contracts import (
     StickyNoteStatus,
     StickyNoteValidatorPort,
 )
+from corge.ui.confirm_screen import ConfirmScreen
 
 # Ghost text shown in the canvas before the user starts typing.
 # Per review finding 8.4: guides brainstorming without being prescriptive.
@@ -249,8 +250,17 @@ class CanvasScreen(Screen[str]):
             if isinstance(selected_item, BacklogItem):
                 self._delete_persistent_note(selected_item.note_dict)
         elif event.button.id == "clear-all-notes":
-            self._save_persistent_notes([])
-            self._refresh_backlog_display()
+            def confirm_callback(confirmed: bool) -> None:
+                if confirmed:
+                    self._save_persistent_notes([])
+                    self._refresh_backlog_display()
+            self.app.push_screen(
+                ConfirmScreen(
+                    "Clear All Notes",
+                    "Are you sure you want to permanently delete all persistent backlog notes? This action cannot be undone."
+                ),
+                confirm_callback
+            )
         elif event.button.id == "submit":
             self.action_submit()
 

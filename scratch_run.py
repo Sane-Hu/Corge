@@ -29,6 +29,7 @@ from corge.logging.audit import AuditLogger
 from corge.memory.store import MemoryStore
 from corge.tools.runtime import ToolRuntime
 from corge.ui.cli import CliUi, CorgeApp
+from corge.artifacts.store import ArtifactStore
 
 
 from typing import Callable
@@ -86,6 +87,8 @@ class ScratchApp(CorgeApp):
         argumentation_log = ArgumentationLog(agent_dir)
         tool_runtime = ToolRuntime()
 
+        artifact_store = ArtifactStore(agent_dir / "artifacts")
+
         validator = StickyNoteValidator(knowledge_graph)
         ui = CliUi(self, validator)
         approval_gateway = ApprovalGateway(ui, audit_logger)
@@ -101,6 +104,8 @@ class ScratchApp(CorgeApp):
             knowledge_graph=knowledge_graph,
             schema_tailor=schema_tailor,
             budget_manager=budget_manager,
+            audit_logger=audit_logger,
+            artifact_store=artifact_store,
         )
 
         spec: Specification | None = None

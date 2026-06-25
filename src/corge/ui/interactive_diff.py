@@ -68,6 +68,7 @@ class InteractiveDiffScreen(Screen[str | None]):
         approve_text: str = "Approve",
         reject_text: str = "Reject",
         override_diff_text: str | None = None,
+        right_read_only: bool = False,
     ) -> None:
         super().__init__()
         self._left_title = left_title
@@ -84,7 +85,7 @@ class InteractiveDiffScreen(Screen[str | None]):
         self.left_area = TextArea(self._left_text, id="left_area", read_only=True)
         self.diff_log = RichLog(id="diff_log", highlight=True, markup=True)
         self.diff_log.styles.display = "none"
-        self.right_area = TextArea(self._right_text, id="right_area")
+        self.right_area = TextArea(self._right_text, id="right_area", read_only=right_read_only)
 
     def compose(self) -> ComposeResult:
         yield Header()

@@ -167,6 +167,16 @@ class SpecificationAgent:
         if not gaps:
             return spec, gaps
 
+        # UX-002: Make Socratic questions opt-in rather than mandatory
+        opt_in = ui.show_confirm(
+            "Socratic Spec Wizard",
+            f"The agent detected {len(gaps)} potential semantic gap(s) in your specification.\n\n"
+            "Would you like to run the Socratic Spec Wizard to answer clarifying questions? "
+            "(Select 'No' to skip and proceed directly to manual refinement.)"
+        )
+        if not opt_in:
+            return spec, gaps
+
         # Step 3: Formulate and log bulk Socratic questions
         now = datetime.now(UTC).isoformat()
         ui.show_loading("Formulating clarifying questions...")
@@ -188,7 +198,72 @@ class SpecificationAgent:
             )
         )
 
+        if answers.strip():
+            ui.show_loading("Refining specification with answers...")
+            try:
+                spec = self.refine_spec_with_answers(
+                    spec, questions, answers, on_token=ui.stream_token
+                )
+                gaps = self.analyze_specification_gaps(
+                    spec.body, on_token=ui.stream_token
+                )
+            finally:
+                ui.hide_loading()
+
         return spec, gaps
+
+    def refine_spec_with_answers(
+        self,
+        spec: Specification,
+        questions: str,
+        answers: str,
+        on_token: Callable[[str], None] | None = None,
+    ) -> Specification:
+        """Use the provider to refine the specification incorporating user answers."""
+        instruction = (
+            "You are refining a structured specification based on the user's answers to clarifying questions.\n"
+            "Integrate the answers below into the specification fields.\n"
+            "Return ONLY a JSON object with these exact keys:\n"
+            '  "title": string — updated business goal (one sentence)\n'
+            '  "body": string — updated narrative of user stories and functional requirements\n'
+            '  "acceptance_criteria": list of strings — updated verifiable pass/fail criteria\n'
+            '  "constraints": string — updated technical or business constraints\n'
+            '  "testing_expectations": string — updated testing expectations\n\n'
+            f"Original Specification:\n"
+            f"Title: {spec.title}\n"
+            f"Body: {spec.body}\n"
+            f"Acceptance Criteria: {list(spec.acceptance_criteria.items)}\n"
+            f"Constraints: {spec.constraints}\n"
+            f"Testing Expectations: {spec.testing_expectations}\n\n"
+            f"Clarifying Questions Asked:\n{questions}\n\n"
+            f"User's Answers:\n{answers}\n"
+        )
+        ctx_bundle = self._context_service.load_context(
+            RepositoryContext(root=Path("."))
+        )
+        prompt = self._prompt_assembler.assemble_spec_prompt(ctx_bundle, instruction)
+        msg = ProviderMessage(role="user", content=prompt)
+        response = self._provider.chat((msg,), on_token=on_token)
+
+        match = re.search(r"\{.*\}", response.content, re.DOTALL)
+        if match:
+            try:
+                data = json.loads(match.group(0))
+                criteria_items = tuple(
+                    str(c) for c in data.get("acceptance_criteria", [])
+                )
+                return Specification(
+                    title=str(data.get("title", spec.title)).strip(),
+                    body=str(data.get("body", spec.body)).strip(),
+                    acceptance_criteria=AcceptanceCriteria(items=criteria_items),
+                    constraints=str(data.get("constraints", spec.constraints)).strip(),
+                    testing_expectations=str(
+                        data.get("testing_expectations", spec.testing_expectations)
+                    ).strip(),
+                )
+            except Exception:
+                pass
+        return spec
 
     def _formulate_bulk_questions(
         self,

@@ -273,8 +273,11 @@ class RealCorgeApp(CorgeApp):
                 import dataclasses
 
                 updated_steps = list(plan.steps)
-                for i, step in enumerate(plan.steps):
+                step_idx = 0
+                while step_idx < len(plan.steps):
+                    step = plan.steps[step_idx]
                     if getattr(step, "completed", False):
+                        step_idx += 1
                         continue
                     bundle = controller.collect_context(step, spec)
                     ui.show_memory(bundle.scenario_memory)
@@ -285,6 +288,8 @@ class RealCorgeApp(CorgeApp):
                     from datetime import datetime, timezone
                     try:
                         controller.execute_step(step, bundle, on_token=ui.stream_token)
+                        updated_steps[step_idx] = dataclasses.replace(step, completed=True)
+                        step_idx += 1
                     except ToolExecutionError as e:
                         memory_store.store_scenario(
                             MemoryEvent(
@@ -294,22 +299,21 @@ class RealCorgeApp(CorgeApp):
                             )
                         )
                         ui.hide_loading()
-                        from corge.ui.cli import MessageScreen
-                        ui._run_screen(
-                            MessageScreen(
-                                "Execution Suspended",
-                                f"A tool failed during step {step.identifier}:\n\n{e}\n\nAutomated execution is suspended and the error has been recorded. You can restart Corge to let the agent try again with this new context."
-                            )
+                        
+                        retry = ui.show_confirm(
+                            "Tool Execution Failed",
+                            f"Step {step.identifier} failed with error:\n\n{e}\n\n"
+                            "Would you like to retry this step? (Make your manual code fixes first if needed. Select 'No' to suspend and exit.)"
                         )
-                        try:
-                            self.call_from_thread(self.exit)
-                        except Exception:
-                            pass
-                        return
+                        if not retry:
+                            try:
+                                self.call_from_thread(self.exit)
+                            except Exception:
+                                pass
+                            return
                     finally:
                         if type(ui._app.screen).__name__ == "LoadingScreen":
                             ui.hide_loading()
-                    updated_steps[i] = dataclasses.replace(step, completed=True)
 
                 plan = dataclasses.replace(plan, steps=tuple(updated_steps))
                 controller.advance()

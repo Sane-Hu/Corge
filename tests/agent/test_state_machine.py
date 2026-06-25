@@ -170,6 +170,8 @@ def test_sync_nested_states_enters_argumentation_diff_when_gaps_present() -> Non
         knowledge_graph=MagicMock(),
         schema_tailor=MagicMock(),
         budget_manager=MagicMock(),
+        audit_logger=MagicMock(),
+        artifact_store=MagicMock(),
     )
     # Mock the spec_agent to return gaps
     controller._spec_agent.analyze_specification_gaps = MagicMock(

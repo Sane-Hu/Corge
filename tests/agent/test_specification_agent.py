@@ -79,9 +79,12 @@ def test_socratic_loop_records_real_answer():
         ChatResponse(content='{"title": "Title"}', usage={}),
         ChatResponse(content='[{"topic": "Auth"}]', usage={}),
         ChatResponse(content="Question 1?", usage={}),
+        ChatResponse(content='{"title": "Title", "body": "Body"}', usage={}),
+        ChatResponse(content='[]', usage={}),
     ]
 
     mock_ui = Mock(spec=UiPort)
+    mock_ui.show_confirm.return_value = True
     mock_ui.show_question.return_value = "My answer"
 
     mock_arg_log = Mock(spec=ArgumentationLogPort)
@@ -95,3 +98,30 @@ def test_socratic_loop_records_real_answer():
     entry = mock_arg_log.record_entry.call_args[0][0]
     assert entry.answer == "My answer"
     assert entry.question == "Question 1?"
+
+
+def test_socratic_loop_opt_out():
+    from corge.contracts import ArgumentationLogPort, UiPort
+
+    mock_provider = Mock(spec=ProviderPort)
+    mock_provider.chat.side_effect = [
+        ChatResponse(content='{"title": "Title"}', usage={}),
+        ChatResponse(content='[{"topic": "Auth"}]', usage={}),
+    ]
+
+    mock_ui = Mock(spec=UiPort)
+    mock_ui.show_confirm.return_value = False
+
+    mock_arg_log = Mock(spec=ArgumentationLogPort)
+    mock_ctx = Mock(spec=ContextPort)
+    mock_pa = Mock(spec=PromptAssemblerPort)
+
+    agent = SpecificationAgent(mock_provider, mock_ctx, mock_pa)
+    spec, gaps = agent.run_socratic_loop("canvas", mock_arg_log, mock_ui)
+
+    assert spec.title == "Title"
+    assert len(gaps) == 1
+    assert gaps[0].topic == "Auth"
+    mock_ui.show_confirm.assert_called_once()
+    mock_ui.show_question.assert_not_called()
+

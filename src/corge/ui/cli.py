@@ -49,6 +49,7 @@ from corge.contracts import (
 from corge.ui.freestyle_canvas import CanvasScreen
 from corge.ui.interactive_diff import InteractiveDiffScreen
 from corge.ui.provider_config import ProviderConfigScreen
+from corge.ui.confirm_screen import ConfirmScreen
 
 
 class MessageScreen(Screen[None]):
@@ -305,7 +306,7 @@ class CliUi(UiPort):
 
     def show_argumentation_diff(
         self, canvas: CanvasSnapshot, spec: Specification, gaps: tuple[SemanticGap, ...]
-    ) -> Specification:
+    ) -> Specification | None:
         right_text = f"Title: {spec.title}\n\n{spec.body}\n"
         if gaps:
             right_text += "\nUnresolved Gaps:\n"
@@ -322,7 +323,7 @@ class CliUi(UiPort):
             )
         )
         if result_text is None:
-            return spec
+            return None
         return Specification(
             title=spec.title,
             body=result_text,
@@ -344,6 +345,11 @@ class CliUi(UiPort):
         )
         return result_text or ""
 
+    def show_confirm(self, title: str, message: str) -> bool:
+        """Display a confirmation dialog returning True (Yes) or False (No)."""
+        result = self._run_screen(ConfirmScreen(title, message))
+        return bool(result)
+
     # ------------------------------------------------------------------
     # Planning phase screens
     # ------------------------------------------------------------------
@@ -356,7 +362,7 @@ class CliUi(UiPort):
         )
         self._run_screen(MessageScreen("Execution Plan", msg or "(no steps)"))
 
-    def show_tech_plan_editor(self, plan: TechnicalPlan) -> TechnicalPlan:
+    def show_tech_plan_editor(self, plan: TechnicalPlan) -> TechnicalPlan | None:
         result_text = self._run_screen(
             InteractiveDiffScreen(
                 left_title="Approved Specification",
@@ -369,7 +375,7 @@ class CliUi(UiPort):
             )
         )
         if result_text is None:
-            return plan
+            return None
         return TechnicalPlan(
             content=result_text,
             specification_ref=plan.specification_ref,
@@ -377,7 +383,7 @@ class CliUi(UiPort):
 
     def show_procedural_steps_editor(
         self, steps: tuple[ProceduralStep, ...]
-    ) -> tuple[ProceduralStep, ...]:
+    ) -> tuple[ProceduralStep, ...] | None:
         steps_text = "\n".join(f"[{s.identifier}] {s.description}" for s in steps)
         result_text = self._run_screen(
             InteractiveDiffScreen(
@@ -389,7 +395,7 @@ class CliUi(UiPort):
             )
         )
         if result_text is None:
-            return steps
+            return None
 
         new_steps = []
         step_count = 0
@@ -467,6 +473,7 @@ class CliUi(UiPort):
                 right_text=detail,
                 prompt_text="Review the requested action carefully.",
                 override_diff_text=override_diff,
+                right_read_only=True,
             )
         )
         # InteractiveDiffScreen.dismiss(text) → APPROVED; dismiss(None) → REJECTED
@@ -540,18 +547,57 @@ class CliUi(UiPort):
 
     def show_logs(self) -> None:
         try:
+            import json
             from pathlib import Path
 
             log_path = Path(".agent/audit.jsonl")
             if log_path.exists():
-                msg = log_path.read_text(encoding="utf-8")[-10000:]
+                lines = log_path.read_text(encoding="utf-8").splitlines()
+                formatted_lines = []
+                for line in lines[-200:]:  # Show last 200 log entries
+                    if not line.strip():
+                        continue
+                    try:
+                        entry = json.loads(line)
+                        ts = entry.get("timestamp", "").split(".")[0].replace("T", " ")
+                        kind = entry.get("kind", "").upper()
+                        payload = entry.get("payload", {})
+
+                        if kind == "PROPOSE_ACTION":
+                            action = payload.get("action", "")
+                            target = payload.get("target", "")
+                            reason = payload.get("reason", "")
+                            fmt = f"[{ts}] {kind}: {action} -> {target}\n      Reason: {reason}"
+                        elif kind == "TOOL_RESULT":
+                            action = payload.get("action", "")
+                            target = payload.get("target", "")
+                            status = (
+                                "Success"
+                                if payload.get("exit_code") == 0
+                                or "exit_code" not in payload
+                                else f"Failed (exit: {payload.get('exit_code')})"
+                            )
+                            fmt = f"[{ts}] {kind}: {action} -> {target} [{status}]"
+                        elif kind == "EVALUATE_COMPLETION":
+                            success = payload.get("success", False)
+                            fmt = f"[{ts}] {kind}: Success = {success}"
+                        elif kind == "RECORD_COMPLETION":
+                            success = payload.get("success", False)
+                            fmt = f"[{ts}] {kind}: Success = {success}"
+                        elif kind == "RECORD_APPROVAL":
+                            decision = payload.get("decision", "")
+                            fmt = f"[{ts}] {kind}: Decision = {decision}"
+                        else:
+                            fmt = f"[{ts}] {kind}: {payload}"
+                        formatted_lines.append(fmt)
+                    except Exception:
+                        formatted_lines.append(line)
+                msg = "\n".join(formatted_lines)
             else:
                 msg = "No logs found."
         except Exception as e:
             msg = f"Error loading logs: {e}"
-        # todo: simplistic raw log dump; upgrade path: parse JSONL into
-        # an interactive data table.
-        self._run_screen(MessageScreen("Logs", msg))
+        self._run_screen(MessageScreen("Audit Logs", msg))
 
     def show_provider_config_screen(
         self, error_message: str | None = None, prefill: dict[str, str] | None = None

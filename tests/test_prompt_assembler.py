@@ -172,12 +172,14 @@ def test_assemble_coding_prompt_calls_schema_tailor() -> None:
 def test_assemble_coding_prompt_calls_compact_when_over_budget() -> None:
     from unittest.mock import MagicMock
     from corge.prompt_assembler.assembler import _TOKEN_BUDGET
+    bundle = _make_bundle()
     bm = MagicMock(spec=DummyBudgetManager)
+    bm.rank_context.return_value = bundle
     bm.estimate_tokens.return_value = _TOKEN_BUDGET + 1
     bm.compact.return_value = _make_bundle()
     assembler = PromptAssembler(DummyContextPort(), DummySchemaTailor(), bm)
-    bundle = _make_bundle()
     assembler.assemble_coding_prompt(bundle)
+    bm.rank_context.assert_called_once_with(bundle)
     bm.estimate_tokens.assert_called_once()
     bm.compact.assert_called_once_with(bundle)
 
