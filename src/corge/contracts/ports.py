@@ -224,6 +224,8 @@ class KnowledgeGraphPort(Protocol):
 
     def query_graph(self, query: GraphQuery) -> GraphResult: ...
 
+    def fuzzy_search(self, keyword: str) -> GraphResult: ...
+
 
 # ---------------------------------------------------------------------------
 # Memory (04-module-contracts § memory)

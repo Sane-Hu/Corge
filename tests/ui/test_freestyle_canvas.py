@@ -147,9 +147,10 @@ def test_backlog_notes_parsed_correctly() -> None:
 
 def test_invalid_notes_block_submit_action() -> None:
     """CanvasScreen blocks action_submit if validation fails."""
-    from corge.ui.freestyle_canvas import CanvasScreen
     from unittest.mock import MagicMock
+
     from corge.contracts import StickyNoteStatus
+    from corge.ui.freestyle_canvas import CanvasScreen
 
     validator = MagicMock()
     validator.validate_node.return_value = StickyNoteStatus.INVALID
@@ -168,8 +169,9 @@ def test_invalid_notes_block_submit_action() -> None:
 
 def test_persistent_notes_save_and_load(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Verifies that persistent notes are correctly written to and loaded from JSON."""
-    from corge.ui.freestyle_canvas import CanvasScreen
     from unittest.mock import MagicMock
+
+    from corge.ui.freestyle_canvas import CanvasScreen
 
     app_mock = MagicMock()
     app_mock.target_repo = tmp_path
@@ -194,9 +196,10 @@ def test_persistent_notes_save_and_load(tmp_path: Path, monkeypatch: pytest.Monk
 
 def test_invalid_notes_allowed_when_repo_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """CanvasScreen allows action_submit even with invalid notes if repository is empty."""
-    from corge.ui.freestyle_canvas import CanvasScreen
     from unittest.mock import MagicMock
+
     from corge.contracts import StickyNoteStatus
+    from corge.ui.freestyle_canvas import CanvasScreen
 
     validator = MagicMock()
     validator.validate_node.return_value = StickyNoteStatus.INVALID
@@ -218,9 +221,10 @@ def test_invalid_notes_allowed_when_repo_empty(tmp_path: Path, monkeypatch: pyte
 
 def test_search_shows_empty_dir_message_when_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Verifies that search results show '(directory is empty)' when search yields no matches in an empty repo."""
-    from corge.ui.freestyle_canvas import CanvasScreen
     from unittest.mock import MagicMock
+
     from corge.contracts import GraphResult
+    from corge.ui.freestyle_canvas import CanvasScreen
 
     app_mock = MagicMock()
     app_mock.target_repo = tmp_path
@@ -243,9 +247,10 @@ def test_search_shows_empty_dir_message_when_empty(tmp_path: Path, monkeypatch: 
 
 def test_search_shows_no_matches_only_when_not_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Verifies that search results show 'No matches found.' (without empty dir message) in a non-empty repo."""
-    from corge.ui.freestyle_canvas import CanvasScreen
     from unittest.mock import MagicMock
+
     from corge.contracts import GraphResult
+    from corge.ui.freestyle_canvas import CanvasScreen
 
     (tmp_path / "file.py").write_text("code", encoding="utf-8")
 

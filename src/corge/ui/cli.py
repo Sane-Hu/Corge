@@ -8,8 +8,8 @@ Spec traceability:
 from __future__ import annotations
 
 import concurrent.futures
-from collections.abc import Iterable
 import difflib
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
@@ -33,24 +33,22 @@ from corge.contracts import (
     AcceptanceCriteria,
     ApprovalDecision,
     ApprovalRequest,
-    CanvasSnapshot,
     ContextBundle,
     EngineeringProfile,
     MemoryEvent,
     Plan,
     ProceduralStep,
     RepositoryContext,
-    SemanticGap,
     Specification,
     StickyNoteValidatorPort,
     TechnicalPlan,
     ToolAction,
     UiPort,
 )
+from corge.ui.confirm_screen import ConfirmScreen
 from corge.ui.freestyle_canvas import CanvasScreen
 from corge.ui.interactive_diff import InteractiveDiffScreen
 from corge.ui.provider_config import ProviderConfigScreen
-from corge.ui.confirm_screen import ConfirmScreen
 
 
 class MessageScreen(Screen[None]):

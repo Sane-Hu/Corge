@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from corge.contracts import GraphQuery, GraphResult, KnowledgeGraphPort, StickyNoteStatus
+from corge.contracts import (
+    GraphQuery,
+    GraphResult,
+    KnowledgeGraphPort,
+    StickyNoteStatus,
+)
 
 
 class StickyNoteValidator:
@@ -21,7 +26,5 @@ class StickyNoteValidator:
 
     def fuzzy_search(self, keyword: str) -> GraphResult:
         """Query the codebase/knowledge graph with a keyword search."""
-        if hasattr(self._kg, "fuzzy_search"):
-            return self._kg.fuzzy_search(keyword)
-        return GraphResult(nodes=())
+        return self._kg.fuzzy_search(keyword)
 

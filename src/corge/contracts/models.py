@@ -349,6 +349,7 @@ class StickyNote:
     node_id: str
     content: str
     status: StickyNoteStatus = StickyNoteStatus.ACTIVE
+    note_type: str = "active"
 
 
 @dataclass(frozen=True, slots=True)

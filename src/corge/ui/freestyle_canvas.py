@@ -346,7 +346,7 @@ class CanvasScreen(Screen[str]):
         if not file_path.exists():
             return []
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, list):
                     return data
@@ -380,7 +380,7 @@ class CanvasScreen(Screen[str]):
     def _save_draft_notes_to_persistent(self) -> None:
         notes = self._load_persistent_notes()
         for note in self._sticky_notes:
-            note_type = "later" if not note.node_id else "active"
+            note_type = note.note_type
             exists = False
             for n in notes:
                 if (
@@ -422,28 +422,30 @@ class CanvasScreen(Screen[str]):
                 node_id = parts[0]
                 content = parts[1].strip() if len(parts) > 1 else ""
 
-                is_later = False
+                note_type = "active"
                 if content.startswith("@later"):
                     content = content[len("@later") :].strip()
+                    note_type = "later"
                 elif content.startswith("@todo"):
                     content = content[len("@todo") :].strip()
+                    note_type = "todo"
 
                 status = self._validate_node(node_id)
                 notes.append(
-                    StickyNote(node_id=node_id, content=content, status=status)
+                    StickyNote(node_id=node_id, content=content, status=status, note_type=note_type)
                 )
             elif stripped.startswith("@later"):
                 content = stripped[len("@later") :].strip()
                 notes.append(
                     StickyNote(
-                        node_id="", content=content, status=StickyNoteStatus.ACTIVE
+                        node_id="", content=content, status=StickyNoteStatus.ACTIVE, note_type="later"
                     )
                 )
             elif stripped.startswith("@todo"):
                 content = stripped[len("@todo") :].strip()
                 notes.append(
                     StickyNote(
-                        node_id="", content=content, status=StickyNoteStatus.ACTIVE
+                        node_id="", content=content, status=StickyNoteStatus.ACTIVE, note_type="todo"
                     )
                 )
         return notes
@@ -466,9 +468,14 @@ class CanvasScreen(Screen[str]):
         for note in self._sticky_notes:
             icon = "✓" if note.status == StickyNoteStatus.ACTIVE else "✗ INVALID"
             if note.node_id:
-                label = f"[{icon}] @node:{note.node_id}  {note.content[:40]}"
+                prefix = f"[{icon}] @node:{note.node_id}"
+                if note.note_type == "later":
+                    prefix += " @later"
+                elif note.note_type == "todo":
+                    prefix += " @todo"
+                label = f"{prefix}  {note.content[:40]}"
             else:
-                label = f"[{icon}] @later  {note.content[:40]}"
+                label = f"[{icon}] @{note.note_type}  {note.content[:40]}"
             self._draft_notes_list.append(ListItem(Label(label)))
 
     def _refresh_backlog_display(self) -> None:
@@ -491,9 +498,14 @@ class CanvasScreen(Screen[str]):
                 status_str = (
                     "ACTIVE" if status == StickyNoteStatus.ACTIVE else "INVALID"
                 )
-                label = f"[{status_str}] @node:{node_id}  {content}"
+                prefix = f"[{status_str}] @node:{node_id}"
+                if note_type == "later":
+                    prefix += " @later"
+                elif note_type == "todo":
+                    prefix += " @todo"
+                label = f"{prefix}  {content}"
             else:
-                label = f"[LATER]  {content}"
+                label = f"[{note_type.upper()}]  {content}"
 
             self._backlog_list.append(BacklogItem(note, label))
 

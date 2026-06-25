@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from unittest.mock import MagicMock
+
 from corge.ui.cli import DirectorySelectorApp
 
 
@@ -24,8 +25,8 @@ def test_directory_selector_selects_highlighted(tmp_path: Path) -> None:
 
 def test_procedural_steps_editor_preserves_identifiers() -> None:
     """Verifies that the procedural steps editor preserves custom bracketed identifiers."""
-    from corge.ui.cli import CliUi
     from corge.contracts import ProceduralStep
+    from corge.ui.cli import CliUi
 
     app_mock = MagicMock()
     ui = CliUi(app_mock)

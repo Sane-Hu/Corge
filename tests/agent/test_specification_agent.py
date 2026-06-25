@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 
 from corge.agent.specification_agent import SpecificationAgent
-from corge.contracts import ChatResponse, ProviderPort, ContextPort, PromptAssemblerPort
+from corge.contracts import ChatResponse, ContextPort, PromptAssemblerPort, ProviderPort
 
 
 def test_draft_specification_parses_json():
@@ -159,7 +159,7 @@ def test_socratic_loop_cap():
 
 
 def test_format_spec_to_text():
-    from corge.contracts import Specification, AcceptanceCriteria, SemanticGap
+    from corge.contracts import AcceptanceCriteria, SemanticGap, Specification
 
     mock_provider = Mock(spec=ProviderPort)
     mock_ctx = Mock(spec=ContextPort)
@@ -186,7 +186,7 @@ def test_format_spec_to_text():
 
 
 def test_merge_templated_responses():
-    from corge.contracts import Specification, AcceptanceCriteria
+    from corge.contracts import AcceptanceCriteria, Specification
 
     mock_provider = Mock(spec=ProviderPort)
     mock_provider.chat.return_value = ChatResponse(

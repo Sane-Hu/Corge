@@ -262,6 +262,12 @@ class SessionController:
 
     def transition_to(self, target_state: LifecycleState) -> LifecycleState:
         """Manually transition to a specific state (supports backward transitions)."""
+        if target_state == LifecycleState.SPEC_APPROVAL:
+            unresolved = [g for g in self._pending_gaps if not g.resolved]
+            if unresolved:
+                raise InvalidTransitionError(
+                    f"Cannot transition to SPEC_APPROVAL: {len(unresolved)} unresolved gaps exist."
+                )
         self._state = target_state
         self._phase = _STATE_PHASE[target_state]
         self._sync_nested_states()
@@ -355,6 +361,8 @@ class SessionController:
         """Merge resolved gap templates back into structured specification fields."""
         updated_spec = self._spec_agent.merge_templated_responses(spec, edited_text)
         self._specification = updated_spec
+        # Re-run gap analysis to update pending gaps
+        self._pending_gaps = self._spec_agent.analyze_specification_gaps(updated_spec.body)
         return updated_spec
 
     # ------------------------------------------------------------------

@@ -6,6 +6,7 @@ Traces to docs/02-technical-spec.md and docs/04-functional_testing.md.
 from __future__ import annotations
 
 import sys
+from datetime import UTC
 from pathlib import Path
 
 from textual import work
@@ -14,11 +15,11 @@ from corge.agent.bayesian_updater import BayesianUpdater
 from corge.agent.schema_tailor import SchemaTailor
 from corge.agent.session_controller import SessionController
 from corge.approval.gateway import ApprovalGateway
+from corge.artifacts.store import ArtifactStore
 from corge.budget_manager.manager import BudgetManager
 from corge.context.service import ContextService
 from corge.context.sticky_validator import StickyNoteValidator
 from corge.contracts import (
-    CanvasSnapshot,
     LifecycleState,
     Plan,
     PlanStep,
@@ -33,7 +34,6 @@ from corge.logging.argumentation_log import ArgumentationLog
 from corge.logging.audit import AuditLogger
 from corge.memory.store import MemoryStore
 from corge.providers.provider import bootstrap_provider
-from corge.artifacts.store import ArtifactStore
 from corge.tools.runtime import ToolRuntime
 from corge.ui.cli import CliUi, CorgeApp
 
@@ -301,9 +301,10 @@ class RealCorgeApp(CorgeApp):
                     ui.show_memory(bundle.scenario_memory)
                     ui.show_execution(bundle)
                     ui.show_loading(f"Executing step: {step.identifier}...")
+                    from datetime import datetime
+
                     from corge.agent.coding_agent import ToolExecutionError
                     from corge.contracts import MemoryEvent
-                    from datetime import datetime, timezone
                     try:
                         controller.execute_step(step, bundle, on_token=ui.stream_token)
                         updated_steps[step_idx] = dataclasses.replace(step, completed=True)
@@ -313,7 +314,7 @@ class RealCorgeApp(CorgeApp):
                             MemoryEvent(
                                 kind=spec.title,
                                 payload={"step": step.identifier, "error": str(e)},
-                                timestamp=datetime.now(timezone.utc).isoformat(),
+                                timestamp=datetime.now(UTC).isoformat(),
                             )
                         )
                         ui.hide_loading()
@@ -351,13 +352,14 @@ class RealCorgeApp(CorgeApp):
                 ui.show_loading("Verifying completion...")
                 try:
                     success = controller.evaluate_completion(plan, bundle, on_token=ui.stream_token)
+                    from datetime import datetime
+
                     from corge.contracts import AuditEvent
-                    from datetime import datetime, timezone
                     audit_logger.record_completion(
                         AuditEvent(
                             kind="evaluate_completion",
                             payload={"success": success, "step": step.identifier},
-                            timestamp=datetime.now(timezone.utc).isoformat()
+                            timestamp=datetime.now(UTC).isoformat()
                         )
                     )
                 finally:
