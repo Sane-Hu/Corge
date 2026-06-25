@@ -206,7 +206,7 @@ To maintain the modular monolith, cross-communication is heavily restricted. Eac
 - **Role**: The only module that modifies the local environment.
 - **Components**: 
   - `Approval Gateway`: intercepts tool requests and guarantees nothing runs without consent, presenting live diffs of proposed code edits for verification prior to execution.
-  - `Tool Runtime`: blindly runs `read`, `write`, `edit`, and `bash` commands once authorized.
+  - `Tool Runtime`: validates command execution safety (blocking privilege escalation and escaping deletions) and runs `read`, `write`, `edit`, and `bash` once authorized.
 
 ### 6. Shared Contracts Layer (Grey)
 - **Role**: Defines the strict boundary objects and interfaces that traverse modules. 

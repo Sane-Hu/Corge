@@ -25,7 +25,7 @@ This document consolidates the functional requirements, architectural subsystems
 - **FR-015 Empty Repository Bootstrapping**: Allows complete project scaffolding starting from specification.
 - **FR-016 Argument of Specs (Wizard)**: Interactive Socratic specification wizard with schema tailoring based on framework. Clarifying questions are opt-in (capped at a configurable threshold to prevent cognitive overload, with support for iterative rounds) and answers are dynamically integrated via the LLM to refine the spec.
 - **FR-017 Heuristic Learning**: Bayesian self-improvement via `~/.config/corge/spec_wizard_heuristics.json` to optimize spec generation across all projects based on user overrides and abandonment (using local `ArgumentationLog`).
-- **FR-018 Freestyle Canvas**: Immutable snapshots, sticky notes with live graph validation, and semantic gap blocking.
+- **FR-018 Freestyle Canvas**: Immutable snapshots, sticky notes with live graph validation, semantic gap blocking, and note types (active, later, todo).
 
 ---
 
@@ -52,7 +52,7 @@ The directory structure maps directly to the 8 logical modules defined in the sy
     *   `src/corge/artifacts/`: Heavy logging/execution output storage.
 *   **6. Execution & Safety Modules**
     *   `src/corge/approval/`: Gateway logic to capture human consent decisions.
-    *   `src/corge/tools/`: Stateless execution primitives (read, write, edit, bash), featuring explicit occurrence-count safety checks to prevent ambiguous file edits.
+    *   `src/corge/tools/`: Stateless execution primitives (read, write, edit, bash), featuring explicit occurrence-count safety checks to prevent ambiguous file edits, and a shell command validation safety guard.
 *   **7. Providers Module (`src/corge/providers/`)**
     *   Single model API adapter providing compatible interfaces for OpenAI, DeepSeek, and Ollama.
 *   **8. Logging Module (`src/corge/logging/`)**

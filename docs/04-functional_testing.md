@@ -369,6 +369,17 @@ The agent issues a `bash` action (e.g. to run tests or install a dependency).
 - On a non-zero exit code or compilation error, a `ToolExecutionError` is raised and automated execution is suspended. A `ConfirmScreen` dialog is displayed: "Step <identifier> failed with error... Would you like to retry this step?". 
 - You can fix the bug in another window, select **Yes** (to retry), and verify that the agent re-runs the failed step successfully. If you select **No**, automated execution suspends and the application exits.
 
+### 6.5.a Bash safety validation checks
+
+The tool runtime enforces validation checks on all bash commands prior to executing them to prevent shell command injection on the host system.
+
+**Functional checks**:
+- Try executing a command with administrative privileges (e.g. `sudo apt-get update`). The command must be immediately blocked, returning a validation failure with an error message.
+- Try executing a command that attempts to delete files outside of the project root directory (e.g. `rm -rf ../outside` or `rm -rf /usr/bin`). The validation check must block the execution.
+- Try executing a command that redirects output to a system path outside the workspace (e.g. `echo 'malicious' > /etc/passwd`). The validation check must block it.
+
+**Expected**: The `ToolRuntime.bash` validates the command and immediately blocks any prohibited commands by returning a failed `ToolResult` containing a validation error in `stderr`, preventing execution.
+
 ### 6.6 Rejection flow
 
 On the `InteractiveDiffScreen`, press **Reject** instead of **Approve** for any proposed action.
