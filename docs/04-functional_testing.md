@@ -215,26 +215,27 @@ No manual input is required in this sub-state.
 
 #### 4.2.a Socratic Spec Wizard Clarifying Questions (Opt-in)
 
-If the concretization agent identifies semantic gaps in the specification draft, a `ConfirmScreen` dialog will ask: "Would you like to run the Socratic Spec Wizard to answer clarifying questions? (Select 'No' to skip and proceed directly to manual refinement.)"
+If the concretization agent identifies semantic gaps in the specification draft, a `ConfirmScreen` dialog will ask: "Would you like to run the Socratic Spec Wizard to answer clarifying questions for the top N gaps?" (where N is capped by `max_socratic_questions` in `HeuristicConfig`, default 3, to prevent cognitive overload).
 
 **Functional checks**:
-- Selecting **No** (Opt-out) immediately bypasses Socratic questions and proceeds directly to the `InteractiveDiffScreen` (Phase 4.3).
+- Selecting **No** (Opt-out) immediately bypasses Socratic questions and proceeds directly to the manual split-editor `InteractiveDiffScreen` (Phase 4.3).
 - Selecting **Yes** (Opt-in) displays the Socratic questions screen. Provide answers and press **Submit Answers** (or select **Skip** / `Escape` to skip).
 - If answers are submitted, the UI shows "Refining specification with answers..." and automatically generates a refined specification incorporating the user answers.
+- If gaps still remain, a subsequent opt-in confirmation prompt is presented, allowing another round of Socratic Q&A (capped at the threshold).
 
-**Expected**: The Socratic questions screen is displayed only on opt-in. Submitted answers are merged into the specification body by the LLM before showing the final diff screen.
+**Expected**: The Socratic questions screen is displayed only on opt-in and is capped to the threshold limit. Iterative Q&A runs as long as gaps remain and the user opts in. Submitted answers are merged into the specification body by the LLM.
 
 ### 4.3 Argumentation Diff (`ARGUMENTATION_DIFF`)
 
-The TUI opens the `InteractiveDiffScreen`. The left pane shows a read-only highlighted unified diff (`difflib`) between the original canvas text and the concretized spec draft; the right pane is an editable text area containing the concretized spec draft with any unresolved semantic gaps highlighted.
+The TUI opens the `InteractiveDiffScreen` split-editor unconditionally (even if 0 gaps remain, to allow user manual review). The left pane shows the original canvas text; the right pane is an editable text area containing the full concretized spec draft, with any unresolved semantic gaps formatted as inline templates (e.g. `[GAP: Topic]\nResolution: <Enter details here>`).
 
-**Functional check — gap resolution**: If gaps exist, edit the right pane to resolve them. Press **Approve**.
+**Functional check — gap resolution**: If gaps exist, edit the right pane and replace the placeholder fields with your descriptions. Press **Approve**. The UI shows "Processing specification edits..." and uses the LLM to parse and merge the manual template responses back into structured specification fields.
 
-**Functional check — no gaps**: If the spec is complete, press **Approve** without edits.
+**Functional check — review/edit**: If no gaps exist or for general edits, tweak the right pane text and press **Approve**.
 
 **Functional check — rejection**: Press **Reject** (or `Escape`). Verify that the application navigates backward to the canvas screen (`SPEC_ENTRY`).
 
-**Expected**: The spec transitions to `SPEC_METASTABLE` upon Approve. The `ArgumentationLog` writes the Socratic Q&A log to `.agent/` for future heuristic updates. If rejected, the controller transitions back to spec entry.
+**Expected**: The spec manual refinement editor is shown unconditionally. Gaps are resolved using inline placeholder templates. The user's changes are merged into the final specification fields upon Approve. The spec transitions to `SPEC_METASTABLE` upon Approve. The `ArgumentationLog` writes the Socratic Q&A log to `.agent/` for future heuristic updates. If rejected, the controller transitions back to spec entry.
 
 #### 4.3.a Argumentation log inspection (`logging/argumentation_log.py`)
 

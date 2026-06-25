@@ -23,7 +23,7 @@ This document consolidates the functional requirements, architectural subsystems
 - **FR-013 Audit Logging**: Records prompts, plans, tools, approvals, and completions for accountability. Detailed tool execution is stored locally in `.agent/audit.jsonl`, while high-level session events are tracked globally in `~/.config/corge/global_audit.jsonl`.
 - **FR-014 Provider Abstraction**: Single integration point for models (DeepSeek, Ollama, OpenAI-compat) that automatically strips `<think>` tags and populates standardized usage fields.
 - **FR-015 Empty Repository Bootstrapping**: Allows complete project scaffolding starting from specification.
-- **FR-016 Argument of Specs (Wizard)**: Interactive Socratic specification wizard with schema tailoring based on framework. Clarifying questions are opt-in and answers are dynamically integrated via the LLM to refine the spec.
+- **FR-016 Argument of Specs (Wizard)**: Interactive Socratic specification wizard with schema tailoring based on framework. Clarifying questions are opt-in (capped at a configurable threshold to prevent cognitive overload, with support for iterative rounds) and answers are dynamically integrated via the LLM to refine the spec.
 - **FR-017 Heuristic Learning**: Bayesian self-improvement via `~/.config/corge/spec_wizard_heuristics.json` to optimize spec generation across all projects based on user overrides and abandonment (using local `ArgumentationLog`).
 - **FR-018 Freestyle Canvas**: Immutable snapshots, sticky notes with live graph validation, and semantic gap blocking.
 
@@ -88,8 +88,8 @@ During the Spec and Plan master phases, nested loop state machines drive increme
 1.  **Specification Phase (`SpecState` execution)**
     *   `CANVAS_FREESTYLE`: User drafts freeform requirements and maps graph tags inside the TUI canvas.
     *   `CONCRETIZATION`: The `SpecificationAgent` compiles the canvas draft into structured fields (Acceptance Criteria, Constraints, Testing expectations).
-    *   `ARGUMENTATION_DIFF`: Reconciles semantic gaps using side-by-side prompt diffing with the user.
-    *   `SPEC_METASTABLE`: All gaps are successfully resolved or approved, blocking transition until approved by the user to advance to Planning.
+    *   `ARGUMENTATION_DIFF`: Reconciles semantic gaps. The Socratic Wizard is optional and capped to a configurable threshold, supporting iterative rounds. Leftover gaps are formatted as inline templates inside a split-pane editor (`show_argumentation_diff`), which the user fills in manually.
+    *   `SPEC_METASTABLE`: All gaps are successfully resolved or approved, and manual edits are merged. The manual editor screen is displayed unconditionally before advancing to Planning.
 2.  **Planning Phase (`PlanState` execution)**
     *   `TECH_PLAN_REITERATION`: The `PlanningAgent` drafts and edits the architectural `TechnicalPlan` markdown.
     *   `STEPS_REITERATION`: Translates the architecture into granular, procedural steps (`ProceduralStep`), editing and finalizing them inside the interactive TUI split-editor.
@@ -285,7 +285,7 @@ The presentation layer utilizes the `DirectorySelectorApp` and several fundament
     *   **Transition**: On pressing Submit, dismisses canvas text to advance the agent to the `CONCRETIZATION` state. Automatically focuses the text area on mount.
 2.  **`InteractiveDiffScreen` (Reused Split-Pane Editor)**
     *   **Purpose**: Side-by-side display of context references against editable drafts. This screen is highly parameterized and reused dynamically for:
-        *   *Socratic Argumentation Diff*: Left pane displays raw Canvas text; right pane displays the Concretized Specification draft with unresolved semantic gaps. Prompt: "Resolve any gaps in the Specification."
+        *   *Socratic Argumentation Diff*: Left pane displays raw Canvas text; right pane displays the Concretized Specification draft with unresolved semantic gaps formatted as inline templates (e.g. `[GAP: Topic]`). Prompt: "Resolve any gaps in the Specification."
         *   *Technical Plan Editor*: Left pane shows previous approved 'conceretized specification'; right pane displays the draft `TechnicalPlan` in custom `Corge`'s markdown format.
         *   *Procedural Steps Editor*: Left pane maps the `TechnicalPlan` draft; right pane renders editable `ProceduralStep` identifiers and lines. The editor parses bracketed step identifiers (e.g. `[step-auth] description`) using regex to preserve them rather than overwriting them with sequential IDs.
         *   *Human Approval Gateway*: Left pane defaults to the approval request context, toggling via `Ctrl+D` to a live diff of the proposed code change; right pane details the requested `ToolAction` parameter payload. The right pane details are set to read-only during tool approvals to prevent misleading edit text from being discarded.
