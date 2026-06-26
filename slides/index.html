@@ -383,10 +383,16 @@
     }
   </style>
   <script>
+    var isPrintPdf = !!window.location.search.match(/print-pdf/gi);
+    if (isPrintPdf) {
+      var s = document.createElement('style');
+      s.textContent = '#nav-left,#nav-mid,#nav-right{display:none!important}';
+      document.head.appendChild(s);
+    }
     var link = document.createElement('link');
     link.rel = 'stylesheet';
     link.type = 'text/css';
-    link.href = window.location.search.match(/print-pdf/gi) ? 'dist/theme/print/pdf.css' : 'dist/theme/print/paper.css';
+    link.href = isPrintPdf ? 'dist/theme/print/pdf.css' : 'dist/theme/print/paper.css';
     document.getElementsByTagName('head')[0].appendChild(link);
   </script>
 </head>
@@ -887,7 +893,7 @@
 
       <section>
         <h2>System Module Map</h2>
-        <p style="font-size:0.5em; text-align:left; margin-bottom:0.2em;">
+        <p style="font-size:0.5em; text-align:center; margin-bottom:0.2em;">
           Each numbered flow corresponds to the <strong>15-step execution protocol</strong> between modules.
         </p>
         <div class="mermaid">
@@ -900,8 +906,7 @@
           classDef knowledgeStyle fill:#BBDEFB,stroke:#1976D2,stroke-width:2px,color:#000,rx:5,ry:5;
           classDef executionStyle fill:#FFCDD2,stroke:#D32F2F,stroke-width:2px,color:#000,rx:5,ry:5;
           classDef loggingStyle fill:#FFE0B2,stroke:#F57C00,stroke-width:2px,color:#000,rx:5,ry:5;
-          classDef contractStyle fill:#ECEFF1,stroke:#607D8B,stroke-width:2px,stroke-dasharray: 5
-          5,color:#000,rx:10,ry:10;
+          classDef contractStyle fill:#ECEFF1,stroke:#607D8B,stroke-width:2px,stroke-dasharray:5,color:#000,rx:10,ry:10;
           classDef providerStyle fill:#E0F7FA,stroke:#0097A7,stroke-width:2px,color:#000,rx:5,ry:5;
 
           subgraph mod_contracts [Shared Contracts Layer]
