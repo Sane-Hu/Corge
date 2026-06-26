@@ -1,0 +1,1808 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Corge — Specification-Driven Agentic Development</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Lato:wght@400;700&family=Montserrat:wght@600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/dist/theme/white.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/plugin/highlight/monokai.css">
+
+  <style>
+    :root {
+      --p-light: #efbbff;
+      --p-mid: #d896ff;
+      --p-primary: #be29ec;
+      --p-dark: #800080;
+      --p-deep: #660066;
+      --p-light-rgb: 239, 187, 255;
+      --p-mid-rgb: 216, 150, 255;
+      --p-primary-rgb: 190, 41, 236;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Lato', 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    .reveal {
+      color: #1a1a2e;
+      font-size: 28px;
+      line-height: 1.45;
+    }
+
+    .reveal strong {
+      color: var(--p-dark);
+    }
+
+    .reveal em {
+      color: var(--p-primary);
+    }
+
+    .reveal h1,
+    .reveal h2,
+    .reveal h3,
+    .reveal h4 {
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    .reveal h1 {
+      font-size: 2.4em;
+      font-weight: 800;
+      color: var(--p-deep);
+      letter-spacing: -0.03em;
+    }
+
+    .reveal h2 {
+      font-size: 1.35em;
+      color: var(--p-dark);
+      font-weight: 700;
+      margin-bottom: 0.4em;
+    }
+
+    .reveal h4 {
+      font-size: 0.8em;
+      color: var(--p-dark);
+      font-weight: 600;
+      margin: 0 0 0.15em 0;
+    }
+
+    .reveal .controls {
+      color: var(--p-primary);
+    }
+
+    .reveal .progress {
+      color: var(--p-primary);
+      background: rgba(190, 41, 236, 0.12);
+    }
+
+    .reveal .progress span {
+      background: var(--p-primary);
+    }
+
+    .reveal .slide-number {
+      color: var(--p-dark);
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .section-slide {
+      background: var(--p-deep) !important;
+      color: #fff !important;
+    }
+
+    .section-slide h1,
+    .section-slide h2,
+    .section-slide .part-number {
+      color: #fff !important;
+    }
+
+    .section-slide .part-number {
+      font-size: 5em;
+      font-weight: 900;
+      opacity: 0.12;
+      line-height: 1;
+      margin-bottom: -0.25em;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .cols-2 {
+      display: flex;
+      gap: 1em;
+    }
+
+    .cols-2>* {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .cols-3 {
+      display: flex;
+      gap: 0.8em;
+    }
+
+    .cols-3>* {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .col {
+      padding: 0.6em 0.8em;
+      border: 1px solid rgba(var(--p-primary-rgb), 0.15);
+      border-radius: 4px;
+      text-align: left;
+      background: #fafafa;
+    }
+
+    .col h4 {
+      margin-top: 0;
+      font-size: 0.75em;
+      color: var(--p-primary);
+    }
+
+    .col ul {
+      margin: 0.15em 0;
+      padding-left: 1em;
+      font-size: 0.6em;
+    }
+
+    .col ul li {
+      margin-bottom: 0.1em;
+    }
+
+    .card {
+      border: 1px solid rgba(var(--p-primary-rgb), 0.15);
+      border-left: 3px solid var(--p-primary);
+      border-radius: 4px;
+      padding: 0.5em 0.7em;
+      text-align: left;
+      margin: 0.3em 0;
+      background: #fafafa;
+    }
+
+    .card h4 {
+      margin: 0 0 0.1em 0;
+      color: var(--p-primary);
+    }
+
+    .card p {
+      margin: 0.1em 0;
+      font-size: 0.65em;
+    }
+
+    .card ul {
+      margin: 0.05em 0;
+      padding-left: 0.9em;
+      font-size: 0.65em;
+    }
+
+    .card ul li {
+      margin-bottom: 0.05em;
+    }
+
+    .card.compact {
+      padding: 0.35em 0.6em;
+    }
+
+    .card.danger {
+      border-left-color: #e74c3c;
+    }
+
+    .card.danger h4 {
+      color: #e74c3c;
+    }
+
+    .card.success {
+      border-left-color: #2ecc71;
+    }
+
+    .card.success h4 {
+      color: #2ecc71;
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.45em;
+      font-weight: 600;
+      padding: 0.08em 0.45em;
+      border-radius: 3px;
+      background: var(--p-primary);
+      color: #fff;
+      letter-spacing: 0.03em;
+      margin-right: 0.3em;
+      vertical-align: middle;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.4em;
+      height: 1.4em;
+      border-radius: 50%;
+      background: var(--p-primary);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.55em;
+      flex-shrink: 0;
+      margin-right: 0.35em;
+    }
+
+    .badge.green {
+      background: #2ecc71;
+    }
+
+    blockquote {
+      border-left: 3px solid var(--p-primary);
+      padding: 0.3em 0.7em;
+      background: rgba(var(--p-light-rgb), 0.1);
+      border-radius: 0 4px 4px 0;
+      font-style: italic;
+      margin: 0.5em 0;
+      text-align: left;
+      font-size: 0.7em;
+    }
+
+    .reveal table {
+      font-size: 0.6em;
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    .reveal table th {
+      background: var(--p-primary);
+      color: #fff;
+      font-weight: 600;
+      padding: 0.25em 0.4em;
+    }
+
+    .reveal table td {
+      padding: 0.2em 0.4em;
+      border-bottom: 1px solid rgba(var(--p-primary-rgb), 0.12);
+    }
+
+    .reveal table tr:nth-child(even) td {
+      background: rgba(var(--p-light-rgb), 0.06);
+    }
+
+    .reveal pre {
+      font-size: 0.45em;
+      text-align: left;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      border-radius: 4px;
+      padding: 0.5em 0.7em;
+      margin: 0.3em 0;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .reveal code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85em;
+      background: rgba(var(--p-primary-rgb), 0.08);
+      padding: 0.05em 0.25em;
+      border-radius: 3px;
+    }
+
+    .reveal pre code {
+      background: none;
+      padding: 0;
+      font-size: 1em;
+    }
+
+    .svg-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0.15em 0;
+    }
+
+    .svg-container svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .mermaid {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0.1em 0;
+    }
+
+    .mermaid svg {
+      max-width: 100%;
+      max-height: 65vh;
+      height: auto;
+    }
+
+    .insight-box {
+      border: 2px solid var(--p-primary);
+      border-radius: 8px;
+      padding: 1em 1.2em;
+      margin: 0.6em 0;
+      font-size: 0.95em;
+      font-weight: 600;
+      line-height: 1.4;
+      background: #fafafa;
+    }
+
+    .part-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35em;
+      justify-content: center;
+      margin-top: 0.5em;
+    }
+
+    .part-nav span {
+      border: 1px solid rgba(var(--p-primary-rgb), 0.15);
+      border-radius: 4px;
+      padding: 0.25em 0.5em;
+      font-size: 0.55em;
+      background: #fafafa;
+    }
+
+    .small-meta {
+      font-size: 0.55em;
+      color: var(--p-dark);
+      margin-top: 0.6em;
+      opacity: 0.7;
+    }
+
+    .step-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25em;
+      justify-content: center;
+    }
+
+    .step-grid .card {
+      flex: 0 0 auto;
+      width: 23%;
+      padding: 0.3em 0.5em;
+    }
+
+    .step-grid .card p {
+      font-size: 0.55em;
+      margin: 0;
+    }
+
+    .step-grid .card ul {
+      font-size: 0.5em;
+      margin: 0.05em 0;
+      padding-left: 0.7em;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- ═══ SLIDE 1 — TITLE ═══ -->
+      <section>
+        <h1 style="font-size:2.8em; color:var(--p-deep);">Corge</h1>
+        <h2 style="font-size:1.2em; color:var(--p-dark); border:none;">
+          Specification-Driven<br>Agentic Development
+        </h2>
+        <p style="font-size:0.6em; color:#777; margin-top:0.3em;">
+          <span style="color:var(--p-primary); font-weight:600;">Human-Led</span> &middot;
+          <span style="color:var(--p-primary); font-weight:600;">Machine-Assisted</span> Engineering
+        </p>
+        <div style="width:200px; height:3px; background:var(--p-primary); margin:0.6em auto; border-radius:2px;"></div>
+        <p style="font-size:0.5em; color:#999; margin-top:0.6em;">Product Presentation &middot; 2026</p>
+      </section>
+
+      <!-- ═══ TEAM SLIDE ═══ -->
+      <section>
+        <h2 style="margin-bottom:0.3em;">Team</h2>
+        <div class="cols-3" style="gap:0.6em; justify-content:center;">
+          <div class="card compact" style="text-align:center; border-left-color:var(--p-primary); padding:0.6em 0.8em;">
+            <strong style="font-size:0.75em;">Ahmad Fathi</strong>
+          </div>
+          <div class="card compact" style="text-align:center; border-left-color:var(--p-mid); padding:0.6em 0.8em;">
+            <strong style="font-size:0.75em;">Ahmad Hani</strong>
+          </div>
+          <div class="card compact" style="text-align:center; border-left-color:var(--p-primary); padding:0.6em 0.8em;">
+            <strong style="font-size:0.75em;">Hala Muhammad</strong>
+          </div>
+        </div>
+        <div class="cols-2"
+          style="gap:0.6em; justify-content:center; margin-top:0.3em; max-width:70%; margin-left:auto; margin-right:auto;">
+          <div class="card compact" style="text-align:center; border-left-color:var(--p-mid); padding:0.6em 0.8em;">
+            <strong style="font-size:0.75em;">Muhammad Nabil</strong>
+          </div>
+          <div class="card compact" style="text-align:center; border-left-color:var(--p-primary); padding:0.6em 0.8em;">
+            <strong style="font-size:0.75em;">Radwa Muhammad</strong>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ SLIDE 2 — AGENDA ═══ -->
+      <section>
+        <h2>Agenda</h2>
+        <div class="part-nav">
+          <span><strong style="color:var(--p-primary);">01</strong> The Problem</span>
+          <span><strong style="color:var(--p-primary);">02</strong> The Answer: Corge</span>
+          <span><strong style="color:var(--p-primary);">03</strong> Technical Architecture</span>
+          <span><strong style="color:var(--p-primary);">04</strong> Layer &amp; Module Deep Dive</span>
+          <span><strong style="color:var(--p-primary);">05</strong> Summary</span>
+          <span><strong style="color:var(--p-primary);">06</strong> Future Work &amp; Roadmap</span>
+          <span><strong style="color:var(--p-primary);">07</strong> Lessons Learned</span>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════ -->
+      <!-- PART 1 — THE PROBLEM                           -->
+      <!-- ════════════════════════════════════════════════ -->
+
+      <section class="section-slide" data-background="#660066">
+        <div class="part-number">01</div>
+        <h2>The Problem</h2>
+        <p style="font-size:1em; opacity:0.85; margin-top:0.3em;">Agentic Coding Has an Audience Problem</p>
+      </section>
+
+      <section>
+        <h2>The Agentic Coding Landscape</h2>
+        <div class="cols-3">
+          <div class="col">
+            <h4>General Audiences</h4>
+            <ul>
+              <li>Vibe-coding culture</li>
+              <li>Prompt-and-pray workflow</li>
+              <li>Zero engineering discipline</li>
+            </ul>
+          </div>
+          <div class="col">
+            <h4>Black-Box SDLC</h4>
+            <ul>
+              <li>Agent does everything</li>
+              <li>Requirements to Code in one shot</li>
+              <li>Human = spectator</li>
+            </ul>
+          </div>
+          <div class="col">
+            <h4>Opinionated &amp; Opaque</h4>
+            <ul>
+              <li>Cannot inspect the plan</li>
+              <li>Cannot steer mid-execution</li>
+              <li>Cannot say &ldquo;no, not like that&rdquo;</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card compact" style="margin-top:0.4em;">
+          <ul>
+            <li><strong>Every week</strong> a new tool claims to build your app from a single prompt.</li>
+            <li>But <em>who</em> are these tools actually built <strong>for?</strong></li>
+          </ul>
+        </div>
+      </section>
+
+      <section>
+        <h2>The Irony</h2>
+        <div class="cols-2" style="margin-top:0.1em;">
+          <div class="card success">
+            <h4>LLMs Are Great At</h4>
+            <ul>
+              <li>Syntactically correct code generation</li>
+              <li>API reasoning &amp; pattern matching</li>
+              <li>Working across massive training data</li>
+            </ul>
+          </div>
+          <div class="card danger">
+            <h4>LLMs Are Terrible At</h4>
+            <ul>
+              <li>Requirements engineering</li>
+              <li>Architectural judgment</li>
+              <li>Knowing when to stop and ask</li>
+            </ul>
+          </div>
+        </div>
+        <blockquote>
+          &ldquo;They&rsquo;re brilliant at generating code, but they can&rsquo;t tell you <em>what</em> to build or
+          <em>why.</em>&rdquo;
+        </blockquote>
+      </section>
+
+      <section>
+        <h2>The Insight</h2>
+        <div class="insight-box">
+          &ldquo;The bottleneck is not code generation.<br>
+          It&rsquo;s <strong>specification</strong> and <strong>verification</strong>.&rdquo;
+        </div>
+        <div style="text-align:left; margin-top:0.2em;">
+          <p style="font-size:0.6em;">Which led us to ask:</p>
+          <blockquote style="font-size:0.75em;">
+            <em>What if we stopped treating the LLM as an autonomous engineer<br>
+              and started treating it as a <strong>disciplined tool</strong>
+              in a human-led engineering workflow?</em>
+          </blockquote>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════ -->
+      <!-- PART 2 — THE ANSWER: CORGE                    -->
+      <!-- ════════════════════════════════════════════════ -->
+
+      <section class="section-slide" data-background="#660066">
+        <div class="part-number">02</div>
+        <h2>The Answer: Corge</h2>
+        <p style="font-size:1em; opacity:0.85; margin-top:0.3em;">Specification-Driven, Engineer-First</p>
+      </section>
+
+      <section>
+        <h2>What Is Corge?</h2>
+        <p style="font-size:0.6em; text-align:left;">
+          A <strong>specification-driven, software-engineer-first</strong> agentic development system.
+          It enforces a controlled engineering workflow where ambiguity decreases at every stage.
+        </p>
+        <div class="svg-container" style="margin:0.3em 0;">
+          <svg viewBox="0 0 960 120">
+            <defs>
+              <marker id="arrow-p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                <path d="M0,0 L10,5 L0,10 Z" fill="#be29ec" />
+              </marker>
+            </defs>
+            <rect x="10" y="32" width="130" height="50" rx="4" fill="#be29ec" />
+            <text x="75" y="58" text-anchor="middle" fill="#fff" font-size="17" font-weight="600">Freestyle</text>
+            <text x="75" y="72" text-anchor="middle" fill="#fff" font-size="17" font-weight="600">Canvas</text>
+            <line x1="140" y1="57" x2="175" y2="57" stroke="#be29ec" stroke-width="2" marker-end="url(#arrow-p)" />
+
+            <rect x="180" y="32" width="130" height="50" rx="4" fill="#be29ec" />
+            <text x="245" y="58" text-anchor="middle" fill="#fff" font-size="17" font-weight="600">Structured</text>
+            <text x="245" y="72" text-anchor="middle" fill="#fff" font-size="17" font-weight="600">Specification</text>
+            <line x1="310" y1="57" x2="345" y2="57" stroke="#be29ec" stroke-width="2" marker-end="url(#arrow-p)" />
+
+            <rect x="350" y="32" width="130" height="50" rx="4" fill="#be29ec" />
+            <text x="415" y="58" text-anchor="middle" fill="#fff" font-size="17" font-weight="600">Execution</text>
+            <text x="415" y="72" text-anchor="middle" fill="#fff" font-size="17" font-weight="600">Plan</text>
+            <line x1="480" y1="57" x2="515" y2="57" stroke="#be29ec" stroke-width="2" marker-end="url(#arrow-p)" />
+
+            <rect x="520" y="32" width="130" height="50" rx="4" fill="#be29ec" />
+            <text x="585" y="58" text-anchor="middle" fill="#fff" font-size="17" font-weight="600">Coding</text>
+            <text x="585" y="72" text-anchor="middle" fill="#fff" font-size="17" font-weight="600">(9-Step Loop)</text>
+            <line x1="650" y1="57" x2="685" y2="57" stroke="#be29ec" stroke-width="2" marker-end="url(#arrow-p)" />
+
+            <rect x="690" y="32" width="130" height="50" rx="4" fill="#800080" />
+            <text x="755" y="58" text-anchor="middle" fill="#fff" font-size="17" font-weight="600">Verification</text>
+            <text x="755" y="72" text-anchor="middle" fill="#fff" font-size="17" font-weight="600">&amp; Testing</text>
+            <line x1="820" y1="57" x2="855" y2="57" stroke="#be29ec" stroke-width="2" marker-end="url(#arrow-p)" />
+
+            <rect x="860" y="32" width="100" height="50" rx="4" fill="#800080" />
+            <text x="910" y="58" text-anchor="middle" fill="#fff" font-size="17" font-weight="600">Delivery</text>
+            <text x="910" y="72" text-anchor="middle" fill="#fff" font-size="17" font-weight="600">&amp; Audit</text>
+
+            <text x="480" y="110" text-anchor="middle" fill="#800080" font-size="9" opacity="0.55">
+              Each stage reduces ambiguity &rarr; increases machine executability
+            </text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <h2>The Three Agents</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th>Phase</th>
+              <th>Role</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong style="color:var(--p-primary);">Specification Agent</strong></td>
+              <td><span class="tag">SPEC</span></td>
+              <td>Elicits requirements, runs Socratic Q&amp;A, produces structured <code>Specification</code> with
+                acceptance criteria</td>
+            </tr>
+            <tr>
+              <td><strong style="color:var(--p-primary);">Planning Agent</strong></td>
+              <td><span class="tag">PLAN</span></td>
+              <td>Generates <code>TechnicalPlan</code> (architecture) and <code>ProceduralStep</code>s (executable
+                checklist)</td>
+            </tr>
+            <tr>
+              <td><strong style="color:var(--p-primary);">Coding Agent</strong></td>
+              <td><span class="tag">CODE</span></td>
+              <td>Executes the plan step-by-step &mdash; reads context, calls the LLM, requests human approval for every
+                destructive action</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="small-meta">Each agent has a strict responsibility. No overlap. No mission creep.</p>
+      </section>
+
+      <section>
+        <h2>User Journey</h2>
+        <div class="step-grid">
+          <div class="card compact">
+            <p><span class="badge">1</span> <strong>Launch &amp; Repo</strong></p>
+            <ul>
+              <li>Point Corge at any repository or empty directory</li>
+            </ul>
+          </div>
+          <div class="card compact">
+            <p><span class="badge">2</span> <strong>Freestyle Canvas</strong></p>
+            <ul>
+              <li>Rough ideas with <code>@node:</code> references validated in real time</li>
+            </ul>
+          </div>
+          <div class="card compact">
+            <p><span class="badge">3</span> <strong>Socratic Wizard</strong></p>
+            <ul>
+              <li>Opt-in clarifying questions (capped at 3)</li>
+            </ul>
+          </div>
+          <div class="card compact">
+            <p><span class="badge">4</span> <strong>Split-Pane Editor</strong></p>
+            <ul>
+              <li>Fill <code>[GAP: Topic]</code> templates, then approve</li>
+            </ul>
+          </div>
+          <div class="card compact">
+            <p><span class="badge">5</span> <strong>Technical Plan</strong></p>
+            <ul>
+              <li>Architecture review &mdash; edit, approve, or reject (backward nav)</li>
+            </ul>
+          </div>
+          <div class="card compact">
+            <p><span class="badge">6</span> <strong>Procedural Steps</strong></p>
+            <ul>
+              <li>Granular checklist with bracketed IDs</li>
+            </ul>
+          </div>
+          <div class="card compact">
+            <p><span class="badge">7</span> <strong>Step-by-Step Exec</strong></p>
+            <ul>
+              <li>Context hydration &rarr; LLM &rarr; Approval with live <code>Ctrl+D</code> diffs</li>
+            </ul>
+          </div>
+          <div class="card compact">
+            <p><span class="badge">8</span> <strong>Verification &amp; Done</strong></p>
+            <ul>
+              <li>All criteria checked, tests pass, audit log delivered</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Business Value</h2>
+        <div class="cols-2">
+          <div>
+            <div class="card compact">
+              <h4>Traceability</h4>
+              <ul>
+                <li>Every line of code traced to approved spec and plan step</li>
+              </ul>
+            </div>
+            <div class="card compact">
+              <h4>Safety</h4>
+              <ul>
+                <li>No write/edit/bash executes without human consent</li>
+              </ul>
+            </div>
+            <div class="card compact">
+              <h4>Privacy</h4>
+              <ul>
+                <li>No source code or context leaves the machine without user consent</li>
+              </ul>
+            </div>
+          </div>
+          <div>
+            <div class="card compact">
+              <h4>Quality</h4>
+              <ul>
+                <li>Spec-driven development prevents scope creep and ambiguity</li>
+              </ul>
+            </div>
+            <div class="card compact">
+              <h4>Audit</h4>
+              <ul>
+                <li>Full argumentation log + audit trail of every tool call and approval</li>
+              </ul>
+            </div>
+            <div class="card compact">
+              <h4>Accountability</h4>
+              <ul>
+                <li>The human is the engineer; the LLM is the tool</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; justify-content:center; margin-top:0.2em;">
+          <div class="card"
+            style="width:100%; max-width:100%; border-left-color:var(--p-deep); background:rgba(239,187,255,0.15);">
+            <h4 style="color:var(--p-deep);">Key Differentiator</h4>
+            <ul>
+              <li>Not autonomous &mdash; collaborative. Human-led, machine-assisted.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Architecture Overview</h2>
+        <div class="svg-container">
+          <svg viewBox="0 0 700 420">
+            <rect x="50" y="10" width="600" height="60" rx="4" fill="#efbbff" stroke="#be29ec" stroke-width="1" />
+            <text x="350" y="42" text-anchor="middle" fill="#660066" font-size="14" font-weight="700">1. UI &amp; UX
+              Layer</text>
+            <text x="350" y="58" text-anchor="middle" fill="#800080" font-size="10">Textual TUI &mdash; Zero Business
+              Logic</text>
+            <line x1="350" y1="70" x2="350" y2="88" stroke="#800080" stroke-width="1.5" marker-end="url(#arrow-p)" />
+
+            <rect x="50" y="84" width="600" height="60" rx="4" fill="#d896ff" stroke="#be29ec" stroke-width="1" />
+            <text x="350" y="116" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">2. Middleware
+              Layer</text>
+            <text x="350" y="132" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-size="10">SessionController
+              &middot; ApprovalGateway &middot; Logging</text>
+            <line x1="350" y1="144" x2="350" y2="162" stroke="#800080" stroke-width="1.5" marker-end="url(#arrow-p)" />
+
+            <rect x="50" y="158" width="600" height="60" rx="4" fill="#be29ec" stroke="#a020d0" stroke-width="1" />
+            <text x="350" y="190" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">3. Logic
+              Layer</text>
+            <text x="350" y="206" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-size="10">SpecAgent &middot;
+              PlanAgent &middot; CodingAgent &middot; SchemaTailor</text>
+            <line x1="350" y1="218" x2="350" y2="236" stroke="#800080" stroke-width="1.5" marker-end="url(#arrow-p)" />
+
+            <rect x="50" y="232" width="600" height="60" rx="4" fill="#800080" stroke="#660066" stroke-width="1" />
+            <text x="350" y="264" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">4. Data Layer</text>
+            <text x="350" y="280" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-size="10">Knowledge Graph
+              &middot; Memory Pyramid &middot; Artifact Store</text>
+            <line x1="350" y1="292" x2="350" y2="310" stroke="#800080" stroke-width="1.5" marker-end="url(#arrow-p)" />
+
+            <rect x="50" y="306" width="600" height="60" rx="4" fill="#660066" stroke="#4a004a" stroke-width="1" />
+            <text x="350" y="338" text-anchor="middle" fill="#efbbff" font-size="14" font-weight="700">5. Infrastructure
+              Layer</text>
+            <text x="350" y="354" text-anchor="middle" fill="rgba(239,187,255,0.85)" font-size="10">Provider Adapter
+              &middot; ToolRuntime &middot; Budget Manager</text>
+
+            <text x="350" y="400" text-anchor="middle" fill="#800080" font-size="10" opacity="0.45">
+              typing.Protocol interfaces between every layer
+            </text>
+          </svg>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════ -->
+      <!-- PART 3 — TECHNICAL ARCHITECTURE                -->
+      <!-- ════════════════════════════════════════════════ -->
+
+      <section class="section-slide" data-background="#660066">
+        <div class="part-number">03</div>
+        <h2>Technical Architecture Overview</h2>
+        <p style="font-size:1em; opacity:0.85; margin-top:0.3em;">Stack, Layers, and Modularity</p>
+      </section>
+
+      <section>
+        <h2>Technology Stack</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Layer</th>
+              <th>Technology</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Runtime</strong></td>
+              <td>Python 3.11+, <code>uv</code> package manager</td>
+            </tr>
+            <tr>
+              <td><strong>TUI Framework</strong></td>
+              <td>Textual (rich terminal UI)</td>
+            </tr>
+            <tr>
+              <td><strong>LLM Providers</strong></td>
+              <td>DeepSeek, OpenAI, Ollama (OpenAI-compatible adapter)</td>
+            </tr>
+            <tr>
+              <td><strong>Persistence</strong></td>
+              <td>SQLite (WAL mode, connection pooling)</td>
+            </tr>
+            <tr>
+              <td><strong>AST Parsing</strong></td>
+              <td>Python stdlib <code>ast</code></td>
+            </tr>
+            <tr>
+              <td><strong>Static Analysis</strong></td>
+              <td><code>ruff</code> for linting, <code>mypy</code> for type checking</td>
+            </tr>
+            <tr>
+              <td><strong>Testing</strong></td>
+              <td><code>pytest</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="small-meta">POC stack &mdash; deliberately minimal, no premature infrastructure.</p>
+      </section>
+
+      <section>
+        <h2>5-Layer Modular Monolith</h2>
+        <div class="svg-container">
+          <svg viewBox="0 0 760 400">
+            <rect x="60" y="5" width="640" height="65" rx="4" fill="#efbbff" stroke="#be29ec" stroke-width="1.5" />
+            <text x="200" y="30" text-anchor="middle" fill="#660066" font-size="13" font-weight="700">1. UI &amp; UX
+              Layer</text>
+            <text x="200" y="50" text-anchor="middle" fill="#800080" font-size="10">Textual TUI &middot; Spec Wizard
+              &middot; Canvas &middot; Diff Screens</text>
+            <text x="500" y="40" text-anchor="middle" fill="#660066" font-size="10">Presentation only</text>
+
+            <rect x="60" y="78" width="640" height="65" rx="4" fill="#d896ff" stroke="#be29ec" stroke-width="1.5" />
+            <text x="200" y="103" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">2. Middleware
+              Layer</text>
+            <text x="200" y="123" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-size="10">SessionController
+              &middot; ApprovalGateway &middot; AuditLogger</text>
+            <text x="500" y="113" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-size="10">Orchestration &amp;
+              safety gates</text>
+
+            <rect x="60" y="151" width="640" height="65" rx="4" fill="#be29ec" stroke="#660066" stroke-width="1.5" />
+            <text x="200" y="176" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">3. Logic
+              Layer</text>
+            <text x="200" y="196" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-size="10">SpecAgent &middot;
+              PlanAgent &middot; CodingAgent &middot; SchemaTailor</text>
+            <text x="500" y="186" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-size="10">Three agents +
+              heuristics</text>
+
+            <rect x="60" y="224" width="640" height="65" rx="4" fill="#800080" stroke="#4a004a" stroke-width="1.5" />
+            <text x="200" y="249" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">4. Data Layer</text>
+            <text x="200" y="269" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-size="10">Knowledge Graph
+              &middot; Memory Pyramid &middot; Artifact Store</text>
+            <text x="500" y="259" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-size="10">Queryable repo +
+              tiered memory</text>
+
+            <rect x="60" y="297" width="640" height="65" rx="4" fill="#660066" stroke="#4a004a" stroke-width="1.5" />
+            <text x="200" y="322" text-anchor="middle" fill="#efbbff" font-size="13" font-weight="700">5. Infrastructure
+              Layer</text>
+            <text x="200" y="342" text-anchor="middle" fill="rgba(239,187,255,0.85)" font-size="10">Provider Adapter
+              &middot; ToolRuntime &middot; Budget Manager</text>
+            <text x="500" y="332" text-anchor="middle" fill="rgba(239,187,255,0.8)" font-size="10">LLM access + safe
+              exec + context limits</text>
+
+            <text x="380" y="385" text-anchor="middle" fill="#800080" font-size="19" opacity="0.45">
+              Protocol interfaces between every layer
+            </text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <h2>System Module Map</h2>
+        <p style="font-size:0.5em; text-align:left; margin-bottom:0.2em;">
+          Each numbered flow corresponds to the <strong>15-step execution protocol</strong> between modules.
+        </p>
+        <div class="mermaid">
+          %%{init: {'theme': 'base', 'themeVariables': { 'fontFamily': 'JetBrains Mono, monospace', 'fontSize': '11px'
+          }}}%%
+          flowchart TD
+          classDef uiStyle fill:#E1BEE7,stroke:#8E24AA,stroke-width:2px,color:#000,rx:5,ry:5;
+          classDef agentStyle fill:#FFF9C4,stroke:#FBC02D,stroke-width:2px,color:#000,rx:5,ry:5;
+          classDef contextStyle fill:#C8E6C9,stroke:#388E3C,stroke-width:2px,color:#000,rx:5,ry:5;
+          classDef knowledgeStyle fill:#BBDEFB,stroke:#1976D2,stroke-width:2px,color:#000,rx:5,ry:5;
+          classDef executionStyle fill:#FFCDD2,stroke:#D32F2F,stroke-width:2px,color:#000,rx:5,ry:5;
+          classDef loggingStyle fill:#FFE0B2,stroke:#F57C00,stroke-width:2px,color:#000,rx:5,ry:5;
+          classDef contractStyle fill:#ECEFF1,stroke:#607D8B,stroke-width:2px,stroke-dasharray: 5
+          5,color:#000,rx:10,ry:10;
+          classDef providerStyle fill:#E0F7FA,stroke:#0097A7,stroke-width:2px,color:#000,rx:5,ry:5;
+
+          subgraph mod_contracts [Shared Contracts Layer]
+          direction LR
+          SharedModels((Data Models: Specification, Plan, ContextBundle))
+          end
+
+          subgraph mod_ui [UI Module]
+          direction TB
+          UI_TUI[Textual UI & Displays]
+          UI_WIZ[Spec Wizard & Canvas]
+          end
+
+          subgraph mod_agent [Agent Module]
+          direction TB
+          AG_CTRL[Session Controller]
+          AG_SPEC[Specification Agent]
+          AG_PLAN[Planning Agent]
+          AG_CODE[Coding Agent]
+          AG_LEARN[Schema Tailor & Heuristics]
+          end
+
+          subgraph mod_context [Context Engineering Modules]
+          direction TB
+          CTX_ENG[Context Service]
+          CTX_ASM[Prompt Assembler]
+          CTX_BUD[Budget Manager]
+          end
+
+          subgraph mod_knowledge [Knowledge & Persistence Modules]
+          direction TB
+          KN_GRAPH[Knowledge Graph]
+          KN_MEM[Memory Pyramid]
+          KN_ART[Artifacts Store]
+          end
+
+          subgraph mod_execution [Execution & Safety Modules]
+          direction TB
+          EX_APP[Approval Gateway]
+          EX_TLS[Tool Runtime]
+          end
+
+          subgraph mod_logging [Logging Module]
+          direction TB
+          LOG_AUD[Audit Logger]
+          LOG_ARG[Argumentation Log]
+          end
+
+          subgraph mod_providers [Providers Module]
+          direction TB
+          PRV_ADAPT[Model API Adapter]
+          end
+
+          UI_WIZ -->|1. Spec Interactions| AG_SPEC
+          AG_SPEC -->|2. Generate Spec| AG_CTRL
+          AG_CTRL -.->|Batch Update| AG_LEARN
+          AG_CTRL -->|3. Pass to Planning| AG_PLAN
+          AG_PLAN -->|4. Provide Executable Plan| AG_CODE
+
+          AG_CODE -->|5. Request Hydration| CTX_ENG
+          CTX_ENG -->|6. Collect Parts| CTX_ASM
+          CTX_ASM -->|7. Trim to Limits| CTX_BUD
+
+          CTX_BUD -.->|Query Repo Structure| KN_GRAPH
+          CTX_BUD -.->|Query Fact History| KN_MEM
+
+          CTX_BUD -->|8. Return Context| AG_CODE
+          AG_CODE -->|9. Inference| PRV_ADAPT
+          PRV_ADAPT -->|10. Action Decision| AG_CODE
+
+          AG_CODE -->|11. Propose Action| EX_APP
+          EX_APP -->|12. Human Verification| UI_TUI
+          EX_APP -->|13. Route to Tools| EX_TLS
+          EX_TLS -->|14. Yield Result| AG_CODE
+
+          AG_CODE -->|15. Update Facts| KN_GRAPH
+          AG_CODE -->|15. Update Facts| KN_MEM
+
+          KN_MEM -.->|Offload Cold Storage| KN_ART
+
+          class UI_TUI,UI_WIZ uiStyle;
+          class AG_CTRL,AG_SPEC,AG_PLAN,AG_CODE,AG_LEARN agentStyle;
+          class CTX_ENG,CTX_ASM,CTX_BUD contextStyle;
+          class KN_GRAPH,KN_MEM,KN_ART knowledgeStyle;
+          class EX_APP,EX_TLS executionStyle;
+          class LOG_AUD,LOG_ARG loggingStyle;
+          class SharedModels contractStyle;
+          class PRV_ADAPT providerStyle;
+        </div>
+      </section>
+
+      <section>
+        <h2>Modularity Serves the Business</h2>
+        <div class="cols-2">
+          <div>
+            <div class="card compact">
+              <h4>Swappable UI</h4>
+              <ul>
+                <li>Replace Textual TUI with Web UI or IDE plugin &mdash; zero business logic changes</li>
+                <li>UI module only depends on <code>UiPort</code> protocol; swap it out freely</li>
+              </ul>
+            </div>
+            <div class="card compact">
+              <h4>Swappable Providers</h4>
+              <ul>
+                <li>Swap DeepSeek for Ollama or OpenAI with zero code changes</li>
+                <li>Single <code>Provider</code> protocol adapter handles all model backends</li>
+              </ul>
+            </div>
+            <div class="card compact">
+              <h4>Contracts Layer</h4>
+              <ul>
+                <li><code>typing.Protocol</code> defines every module boundary via port interfaces</li>
+                <li>Enables the numbered execution flow from the module map</li>
+              </ul>
+            </div>
+          </div>
+          <div>
+            <div class="card compact">
+              <h4>Testable in Isolation</h4>
+              <ul>
+                <li>Every module exposes a Protocol; mock the port, test the logic</li>
+                <li>Integration tests verify contract compliance across boundaries</li>
+              </ul>
+            </div>
+            <div class="card compact">
+              <h4>No Tight Coupling</h4>
+              <ul>
+                <li>UI has zero <code>import</code> from <code>agent</code> module</li>
+                <li>Agents have zero <code>import</code> from <code>tools</code> or <code>providers</code></li>
+                <li>Compile-time safety via Protocol structural subtyping</li>
+                <li>No dependencies on other modules, only on Protocols</li>
+              </ul>
+            </div>
+            <div class="card compact">
+              <h4>Parallel Development</h4>
+              <ul>
+                <li>UI team, agent team, and tooling team work independently behind protocol interfaces</li>
+                <li>Contracts serve as the shared agreement &mdash; no coordination overhead per change</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════ -->
+      <!-- PART 4 — LAYER & MODULE DEEP DIVE             -->
+      <!-- ════════════════════════════════════════════════ -->
+
+      <section class="section-slide" data-background="#660066">
+        <div class="part-number">04</div>
+        <h2>Layer &amp; Module Deep Dive</h2>
+        <p style="font-size:1em; opacity:0.85; margin-top:0.3em;">From the TUI to the Tool Runtime</p>
+      </section>
+
+      <section>
+        <h2>Layer 1: UI &amp; UX</h2>
+        <div class="cols-2">
+          <div>
+            <p style="font-size:0.55em; text-align:left;"><strong>What:</strong> Pure presentation layer on Textual.
+              <em>Zero business logic.</em>
+            </p>
+            <div class="card compact">
+              <h4>Key Modules</h4>
+              <ul>
+                <li><code>CorgeApp</code> &mdash; Main application</li>
+                <li><code>DirectorySelectorApp</code> &mdash; Keyboard-first repo picker</li>
+                <li><code>CanvasScreen</code> &mdash; Sticky note canvas</li>
+                <li><code>InteractiveDiffScreen</code> &mdash; 4-context split pane</li>
+                <li><code>MessageScreen</code> / <code>ConfirmScreen</code></li>
+              </ul>
+            </div>
+          </div>
+          <div>
+            <div class="card compact">
+              <h4>Design Principles</h4>
+              <ul>
+                <li>Keyboard-first: auto-focus on mount</li>
+                <li><code>Ctrl+D</code> = diff toggle, <code>Ctrl+A</code> = approve, <code>Escape</code> = reject</li>
+                <li><code>@work(thread=True)</code> keeps TUI responsive during LLM calls</li>
+                <li>Swappable: UI is a view, not a controller</li>
+              </ul>
+            </div>
+            <pre># CliUi implements UiPort protocol
+class CliUi:
+    def request_approval(self, request):
+        return self._app.push_screen_wait(
+            InteractiveDiffScreen(
+                title="Approval Required", ...))</pre>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>CanvasScreen &amp; Sticky Note Validation</h2>
+        <div class="cols-2" style="align-items:flex-start;">
+          <div>
+            <p style="font-size:0.55em;"><code>@node:&lt;id&gt;</code> references validate against the knowledge graph
+              <strong>as you type</strong>.
+            </p>
+            <div class="card compact">
+              <h4>Key Behavior</h4>
+              <ul>
+                <li>Validation is <strong>debounced</strong> &mdash; fires after user stops typing</li>
+                <li>Valid reference: accepted silently</li>
+                <li>Invalid reference: visible error indicator</li>
+                <li>Unresolved stickies <strong>block spec phase advancement</strong></li>
+              </ul>
+            </div>
+            <p style="font-size:0.5em; margin-top:0.2em;">Turns the canvas from a text dump into a <strong>live
+                knowledge graph-aware scratchpad</strong>.</p>
+          </div>
+          <div class="svg-container" style="flex: 0 0 auto;">
+            <svg viewBox="0 0 260 280">
+              <path d="M10,8 L150,8 L160,18 L160,265 L10,265 Z" fill="#fff9c4" stroke="#e6c300" stroke-width="1.5" />
+              <path d="M150,8 L160,18 L150,18 Z" fill="#f0e68c" stroke="#e6c300" stroke-width="1" />
+              <text x="85" y="45" text-anchor="middle" fill="#333" font-size="10" font-weight="600">Feature Idea</text>
+              <line x1="28" y1="62" x2="142" y2="62" stroke="#e0dcd0" stroke-width="1" />
+              <text x="85" y="84" text-anchor="middle" fill="#555" font-size="9">Add a health check</text>
+              <text x="85" y="98" text-anchor="middle" fill="#555" font-size="9">endpoint at /health</text>
+              <line x1="28" y1="114" x2="142" y2="114" stroke="#e0dcd0" stroke-width="1" />
+              <text x="85" y="132" text-anchor="middle" fill="#555" font-size="9">Depends on:</text>
+              <text x="85" y="150" text-anchor="middle" fill="#2ecc71" font-size="9"
+                font-weight="600">@node:main.py::Server valid</text>
+              <line x1="28" y1="168" x2="142" y2="168" stroke="#e0dcd0" stroke-width="1" />
+              <text x="85" y="186" text-anchor="middle" fill="#e74c3c" font-size="9"
+                font-weight="600">@node:utils.py::DB</text>
+              <text x="85" y="202" text-anchor="middle" fill="#e74c3c" font-size="8">File not found in graph</text>
+
+              <rect x="5" y="220" width="240" height="50" rx="4" fill="none" stroke="#d896ff" stroke-width="1"
+                stroke-dasharray="3,2" />
+              <text x="85" y="238" text-anchor="middle" fill="#800080" font-size="8" font-weight="600">Knowledge
+                Graph</text>
+              <text x="85" y="252" text-anchor="middle" fill="#888" font-size="7">Debounced validation, real-time
+                feedback</text>
+              <text x="85" y="263" text-anchor="middle" fill="#888" font-size="7">Blocks advancement if
+                unresolved</text>
+            </svg>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>InteractiveDiffScreen &mdash; 4 Contexts, One Component</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Context</th>
+              <th>Left Pane</th>
+              <th>Right Pane</th>
+              <th>Read-Only?</th>
+              <th>Ctrl+D</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Argumentation Diff</strong></td>
+              <td>Raw canvas text</td>
+              <td>Concretized spec with <code>[GAP:]</code></td>
+              <td>No (editable)</td>
+              <td>Diff vs canvas</td>
+            </tr>
+            <tr>
+              <td><strong>Tech Plan Editor</strong></td>
+              <td>Approved spec</td>
+              <td>Draft architecture plan</td>
+              <td>No (editable)</td>
+              <td>Diff vs previous</td>
+            </tr>
+            <tr>
+              <td><strong>Steps Editor</strong></td>
+              <td>Technical plan</td>
+              <td>Ordered step checklist</td>
+              <td>No (editable)</td>
+              <td>Diff vs original</td>
+            </tr>
+            <tr>
+              <td><strong>Approval Gateway</strong></td>
+              <td>Reason / code diff</td>
+              <td>Tool action payload</td>
+              <td><strong>Yes</strong></td>
+              <td>Toggle reason / diff</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="small-meta">One parameterized component, infinite reuse.</p>
+      </section>
+
+      <section>
+        <h2>ConfirmScreen &amp; TUI Patterns</h2>
+        <p style="font-size:0.6em; text-align:left;">A <strong>15-line</strong> confirmation dialog reused in three
+          places:</p>
+        <div class="cols-3" style="margin-top:0.1em;">
+          <div class="card compact">
+            <h4>1. Socratic Validation</h4>
+            <p style="font-size:0.5em;">&ldquo;Semantic gaps detected. Run clarifying questions?&rdquo;</p>
+            <p style="font-size:0.45em; color:#888;">Yes &rarr; wizard &middot; No &rarr; skip</p>
+          </div>
+          <div class="card compact">
+            <h4>2. Clear Backlog</h4>
+            <p style="font-size:0.5em;">&ldquo;Permanently erase .agent/sticky_notes.json?&rdquo;</p>
+            <p style="font-size:0.45em; color:#888;">Only Yes proceeds</p>
+          </div>
+          <div class="card compact">
+            <h4>3. Tool Retry</h4>
+            <p style="font-size:0.5em;">&ldquo;Step failed. Retry after manual fixes?&rdquo;</p>
+            <p style="font-size:0.45em; color:#888;">Yes re-runs &middot; No suspends</p>
+          </div>
+        </div>
+        <pre># Every screen auto-focuses primary widget on mount
+# Ctrl+A = approve, Escape = reject &mdash; consistent</pre>
+      </section>
+
+      <section>
+        <h2>Layer 2: Middleware &mdash; SessionController</h2>
+        <div class="cols-2">
+          <div>
+            <p style="font-size:0.55em;"><strong>What:</strong> The master state machine driving all 3 phases across 12
+              lifecycle states.</p>
+            <div class="card compact">
+              <h4>Transition Table (simplified)</h4>
+              <ul>
+                <li>START &rarr; REPOSITORY_SELECTION &rarr; REPOSITORY_ANALYSIS</li>
+                <li>SPEC_ENTRY &rarr; SPEC_VALIDATION &rarr; SPEC_APPROVAL</li>
+                <li>PLAN_GENERATION &rarr; PLAN_REVIEW &rarr; PLAN_APPROVAL</li>
+                <li>EXECUTION &rarr; VERIFICATION &rarr; COMPLETION_REVIEW &rarr; DONE</li>
+              </ul>
+            </div>
+            <p style="font-size:0.5em;"><strong>Backward navigation on rejection</strong> &mdash; guaranteed by
+              centralized transition table.</p>
+          </div>
+          <div class="svg-container">
+            <svg viewBox="0 0 280 270">
+              <ellipse cx="140" cy="20" rx="45" ry="15" fill="rgba(190,41,236,0.1)" stroke="#be29ec"
+                stroke-width="1.5" />
+              <text x="140" y="25" text-anchor="middle" fill="#800080" font-size="9" font-weight="600">START</text>
+              <line x1="140" y1="35" x2="140" y2="50" stroke="#be29ec" stroke-width="1.5" marker-end="url(#arrow-p)" />
+
+              <ellipse cx="140" cy="65" rx="55" ry="15" fill="rgba(190,41,236,0.12)" stroke="#be29ec"
+                stroke-width="1.5" />
+              <text x="140" y="70" text-anchor="middle" fill="#800080" font-size="9" font-weight="600">SPEC</text>
+              <line x1="140" y1="80" x2="140" y2="95" stroke="#be29ec" stroke-width="1.5" marker-end="url(#arrow-p)" />
+              <path d="M90,70 L30,70 L30,185 L85,185" fill="none" stroke="#e74c3c" stroke-width="1"
+                stroke-dasharray="4,3" marker-end="url(#arrow-mm-d)" />
+              <text x="20" y="132" fill="#e74c3c" font-size="7" transform="rotate(-90,20,132)">Reject</text>
+
+              <ellipse cx="140" cy="110" rx="55" ry="15" fill="rgba(190,41,236,0.12)" stroke="#be29ec"
+                stroke-width="1.5" />
+              <text x="140" y="115" text-anchor="middle" fill="#800080" font-size="9" font-weight="600">PLAN</text>
+              <line x1="140" y1="125" x2="140" y2="140" stroke="#be29ec" stroke-width="1.5"
+                marker-end="url(#arrow-p)" />
+
+              <ellipse cx="140" cy="155" rx="55" ry="15" fill="rgba(190,41,236,0.15)" stroke="#be29ec"
+                stroke-width="1.5" />
+              <text x="140" y="160" text-anchor="middle" fill="#800080" font-size="9" font-weight="600">EXECUTION</text>
+              <line x1="140" y1="170" x2="140" y2="185" stroke="#be29ec" stroke-width="1.5"
+                marker-end="url(#arrow-p)" />
+
+              <ellipse cx="140" cy="200" rx="45" ry="15" fill="rgba(128,0,128,0.12)" stroke="#800080"
+                stroke-width="1.5" />
+              <text x="140" y="205" text-anchor="middle" fill="#800080" font-size="9" font-weight="600">VERIFY</text>
+              <line x1="140" y1="215" x2="140" y2="230" stroke="#be29ec" stroke-width="1.5"
+                marker-end="url(#arrow-p)" />
+
+              <ellipse cx="140" cy="245" rx="35" ry="13" fill="rgba(102,0,102,0.15)" stroke="#660066"
+                stroke-width="1.5" />
+              <text x="140" y="250" text-anchor="middle" fill="#660066" font-size="9" font-weight="600">DONE</text>
+
+              <text x="140" y="268" text-anchor="middle" fill="#888" font-size="7">State saved to .agent/ before each
+                transition</text>
+            </svg>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>ApprovalGateway &amp; Audit Logger</h2>
+        <div class="cols-2">
+          <div class="card danger">
+            <h4>ApprovalGateway</h4>
+            <p style="font-size:0.5em;">Single chokepoint for all code-modifying operations. <strong>35 lines.</strong>
+            </p>
+            <pre style="font-size:0.4em;">class ApprovalGateway:
+    def approve(self, request) -> ApprovalDecision:
+        if request.action == ToolAction.READ:
+            return APPROVED
+        decision = self._ui.request_approval(request)
+        self._audit_logger.record_approval(request, decision)
+        return decision</pre>
+          </div>
+          <div>
+            <div class="card compact">
+              <h4>Audit Logger</h4>
+              <p style="font-size:0.5em;">Dual-stream logging:</p>
+              <ul>
+                <li><strong>Local:</strong> <code>.agent/audit.jsonl</code> &mdash; tool-level detail</li>
+                <li><strong>Global:</strong> <code>~/.config/corge/global_audit.jsonl</code> &mdash; cross-project
+                  milestones</li>
+              </ul>
+            </div>
+            <div class="card compact">
+              <h4>Safety by Construction</h4>
+              <ul>
+                <li>Read auto-approves</li>
+                <li>Write/Edit/Bash blocks for human consent</li>
+                <li>Live <code>Ctrl+D</code> code diffs before any action</li>
+                <li>Every decision is audited</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 25 — SELF-IMPROVING AGENTS -->
+      <section>
+        <h2>Self-Improving Agents</h2>
+        <p style="font-size:0.55em; text-align:left;">
+          The system learns from every session. After each project, a <strong>batch-phase heuristic updater</strong>
+          analyzes the argumentation log and adjusts the spec wizard&rsquo;s behavior for future sessions.
+        </p>
+        <div class="cols-2" style="margin-top:0.1em;">
+          <div>
+            <div class="card compact">
+              <h4>How It Works</h4>
+              <ul>
+                <li>Records every Socratic Q&amp;A interaction</li>
+                <li>Tracks which questions users override or skip</li>
+                <li>Adjusts question priority for next session</li>
+                <li>No manual tuning &mdash; self-calibrating</li>
+              </ul>
+            </div>
+            <div class="card compact">
+              <h4>Abandonment Protection</h4>
+              <ul>
+                <li>If a user quits mid-spec, the system penalizes its engagement prior</li>
+                <li>Prevents over-asking in future sessions</li>
+                <li>Single bad session can only degrade the model slightly</li>
+              </ul>
+            </div>
+          </div>
+          <div>
+            <div class="card compact">
+              <h4>Conservative Drift Protection</h4>
+              <ul>
+                <li>A single session can only shift behavior by a limited amount</li>
+                <li>Overrides require multiple consistent sessions to shift behavior</li>
+                <li>After 20 successful sessions with zero overrides, the wizard converges to a stable,
+                  minimal-intervention cadence</li>
+              </ul>
+            </div>
+            <div class="card success">
+              <h4>Key Takeaway</h4>
+              <ul>
+                <li>The spec wizard gets <strong>better over time</strong> without human reconfiguration</li>
+                <li>Self-improvement through usage data, not hardcoded rules</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Layer 3: Logic &mdash; The Three Agents</h2>
+        <div class="cols-3" style="gap:0.5em;">
+          <div class="card compact">
+            <h4>Specification Agent</h4>
+            <ul>
+              <li>Canvas text &rarr; Structured <code>Specification</code></li>
+              <li>SchemaTailor: auto-detect framework</li>
+              <li>Socratic Q&amp;A (opt-in, capped)</li>
+              <li>Inline <code>[GAP: Topic]</code> placeholders</li>
+            </ul>
+          </div>
+          <div class="card compact">
+            <h4>Planning Agent</h4>
+            <ul>
+              <li>Spec &rarr; <code>TechnicalPlan</code></li>
+              <li>Architecture markdown</li>
+              <li><code>ProceduralStep</code>s with bracketed IDs</li>
+              <li>Human approves design before implementation</li>
+            </ul>
+          </div>
+          <div class="card compact">
+            <h4>Coding Agent</h4>
+            <ul>
+              <li>9-step execution loop per step</li>
+              <li>Observe &rarr; Refresh &rarr; Assemble &rarr; LLM &rarr; Approve &rarr; Execute &rarr; Verify &rarr;
+                Update &rarr; Repeat</li>
+              <li>Tool failure &rarr; Retry dialog &rarr; Scenario memory</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIDE 27 — WORKFLOW STATE CHAINING -->
+      <section>
+        <h2>Workflow State Chaining &amp; Context Isolation</h2>
+        <div class="cols-2">
+          <div>
+            <h4>Step-to-Step State Machine</h4>
+            <p style="font-size:0.5em;">
+              After each execution step, the system captures what the agent proposed and how the human responded.
+              This state is injected into the next step&rsquo;s prompt &mdash; the agent <strong>learns from its
+                corrections</strong> mid-session.
+            </p>
+            <pre style="font-size:0.4em;"># State captured between steps
+step_state = {
+    "proposal": "Add route /health in app.py",
+    "correction": "Use /api/v1/health instead",
+    "trajectory": "...previous steps..."
+}</pre>
+          </div>
+          <div>
+            <h4>3-Layer Context Isolation</h4>
+            <p style="font-size:0.5em;">Each phase gets only the context it needs. Instruction pollution is prevented by
+              design.</p>
+            <table style="font-size:0.45em;">
+              <thead>
+                <tr>
+                  <th>Phase</th>
+                  <th>Included</th>
+                  <th>Omitted</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Spec</strong></td>
+                  <td>Canvas, schema, Q&amp;A</td>
+                  <td>File lists, AST, code</td>
+                </tr>
+                <tr>
+                  <td><strong>Plan</strong></td>
+                  <td>Spec, repo tree, AST, config</td>
+                  <td>Execution logs, tool outputs</td>
+                </tr>
+                <tr>
+                  <td><strong>Code</strong></td>
+                  <td>Spec, plan, graph, memory, artifacts</td>
+                  <td>Canvas drafts, Q&amp;A details</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Layer 4: Data &mdash; Knowledge Graph</h2>
+        <div class="cols-2">
+          <div>
+            <p style="font-size:0.55em;"><strong>SQLite-backed AST parser</strong> building a <code>nodes</code> +
+              <code>edges</code> graph of the repository.
+            </p>
+            <div class="card compact">
+              <h4>Query Grammar</h4>
+              <ul>
+                <li><code>files</code> &mdash; List all files</li>
+                <li><code>classes:&lt;path&gt;</code> &mdash; Classes in a file</li>
+                <li><code>imports:&lt;path&gt;</code> &mdash; Dependencies</li>
+                <li><code>imported_by:&lt;path&gt;</code> &mdash; Reverse deps</li>
+                <li><code>node:&lt;node_id&gt;</code> &mdash; Specific node</li>
+              </ul>
+            </div>
+            <p style="font-size:0.5em; margin-top:0.2em;">The LLM cannot navigate a filesystem &mdash; the knowledge
+              graph gives it a <strong>queryable representation</strong>.</p>
+          </div>
+          <pre style="font-size:0.35em; align-self:center;">CREATE TABLE nodes (
+    node_id TEXT PRIMARY KEY,
+    kind    TEXT NOT NULL,
+    path    TEXT NOT NULL,
+    name    TEXT NOT NULL
+);
+CREATE TABLE edges (
+    src TEXT NOT NULL,
+    rel TEXT NOT NULL,
+    dst TEXT NOT NULL,
+    PRIMARY KEY (src, rel, dst)
+);</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2>Memory Pyramid</h2>
+        <div class="svg-container">
+          <svg viewBox="0 0 660 340">
+            <polygon points="75,310 585,310 515,250 145,250" fill="rgba(239,187,255,0.35)" stroke="#be29ec"
+              stroke-width="1.5" />
+            <text x="330" y="276" text-anchor="middle" fill="#660066" font-size="16" font-weight="700">L0 &mdash;
+              Session Events</text>
+            <text x="330" y="295" text-anchor="middle" fill="#800080"
+              font-size="11">.agent/memory/l0/&lt;timestamp&gt;.jsonl</text>
+
+            <polygon points="145,250 515,250 445,185 215,185" fill="rgba(216,150,255,0.35)" stroke="#be29ec"
+              stroke-width="1.5" />
+            <text x="330" y="216" text-anchor="middle" fill="#660066" font-size="14" font-weight="700">L1 &mdash;
+              Engineering Facts</text>
+            <text x="330" y="232" text-anchor="middle" fill="#800080" font-size="10">.agent/memory.db (SQLite)</text>
+
+            <polygon points="215,185 445,185 410,120 250,120" fill="rgba(190,41,236,0.15)" stroke="#800080"
+              stroke-width="1.5" />
+            <text x="330" y="152" text-anchor="middle" fill="#660066" font-size="12" font-weight="700">L2 &mdash;
+              Scenario Memory</text>
+            <text x="330" y="168" text-anchor="middle" fill="#800080"
+              font-size="9">.agent/memory/scenarios/*.jsonl</text>
+
+            ###polygon points="270,120 390,120 350,78 310,78"
+            <polygon points="330,30 410,120 250,120" fill="rgba(128,0,128,0.15)" stroke="#660066" stroke-width="1.5" />
+            <text x="330" y="100" text-anchor="middle" fill="#660066" font-size="10" font-weight="700">L3 &mdash;
+              Engineering Profile</text>
+            <text x="330" y="115" text-anchor="middle" fill="#800080" font-size="8">.agent/engineering_profile.md</text>
+
+            <text x="330" y="335" text-anchor="middle" fill="#800080" font-size="9" opacity="0.45">
+              4-tier pyramid: L0 raw logs &rarr; L3 confidence-filtered conventions
+            </text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <h2>Layer 5: Infrastructure</h2>
+        <div class="cols-3">
+          <div class="card compact">
+            <h4>Provider Adapter</h4>
+            <p style="font-size:0.45em;">Single OpenAI-compatible adapter for supported provider families like:</p>
+            <ul>
+              <li><strong>DeepSeek</strong> &mdash; <code>deepseek-*</code> model prefix</li>
+              <li><strong>OpenAI</strong> &mdash; Standard endpoint</li>
+              <li><strong>Ollama server</strong> &mdash; Local <code>API</code></li>
+              <li><strong>OpenRouter</strong> &mdash; <code>sk-or-*</code> key prefix</li>
+            </ul>
+          </div>
+          <div class="card compact">
+            <h4>Tool Runtime</h4>
+            <p style="font-size:0.45em;">Four stateless primitives with safety validation:</p>
+            <ul>
+              <li><code>read</code> &mdash; File reading</li>
+              <li><code>write</code> &mdash; File writing</li>
+              <li><code>edit</code> &mdash; Exact occurrence-count matching</li>
+              <li><code>bash</code> &mdash; Sandboxed, no sudo/traversal</li>
+            </ul>
+          </div>
+          <div class="card compact">
+            <h4>Budget Manager</h4>
+            <p style="font-size:0.45em;">Unconditional transcript compaction:</p>
+            <ul>
+              <li>Duplicate removal</li>
+              <li>Large-string clipping</li>
+              <li>Context window ceiling enforcement</li>
+              <li>LLM sees most relevant context</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════ -->
+      <!-- PART 5 — SUMMARY                              -->
+      <!-- ════════════════════════════════════════════════ -->
+
+      <section class="section-slide" data-background="#660066">
+        <div class="part-number">05</div>
+        <h2>Summary</h2>
+        <p style="font-size:1em; opacity:0.85; margin-top:0.3em;">What We've Built</p>
+      </section>
+
+      <section>
+        <h2>13 Achievements</h2>
+        <div class="cols-2" style="font-size:0.65em;">
+          <div>
+            <div class="card compact" style="padding:0.5em 0.7em;"><span class="badge green">&#10003;</span>
+              <strong>Spec-driven workflow</strong>
+              &mdash; full backward nav on rejection
+            </div>
+            <div class="card compact" style="padding:0.5em 0.7em;"><span class="badge green">&#10003;</span>
+              <strong>Interactive TUI</strong> &mdash;
+              keyboard-first, auto-focus, <code>Ctrl+D</code> diffs
+            </div>
+            <div class="card compact" style="padding:0.5em 0.7em;"><span class="badge green">&#10003;</span>
+              <strong>Three-phase agents</strong>
+              &mdash; Spec, Plan, Code with strict boundaries
+            </div>
+            <div class="card compact" style="padding:0.5em 0.7em;"><span class="badge green">&#10003;</span>
+              <strong>Approval Gateway</strong>
+              &mdash; read auto-approves; writes block for consent
+            </div>
+            <div class="card compact" style="padding:0.5em 0.7em;"><span class="badge green">&#10003;</span>
+              <strong>Knowledge Graph</strong> &mdash;
+              SQLite-backed AST parser with query grammar
+            </div>
+            <div class="card compact" style="padding:0.5em 0.7em;"><span class="badge green">&#10003;</span>
+              <strong>Memory Pyramid</strong> &mdash;
+              L0-L3 with confidence-filtered profiles
+            </div>
+          </div>
+          <div>
+            <div class="card compact" style="padding:0.5em 0.7em;"><span class="badge green">&#10003;</span>
+              <strong>Provider Abstraction</strong>
+              &mdash; single adapter for 3 providers
+            </div>
+            <div class="card compact" style="padding:0.5em 0.7em;"><span class="badge green">&#10003;</span>
+              <strong>Safety Validation</strong>
+              &mdash; no sudo, no system file redirects
+            </div>
+            <div class="card compact" style="padding:0.5em 0.7em;"><span class="badge green">&#10003;</span>
+              <strong>Audit System</strong> &mdash;
+              dual-stream + argumentation log
+            </div>
+            <div class="card compact" style="padding:0.5em 0.7em;"><span class="badge green">&#10003;</span>
+              <strong>Self-Improving Wizard</strong>
+              &mdash; spec wizard learns from usage over time
+            </div>
+            <div class="card compact" style="padding:0.5em 0.7em;"><span class="badge green">&#10003;</span>
+              <strong>Session Persistence</strong>
+              &mdash; full save/resume across restarts, State machine controlled
+            </div>
+            <div class="card compact" style="padding:0.5em 0.7em;"><span class="badge green">&#10003;</span>
+              <strong>Artifact Offloading</strong>
+              &mdash; <code>artifact://</code> URIs prevent context bloat
+            </div>
+            <div class="card compact" style="padding:0.5em 0.7em;"><span class="badge green">&#10003;</span>
+              <strong>Modular Monolith</strong>
+              &mdash; 8 main modules via <code>~.Protocol</code>, no runtime deps
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════ -->
+      <!-- PART 6 — FUTURE WORK                           -->
+      <!-- ════════════════════════════════════════════════ -->
+
+      <section class="section-slide" data-background="#660066">
+        <div class="part-number">06</div>
+        <h2>Future Work &amp; Roadmap</h2>
+        <p style="font-size:2em; opacity:0.85; margin-top:0.6em;">Deferred Until Real Usage Demands It</p>
+      </section>
+
+      <section>
+        <h2>Roadmap</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Area</th>
+              <th>Current</th>
+              <th>Planned</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Git Integration</strong></td>
+              <td>No git awareness</td>
+              <td>Transactional rollbacks, incremental graph updates</td>
+            </tr>
+            <tr>
+              <td><strong>IDE Plugins</strong></td>
+              <td>Standalone TUI only</td>
+              <td>VS Code / JetBrains via JSON-RPC</td>
+            </tr>
+            <tr>
+              <td><strong>GitHub Integration</strong></td>
+              <td>Local TUI approvals</td>
+              <td>PR automation, remote approvals</td>
+            </tr>
+            <tr>
+              <td><strong>Containerization</strong></td>
+              <td><code>uv run</code> on host</td>
+              <td>Docker multi-stage with sandboxed execution</td>
+            </tr>
+            <tr>
+              <td><strong>Vector Search</strong></td>
+              <td>SQLite <code>LIKE</code> scans</td>
+              <td>Semantic search via Qdrant/Chroma</td>
+            </tr>
+            <tr>
+              <td><strong>Multi-Agent</strong></td>
+              <td>Linear SessionController</td>
+              <td>Event-driven decentralized agents</td>
+            </tr>
+            <tr>
+              <td><strong>Cloud Persistence</strong></td>
+              <td>Local <code>.agent/</code></td>
+              <td>PostgreSQL + S3 for team workspaces</td>
+            </tr>
+            <tr>
+              <td><strong>Background Tasks</strong></td>
+              <td>Synchronous TUI thread</td>
+              <td>Cron-scheduled reindexing, GC, learning</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="small-meta">Every deferral names its ceiling and upgrade path. Built for POC exit criteria, not
+          hypothetical scale.</p>
+      </section>
+
+      <!-- ════════════════════════════════════════════════ -->
+      <!-- PART 7 — LESSONS LEARNED                      -->
+      <!-- ════════════════════════════════════════════════ -->
+
+      <section class="section-slide" data-background="#660066">
+        <div class="part-number">07</div>
+        <h2>Lessons Learned</h2>
+        <p style="font-size:1em; opacity:0.85; margin-top:0.3em;">From Ideation to Architecture</p>
+      </section>
+
+      <section>
+        <h2>7 Lessons</h2>
+        <div class="cols-2" style="font-size:0.65em; gap:0.6em;">
+          <div>
+            <div class="card compact" style="padding:0.5em 0.7em;">
+              <span class="badge" style="background:var(--p-primary);">1</span>
+              <strong>Specs-first sounds slow; it's faster.</strong>
+              <p style="font-size:0.85em; margin:0.1em 0 0 0; opacity:0.7;">The Socratic wizard catches ambiguities
+                before a line of code is written.</p>
+            </div>
+            <div class="card compact" style="padding:0.5em 0.7em;">
+              <span class="badge" style="background:var(--p-primary);">2</span>
+              <strong>Protocol-driven modularity works.</strong>
+              <p style="font-size:0.85em; margin:0.1em 0 0 0; opacity:0.7;"><code>typing.Protocol</code> enabled
+                parallel development across teams.</p>
+            </div>
+            <div class="card compact" style="padding:0.5em 0.7em;">
+              <span class="badge" style="background:var(--p-primary);">3</span>
+              <strong>Hardest part is context engineering.</strong>
+              <p style="font-size:0.85em; margin:0.1em 0 0 0; opacity:0.7;">Getting the right info into the prompt,
+                within token limits.</p>
+            </div>
+          </div>
+          <div>
+            <div class="card compact" style="padding:0.5em 0.7em;">
+              <span class="badge" style="background:var(--p-primary);">4</span>
+              <strong>Human-in-the-loop is a quality feature.</strong>
+              <p style="font-size:0.85em; margin:0.1em 0 0 0; opacity:0.7;">Every rejection teaches the system. The
+                heuristic updater captures this.</p>
+            </div>
+            <div class="card compact" style="padding:0.5em 0.7em;">
+              <span class="badge" style="background:var(--p-primary);">5</span>
+              <strong>Keyboard-first TUI is worth the effort.</strong>
+              <p style="font-size:0.85em; margin:0.1em 0 0 0; opacity:0.7;">Engineers live in the terminal. Corge feels
+                native.</p>
+            </div>
+            <div class="card compact" style="padding:0.5em 0.7em;">
+              <span class="badge" style="background:var(--p-primary);">6</span>
+              <strong>YAGNI</strong>
+              <p style="font-size:0.85em; margin:0.1em 0 0 0; opacity:0.7;">Every deferred feature has a named ceiling
+                and upgrade path.</p>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; justify-content:center; margin-top:0.1em;">
+          <div class="card"
+            style="width:100%; max-width:100%; border-left-color:var(--p-deep); background:rgba(239,187,255,0.15);">
+            <span class="badge" style="background:var(--p-deep);">7</span>
+            <strong>Modularity is key</strong>
+            <p style="font-size:0.85em; margin:0.1em 0 0 0; opacity:0.7;">Modular software is not just for POCs.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════ -->
+      <!-- CLOSING                                        -->
+      <!-- ════════════════════════════════════════════════ -->
+
+      <section class="section-slide" data-background="#660066">
+        <h2 style="border:none; font-size:1.8em;">Thank You</h2>
+        <p style="font-size:1.1em; opacity:0.85; margin-top:0.4em;">Questions?</p>
+        <div style="width:160px; height:3px; background:rgba(255,255,255,0.2); margin:0.4em auto; border-radius:2px;">
+        </div>
+        <p style="font-size:1em; opacity:1; margin-top:1.2em;">
+          <em>Corge</em> &mdash; Specification-Driven Agentic Development<br>
+          Human-Led &middot; Machine-Assisted
+        </p>
+      </section>
+
+    </div><!-- /slides -->
+  </div><!-- /reveal -->
+  <div id="nav-left" onclick="Reveal.prev()"
+    style="position:fixed;left:0;top:0;width:15vw;height:100vh;z-index:9999;cursor:w-resize;"></div>
+  <div id="nav-mid" onclick="event.stopPropagation()"
+    style="position:fixed;left:15vw;top:0;width:70vw;height:100vh;z-index:9999;"></div>
+  <div id="nav-right" onclick="Reveal.next()"
+    style="position:fixed;right:0;top:0;width:15vw;height:100vh;z-index:9999;cursor:e-resize;"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/plugin/highlight/highlight.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/plugin/zoom/zoom.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/plugin/notes/notes.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js-mermaid-plugin@11.15.0/plugin/mermaid/mermaid.js"></script>
+
+  <script>
+    Reveal.initialize({
+      controls: false,
+      progress: true,
+      history: true,
+      center: true,
+      slideNumber: 'c/t',
+      transition: 'fade',
+      transitionSpeed: 'fast',
+      backgroundTransition: 'fade',
+      mouseWheel: false,
+      overview: true,
+      keyboard: true,
+      touch: true,
+      mermaid: {
+        // flowchart: { curve: 'linear' },
+      },
+      plugins: [RevealHighlight, RevealZoom, RevealNotes, RevealMermaid]
+    });
+  </script>
+</body>
+
+</html>
