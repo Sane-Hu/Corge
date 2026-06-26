@@ -10,9 +10,9 @@
   <link
     href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Lato:wght@400;700&family=Montserrat:wght@600;700;800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/dist/reveal.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/dist/theme/white.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/plugin/highlight/monokai.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@6.0.1/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@6.0.1/dist/theme/white.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@6.0.1/dist/plugin/highlight/monokai.css">
 
   <style>
     :root {
@@ -382,6 +382,13 @@
       padding-left: 0.7em;
     }
   </style>
+  <script>
+    var link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.type = 'text/css';
+    link.href = window.location.search.match(/print-pdf/gi) ? 'dist/theme/print/pdf.css' : 'dist/theme/print/paper.css';
+    document.getElementsByTagName('head')[0].appendChild(link);
+  </script>
 </head>
 
 <body>
@@ -1777,10 +1784,10 @@ CREATE TABLE edges (
   <div id="nav-right" onclick="Reveal.next()"
     style="position:fixed;right:0;top:0;width:15vw;height:100vh;z-index:9999;cursor:e-resize;"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/dist/reveal.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/plugin/highlight/highlight.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/plugin/zoom/zoom.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.3.1/plugin/notes/notes.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@6.0.1/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@6.0.1/dist/plugin/highlight.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@6.0.1/dist/plugin/zoom.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@6.0.1/dist/plugin/notes.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/reveal.js-mermaid-plugin@11.15.0/plugin/mermaid/mermaid.js"></script>
 
   <script>
