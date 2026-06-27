@@ -89,6 +89,7 @@ class MessageScreen(Screen[str]):
                     yield Button("Back", id="back", variant="error")
                 if self._show_new_spec:
                     yield Button("New Spec", id="new_spec", variant="warning")
+                yield Button("Copy (c)", id="copy", variant="default")
                 yield Button("Continue", id="continue", variant="primary")
         yield Footer()
 
@@ -99,6 +100,7 @@ class MessageScreen(Screen[str]):
             self._bindings.bind("escape", "continue", "Continue")
         if self._show_new_spec:
             self._bindings.bind("n", "new_spec", "New Spec")
+        self._bindings.bind("c", "copy_text", "Copy")
         self.query_one("#continue", Button).focus()
 
     def action_continue(self) -> None:
@@ -110,6 +112,10 @@ class MessageScreen(Screen[str]):
     def action_new_spec(self) -> None:
         self.dismiss("new_spec")
 
+    def action_copy_text(self) -> None:
+        self.app.copy_to_clipboard(self._message)
+        self.notify("Copied screen content to clipboard!")
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "continue":
             self.dismiss("continue")
@@ -117,6 +123,8 @@ class MessageScreen(Screen[str]):
             self.dismiss("back")
         elif event.button.id == "new_spec":
             self.dismiss("new_spec")
+        elif event.button.id == "copy":
+            self.action_copy_text()
 
 
 class LoadingScreen(Screen[None]):
@@ -141,6 +149,29 @@ class LoadingScreen(Screen[None]):
 
 class CorgeApp(App[None]):
     """The main Textual application for Corge."""
+
+    def copy_to_clipboard(self, text: str) -> None:
+        """Robust system clipboard copy with OSC 52 and Linux tool fallbacks."""
+        super().copy_to_clipboard(text)
+        
+        import shutil
+        import subprocess
+        
+        if shutil.which("wl-copy"):
+            try:
+                subprocess.run(["wl-copy"], input=text.encode("utf-8"), check=False)
+            except Exception:
+                pass
+        elif shutil.which("xclip"):
+            try:
+                subprocess.run(["xclip", "-selection", "clipboard"], input=text.encode("utf-8"), check=False)
+            except Exception:
+                pass
+        elif shutil.which("xsel"):
+            try:
+                subprocess.run(["xsel", "--clipboard", "--input"], input=text.encode("utf-8"), check=False)
+            except Exception:
+                pass
 
     CSS = """
     $primary: #75188f;
@@ -197,6 +228,29 @@ class CorgeDirectoryTree(DirectoryTree):
 
 class DirectorySelectorApp(App[Path]):
     """App to select a directory before starting Corge."""
+
+    def copy_to_clipboard(self, text: str) -> None:
+        """Robust system clipboard copy with OSC 52 and Linux tool fallbacks."""
+        super().copy_to_clipboard(text)
+        
+        import shutil
+        import subprocess
+        
+        if shutil.which("wl-copy"):
+            try:
+                subprocess.run(["wl-copy"], input=text.encode("utf-8"), check=False)
+            except Exception:
+                pass
+        elif shutil.which("xclip"):
+            try:
+                subprocess.run(["xclip", "-selection", "clipboard"], input=text.encode("utf-8"), check=False)
+            except Exception:
+                pass
+        elif shutil.which("xsel"):
+            try:
+                subprocess.run(["xsel", "--clipboard", "--input"], input=text.encode("utf-8"), check=False)
+            except Exception:
+                pass
 
     CSS = """
     .title { padding: 1; background: $boost; }
@@ -728,7 +782,7 @@ class CliUi(UiPort):
             f"Total tracked paths: {len(repository_context.tree)}\n"
             f"Config/build files: {len(repository_context.config_files)}"
         )
-        return bool(self._run_screen(MessageScreen("Repository Understanding", msg, show_back=False)) == "continue")
+        return bool(self._run_screen(MessageScreen("Repository Understanding", msg, show_back=True)) == "continue")
 
     def show_engineering_profile(self, profile: EngineeringProfile) -> bool:
         if profile.rules:

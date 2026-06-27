@@ -67,6 +67,65 @@ def test_message_screen_new_spec_button() -> None:
     screen.dismiss.assert_called_once_with("new_spec")
 
 
+def test_message_screen_copy_button() -> None:
+    from corge.ui.cli import MessageScreen
+    from textual._context import active_app
+    
+    screen = MessageScreen("Title", "Message text to copy", show_back=True)
+    mock_app = MagicMock()
+    token = active_app.set(mock_app)
+    try:
+        screen.notify = MagicMock()
+        screen.action_copy_text()
+        mock_app.copy_to_clipboard.assert_called_once_with("Message text to copy")
+        screen.notify.assert_called_once_with("Copied screen content to clipboard!")
+    finally:
+        active_app.reset(token)
+
+
+def test_show_repository_understanding_has_back_button() -> None:
+    from corge.ui.cli import CliUi
+    from corge.contracts import RepositoryContext
+    app_mock = MagicMock()
+    ui = CliUi(app_mock)
+    
+    captured_screen = None
+    def mock_run_screen(screen):
+        nonlocal captured_screen
+        captured_screen = screen
+        return "continue"
+        
+    ui._run_screen = mock_run_screen
+    
+    repo_context = RepositoryContext(root=Path("/some/path"), tree=(), config_files=())
+    res = ui.show_repository_understanding(repo_context)
+    
+    assert res is True
+    assert captured_screen is not None
+    assert captured_screen._show_back is True
+
+
+def test_interactive_diff_screen_copy_proposed() -> None:
+    from corge.ui.interactive_diff import InteractiveDiffScreen
+    from textual._context import active_app
+    
+    screen = InteractiveDiffScreen(
+        left_title="Left",
+        left_text="Old content",
+        right_title="Right",
+        right_text="Proposed content to copy",
+    )
+    mock_app = MagicMock()
+    token = active_app.set(mock_app)
+    try:
+        screen.notify = MagicMock()
+        screen.action_copy_right()
+        mock_app.copy_to_clipboard.assert_called_once_with("Proposed content to copy")
+        screen.notify.assert_called_once_with("Copied proposed content to clipboard!")
+    finally:
+        active_app.reset(token)
+
+
 def test_canvas_screen_cancel_returns_none() -> None:
     from corge.ui.freestyle_canvas import CanvasScreen
     canvas = CanvasScreen(validator=None)

@@ -16,6 +16,7 @@ class InteractiveDiffScreen(Screen[str | None]):
     BINDINGS = [
         ("ctrl+a", "approve", "Approve"),
         ("ctrl+d", "toggle_diff", "Toggle Diff"),
+        ("ctrl+y", "copy_right", "Copy Proposed"),
     ]
 
     CSS = """
@@ -109,6 +110,10 @@ class InteractiveDiffScreen(Screen[str | None]):
 
     def action_reject(self) -> None:
         self.dismiss(None)
+
+    def action_copy_right(self) -> None:
+        self.app.copy_to_clipboard(self.right_area.text)
+        self.notify("Copied proposed content to clipboard!")
 
     def action_toggle_diff(self) -> None:
         self._showing_diff = not self._showing_diff
