@@ -10,6 +10,7 @@ from corge.contracts import (
     PlanStep,
     RepositoryContext,
     Specification,
+    TechnicalPlan,
     ToolAction,
 )
 from corge.prompt_assembler import PromptAssembler
@@ -58,11 +59,13 @@ class DummyContextPort:
     def load_context(self, repository_context: RepositoryContext) -> ContextBundle:
         return _make_bundle()
 
-    def refresh_context(self, repository_context: RepositoryContext) -> ContextBundle:
+    def refresh_context(
+        self, repository_context: RepositoryContext, technical_plan: TechnicalPlan | None = None
+    ) -> ContextBundle:
         return _make_bundle()
 
     def retrieve_relevant_context(
-        self, specification: Specification, step: PlanStep
+        self, specification: Specification, step: PlanStep, technical_plan: TechnicalPlan | None = None, rotate: bool = True
     ) -> ContextBundle:
         return _make_bundle()
 

@@ -157,11 +157,11 @@ class ContextPort(Protocol):
     def load_context(self, repository_context: RepositoryContext) -> ContextBundle: ...
 
     def refresh_context(
-        self, repository_context: RepositoryContext
+        self, repository_context: RepositoryContext, technical_plan: TechnicalPlan | None = None
     ) -> ContextBundle: ...
 
     def retrieve_relevant_context(
-        self, specification: Specification, step: PlanStep
+        self, specification: Specification, step: PlanStep, technical_plan: TechnicalPlan | None = None, rotate: bool = True
     ) -> ContextBundle: ...
 
     def update_markov_state(self, result: str, correction: str = "") -> None: ...
@@ -177,7 +177,7 @@ class PromptAssemblerPort(Protocol):
     """Prompt construction boundary."""
 
     def collect_context(
-        self, step: PlanStep, specification: Specification
+        self, step: PlanStep, specification: Specification, technical_plan: TechnicalPlan | None = None
     ) -> ContextBundle: ...
 
     def assemble_spec_prompt(self, context: ContextBundle, instruction: str) -> str: ...

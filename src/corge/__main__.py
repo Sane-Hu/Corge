@@ -353,7 +353,18 @@ class RealCorgeApp(CorgeApp):
                         
                         res_exec = ui.show_execution(bundle)
                         if res_exec is False:
-                            continue
+                            if step_idx > 0:
+                                step_idx -= 1
+                                prev_step = updated_steps[step_idx]
+                                updated_steps[step_idx] = dataclasses.replace(prev_step, completed=False)
+                                assert plan is not None
+                                plan = dataclasses.replace(plan, steps=tuple(updated_steps))
+                                go_back = True
+                                break
+                            else:
+                                controller.transition_to(LifecycleState.PLAN_REVIEW)
+                                go_back = True
+                                break
                         break
                     
                     if go_back:

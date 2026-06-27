@@ -128,10 +128,10 @@ class SessionController:
         )
 
         self._spec_agent = SpecificationAgent(
-            provider, context_service, self._prompt_assembler
+            provider, context_service, self._prompt_assembler, controller=self
         )
         self._plan_agent = PlanningAgent(
-            provider, context_service, self._prompt_assembler
+            provider, context_service, self._prompt_assembler, controller=self
         )
         self._code_agent = CodingAgent(
             provider,
@@ -142,6 +142,7 @@ class SessionController:
             self._prompt_assembler,
             audit_logger,
             artifact_store,
+            controller=self,
             on_knowledge_extracted=self._handle_extracted_knowledge,
         )
 
@@ -304,6 +305,10 @@ class SessionController:
         """
         self._spec_state = next_spec
 
+    def advance_plan_state(self, next_plan: PlanState) -> None:
+        """Manually advance the nested plan sub-state."""
+        self._plan_state = next_plan
+
     # ------------------------------------------------------------------
     # AgentPort delegation — Specification phase
     # ------------------------------------------------------------------
@@ -419,7 +424,7 @@ class SessionController:
     def collect_context(
         self, step: PlanStep, specification: Specification
     ) -> ContextBundle:
-        return self._prompt_assembler.collect_context(step, specification)
+        return self._prompt_assembler.collect_context(step, specification, self._technical_plan)
 
     def execute_step(
         self,

@@ -1,11 +1,12 @@
-"""Planning agent — handles PlanState reiterations."""
-
 from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 from corge.contracts import (
     ContextPort,
+    MasterPhase,
+    PlanState,
     ProceduralStep,
     PromptAssemblerPort,
     ProviderMessage,
@@ -24,16 +25,23 @@ class PlanningAgent:
         provider: ProviderPort,
         context_service: ContextPort,
         prompt_assembler: PromptAssemblerPort,
+        controller: Any = None,
     ) -> None:
         self._provider = provider
         self._context_service = context_service
         self._prompt_assembler = prompt_assembler
+        self._controller = controller
 
     def generate_technical_plan(
         self,
         specification: Specification,
         on_token: Callable[[str], None] | None = None,
     ) -> TechnicalPlan:
+        if self._controller:
+            if self._controller.phase != MasterPhase.PLANNING:
+                raise ValueError("PlanningAgent operations are only allowed in PLANNING phase.")
+            self._controller.advance_plan_state(PlanState.TECH_PLAN_REITERATION)
+
         instruction = (
             "Create an architectural blueprint for the specification provided in the context.\n"
             "Focus STRICTLY on system architecture, database schema changes, "
@@ -57,6 +65,11 @@ class PlanningAgent:
         technical_plan: TechnicalPlan,
         on_token: Callable[[str], None] | None = None,
     ) -> tuple[ProceduralStep, ...]:
+        if self._controller:
+            if self._controller.phase != MasterPhase.PLANNING:
+                raise ValueError("PlanningAgent operations are only allowed in PLANNING phase.")
+            self._controller.advance_plan_state(PlanState.STEPS_REITERATION)
+
         instruction = (
             "Break down the technical plan below into strict procedural steps.\n"
             "Each step must be an actionable, sequential chunk of work aligned with repository facts.\n"
@@ -65,7 +78,7 @@ class PlanningAgent:
         )
 
         ctx_bundle = self._context_service.refresh_context(
-            RepositoryContext(root=Path("."))
+            RepositoryContext(root=Path(".")), technical_plan
         )
         prompt = self._prompt_assembler.assemble_plan_prompt(ctx_bundle, instruction)
         msg = ProviderMessage(role="user", content=prompt)

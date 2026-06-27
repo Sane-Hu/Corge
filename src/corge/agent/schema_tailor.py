@@ -67,6 +67,9 @@ class SchemaTailor:
     ) -> None:
         self._kg = knowledge_graph
         self._global_dir = global_dir
+        self._detected_framework: str | None = None
+        self._detection_run = False
+        self._cached_schemas: dict[str | None, dict[str, object]] = {}
 
     def detect_framework(self) -> str | None:
         """Query the Knowledge Graph for config nodes that reveal the framework.
@@ -74,6 +77,9 @@ class SchemaTailor:
         Checks for known config file patterns (e.g. ``manage.py`` → Django,
         ``package.json`` → Node/React).  Returns ``None`` if unrecognised.
         """
+        if self._detection_run:
+            return self._detected_framework
+
         result = self._kg.query_graph(GraphQuery(expression="files"))
 
         framework_markers: dict[str, str] = {
@@ -92,15 +98,23 @@ class SchemaTailor:
         for node in result.nodes:
             basename = Path(node.node_id).name
             if basename in framework_markers:
-                return framework_markers[basename]
+                self._detected_framework = framework_markers[basename]
+                break
 
-        return None
+        self._detection_run = True
+        return self._detected_framework
 
     def fetch_schema(self, framework_id: str | None) -> dict[str, object]:
         """Load the schema for the given framework, or generic fallback."""
+        if framework_id in self._cached_schemas:
+            return self._cached_schemas[framework_id]
+
         if framework_id:
             schema = _load_schema_file(f"{framework_id}.yaml", self._global_dir)
             if schema:
+                self._cached_schemas[framework_id] = schema
                 return schema
 
-        return _load_schema_file("generic.yaml", self._global_dir)
+        generic = _load_schema_file("generic.yaml", self._global_dir)
+        self._cached_schemas[framework_id] = generic
+        return generic

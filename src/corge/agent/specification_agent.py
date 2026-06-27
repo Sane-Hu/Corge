@@ -15,17 +15,21 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
+from typing import Any
+
 from corge.contracts import (
     AcceptanceCriteria,
     ArgumentationEntry,
     ArgumentationLogPort,
     ContextPort,
+    MasterPhase,
     PromptAssemblerPort,
     ProviderMessage,
     ProviderPort,
     RepositoryContext,
     SemanticGap,
     Specification,
+    SpecState,
     UiPort,
 )
 
@@ -38,10 +42,12 @@ class SpecificationAgent:
         provider: ProviderPort,
         context_service: ContextPort,
         prompt_assembler: PromptAssemblerPort,
+        controller: Any = None,
     ) -> None:
         self._provider = provider
         self._context_service = context_service
         self._prompt_assembler = prompt_assembler
+        self._controller = controller
 
     # ------------------------------------------------------------------
     # CONCRETIZATION sub-state (Tech-spec §3 SpecState)
@@ -56,6 +62,11 @@ class SpecificationAgent:
         title, body, acceptance criteria, constraints, testing expectations.
         Returns a best-effort Specification; gaps remain for ARGUMENTATION_DIFF.
         """
+        if self._controller:
+            if self._controller.phase != MasterPhase.SPECIFICATION:
+                raise ValueError("SpecificationAgent operations are only allowed in SPECIFICATION phase.")
+            self._controller.advance_spec_state(SpecState.CONCRETIZATION)
+
         instruction = (
             "Extract the following structured fields from the raw "
             "brainstorming text below. Ensure you respect the engineering profile and repository facts.\n"
@@ -113,6 +124,10 @@ class SpecificationAgent:
 
         Returns a tuple of unresolved SemanticGap objects.
         """
+        if self._controller:
+            if self._controller.phase != MasterPhase.SPECIFICATION:
+                raise ValueError("SpecificationAgent operations are only allowed in SPECIFICATION phase.")
+
         instruction = (
             "Analyze the following drafted specification for semantic gaps, "
             "missing logic, or undefined edge cases. Apply rules from the engineering profile.\n"
@@ -155,6 +170,10 @@ class SpecificationAgent:
 
         Returns the concretized Specification and any remaining unresolved gaps.
         """
+        if self._controller:
+            if self._controller.phase != MasterPhase.SPECIFICATION:
+                raise ValueError("SpecificationAgent operations are only allowed in SPECIFICATION phase.")
+
         # Step 1 & 2: Concretize canvas and identify gaps
         ui.show_loading("Concretizing specification...")
         try:
@@ -166,6 +185,8 @@ class SpecificationAgent:
             ui.hide_loading()
 
         while gaps:
+            if self._controller:
+                self._controller.advance_spec_state(SpecState.ARGUMENTATION_DIFF)
             # Enforce max_questions cap
             gaps_to_ask = gaps[:max_questions]
             remaining_gaps_count = len(gaps) - len(gaps_to_ask)
@@ -263,6 +284,11 @@ class SpecificationAgent:
         on_token: Callable[[str], None] | None = None,
     ) -> Specification:
         """Merge inline manual gap responses back into structured specification fields."""
+        if self._controller:
+            if self._controller.phase != MasterPhase.SPECIFICATION:
+                raise ValueError("SpecificationAgent operations are only allowed in SPECIFICATION phase.")
+            self._controller.advance_spec_state(SpecState.SPEC_METASTABLE)
+
         instruction = (
             "You are finalizing a structured specification. The user has filled in inline gap resolution templates "
             "and possibly edited the specification text. Merge their edits and any filled-in gap sections back into "
@@ -319,6 +345,9 @@ class SpecificationAgent:
         on_token: Callable[[str], None] | None = None,
     ) -> Specification:
         """Use the provider to refine the specification incorporating user answers."""
+        if self._controller:
+            if self._controller.phase != MasterPhase.SPECIFICATION:
+                raise ValueError("SpecificationAgent operations are only allowed in SPECIFICATION phase.")
         instruction = (
             "You are refining a structured specification based on the user's answers to clarifying questions.\n"
             "Integrate the answers below into the specification fields.\n"
@@ -371,6 +400,10 @@ class SpecificationAgent:
         on_token: Callable[[str], None] | None = None,
     ) -> str:
         """Ask the model to generate a targeted clarifying question for all gaps."""
+        if self._controller:
+            if self._controller.phase != MasterPhase.SPECIFICATION:
+                raise ValueError("SpecificationAgent operations are only allowed in SPECIFICATION phase.")
+
         topics = "\n".join(f"- {gap.topic}" for gap in gaps)
         instruction = (
             f"The following specification has unresolved gaps:\n{topics}\n\n"

@@ -191,6 +191,8 @@ class ContextBundle:
     markov_context: MarkovStepContext | None = None
     current_step_id: str | None = None
     engineering_facts: tuple[str, ...] = ()
+    argumentation_entries: tuple[ArgumentationEntry, ...] = ()
+    technical_plan: TechnicalPlan | None = None
 
 
 # ---------------------------------------------------------------------------

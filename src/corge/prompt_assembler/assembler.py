@@ -32,10 +32,10 @@ class PromptAssembler:
         self._budget_manager = budget_manager
 
     def collect_context(
-        self, step: PlanStep, specification: Specification
+        self, step: PlanStep, specification: Specification, technical_plan: TechnicalPlan | None = None
     ) -> ContextBundle:
         """Fetch all required context layers for the current plan step."""
-        return self._context_port.retrieve_relevant_context(specification, step)
+        return self._context_port.retrieve_relevant_context(specification, step, technical_plan)
 
     def assemble_spec_prompt(self, context: ContextBundle, instruction: str) -> str:
         """Assemble the objective/constraint-based prompt for the Specification phase."""
@@ -43,7 +43,7 @@ class PromptAssembler:
         sections = [
             self._render_schema(context),
             self._render_engineering_profile(context),
-            self._render_repository_facts(context),
+            self._render_argumentation_entries(context),
             f"<objective>\n{instruction}\n</objective>",
         ]
         return "\n\n".join(filter(bool, sections))
@@ -98,6 +98,9 @@ class PromptAssembler:
             "- Set 'done': true when the step is complete."
         )
         
+        # Prevent noise: do not include reasoning logs in coding phase,
+        # but the approved architectural blueprint (TechnicalPlan) is highly useful.
+        
         dynamic_step = (
             f"Current step: {step_desc}\n"
             f"Step identifier: {step_id}"
@@ -108,6 +111,7 @@ class PromptAssembler:
             self._render_engineering_profile(context),
             self._render_repository_facts(context),
             self._render_specification(context),
+            self._render_technical_plan(context),
             self._render_relevant_files(context),
             f"<coding_instructions>\n{static_instruction}\n</coding_instructions>",
             f"<current_step>\n{dynamic_step}\n</current_step>",
@@ -226,6 +230,21 @@ class PromptAssembler:
             lines.append(f"- {ref.uri}: {ref.summary}")
         lines.append("</artifacts>")
         return "\n".join(lines)
+
+    def _render_argumentation_entries(self, context: ContextBundle) -> str:
+        if not context.argumentation_entries:
+            return ""
+        lines = ["<argumentation_history>"]
+        for entry in context.argumentation_entries:
+            lines.append(f"Question: {entry.question}")
+            lines.append(f"Answer: {entry.answer}")
+        lines.append("</argumentation_history>")
+        return "\n".join(lines)
+
+    def _render_technical_plan(self, context: ContextBundle) -> str:
+        if not context.technical_plan or not context.technical_plan.content:
+            return ""
+        return f"<technical_plan>\n{context.technical_plan.content}\n</technical_plan>"
 
     # -- Helpers --------------------------------------------------------
 

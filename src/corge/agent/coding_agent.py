@@ -25,6 +25,7 @@ from corge.contracts import (
     ContextPort,
     GraphUpdate,
     KnowledgeGraphPort,
+    MasterPhase,
     Plan,
     PlanStep,
     PromptAssemblerPort,
@@ -61,6 +62,7 @@ class CodingAgent:
         prompt_assembler: PromptAssemblerPort,
         audit_logger: AuditLoggerPort,
         artifact_store: ArtifactStorePort,
+        controller: Any = None,
         on_knowledge_extracted: Callable[[list[str], list[str]], None] | None = None,
     ) -> None:
         self._provider = provider
@@ -71,6 +73,7 @@ class CodingAgent:
         self._prompt_assembler = prompt_assembler
         self._audit_logger = audit_logger
         self._artifact_store = artifact_store
+        self._controller = controller
         self._on_knowledge_extracted = on_knowledge_extracted
 
     # ------------------------------------------------------------------
@@ -91,6 +94,10 @@ class CodingAgent:
             ToolExecutionError: If the tool returns a failure result or if
                 the model proposes an unrecognized action.
         """
+        if self._controller:
+            if self._controller.phase != MasterPhase.CODING:
+                raise ValueError("CodingAgent operations are only allowed in CODING phase.")
+
         import json
 
         read_dedup: set[str] = set()
@@ -100,7 +107,7 @@ class CodingAgent:
                 return
 
             context = self._context_service.retrieve_relevant_context(
-                context.specification, step
+                context.specification, step, context.technical_plan, rotate=False
             )
             prompt = self._prompt_assembler.assemble_coding_prompt(context)
 
@@ -160,6 +167,7 @@ class CodingAgent:
                 # Step 6: Execute tool
                 result = self._dispatch(action_dict)
                 self._audit_logger.record_tool_call(result)
+                self._context_service.record_action(f"{action.value} {target}")
 
                 # Step 7: Verify progress
                 if not result.success:
@@ -256,6 +264,10 @@ class CodingAgent:
         history captured in the Markov context. Returns False if any
         criterion is not demonstrably met.
         """
+        if self._controller:
+            if self._controller.phase != MasterPhase.CODING:
+                raise ValueError("CodingAgent operations are only allowed in CODING phase.")
+
         criteria = context.specification.acceptance_criteria.items
         if not criteria:
             # No criteria defined — cannot claim completion

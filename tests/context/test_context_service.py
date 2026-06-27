@@ -78,3 +78,71 @@ def test_retrieve_relevant_context_markov_chaining() -> None:
 
     assert "Created database module" in bundle2.markov_context.compressed_trajectory
     assert bundle2.markov_context.agent_proposal == "Fixed SQLite import"
+
+
+def test_context_service_query_caching() -> None:
+    kg = MagicMock()
+    kg.query_graph.return_value = GraphResult(nodes=())
+    memory = MagicMock()
+    memory.get_facts.return_value = ["fact1"]
+    memory.get_profile.return_value = MagicMock()
+
+    svc = ContextService(knowledge_graph=kg, memory_store=memory, root=pathlib.Path("."))
+    spec = Specification(title="test", body="test", acceptance_criteria=AcceptanceCriteria(()))
+    step = PlanStep(identifier="step-1", description="test")
+
+    # First call hydrates the cache
+    svc.retrieve_relevant_context(spec, step, rotate=True)
+    assert kg.query_graph.call_count == 1
+    assert memory.get_facts.call_count == 1
+    assert memory.get_profile.call_count == 1
+
+    # Second call with rotate=False retrieves from cache (no extra DB calls)
+    svc.retrieve_relevant_context(spec, step, rotate=False)
+    assert kg.query_graph.call_count == 1
+    assert memory.get_facts.call_count == 1
+    assert memory.get_profile.call_count == 1
+
+    # Updating markov state clears cache
+    svc.update_markov_state("done")
+    svc.retrieve_relevant_context(spec, step, rotate=False)
+    assert kg.query_graph.call_count == 2
+    assert memory.get_facts.call_count == 2
+    assert memory.get_profile.call_count == 2
+
+
+def test_context_service_spec_isolation() -> None:
+    kg = MagicMock()
+    memory = MagicMock()
+    memory.get_facts.return_value = ["secret_repo_fact"]
+    memory.get_profile.return_value = MagicMock()
+
+    svc = ContextService(knowledge_graph=kg, memory_store=memory, root=pathlib.Path("."))
+    repo_ctx = RepositoryContext(root=pathlib.Path("."))
+
+    bundle = svc.load_context(repo_ctx)
+    # Repo facts must be empty during SPECIFICATION phase (3-Layer isolation)
+    assert len(bundle.engineering_facts) == 0
+    assert len(bundle.relevant_files) == 0
+
+
+def test_context_service_argumentation_log(tmp_path: pathlib.Path) -> None:
+    # Create a dummy argumentation log JSON
+    agent_dir = tmp_path / ".agent"
+    agent_dir.mkdir()
+    log_file = agent_dir / "argumentation_log.json"
+    import json
+    log_file.write_text(json.dumps({
+        "entries": [
+            {"question": "Q1", "answer": "A1", "timestamp": "now", "was_user_override": False}
+        ],
+        "snapshots": []
+    }), encoding="utf-8")
+
+    svc = ContextService(knowledge_graph=MagicMock(), memory_store=MagicMock(), root=tmp_path)
+    repo_ctx = RepositoryContext(root=tmp_path)
+
+    bundle = svc.load_context(repo_ctx)
+    assert len(bundle.argumentation_entries) == 1
+    assert bundle.argumentation_entries[0].question == "Q1"
+    assert bundle.argumentation_entries[0].answer == "A1"
