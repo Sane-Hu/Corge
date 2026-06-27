@@ -10,6 +10,7 @@ from corge.contracts import (
     PlanStep,
     SchemaTailorPort,
     Specification,
+    TechnicalPlan,
 )
 
 # Rules below this confidence are excluded from prompt output.

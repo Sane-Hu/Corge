@@ -31,6 +31,7 @@ from corge.contracts import (
     PlanStep,
     RepositoryContext,
     Specification,
+    TechnicalPlan,
 )
 
 # ---------------------------------------------------------------------------

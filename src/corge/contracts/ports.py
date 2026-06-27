@@ -166,6 +166,8 @@ class ContextPort(Protocol):
 
     def update_markov_state(self, result: str, correction: str = "") -> None: ...
 
+    def record_action(self, action_summary: str) -> None: ...
+
 
 # ---------------------------------------------------------------------------
 # Prompt assembler (04-module-contracts § prompt_assembler)
