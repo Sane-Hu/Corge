@@ -132,4 +132,31 @@ def test_directory_selector_configure_api(tmp_path: Path) -> None:
     assert data["enable_prefix_caching"] is True
 
 
+def test_show_question_prefill_numbered_list() -> None:
+    """Verifies show_question correctly structures prefill template from Socratic numbered list."""
+    from corge.ui.cli import CliUi
+
+    app_mock = MagicMock()
+    ui = CliUi(app_mock)
+
+    # Capture the InteractiveDiffScreen passed to _run_screen
+    captured_screen = None
+
+    def mock_run_screen(screen):
+        nonlocal captured_screen
+        captured_screen = screen
+        return "user response text"
+
+    ui._run_screen = mock_run_screen
+
+    questions = "1. Question alpha?\n2. Question beta?\nSome other text without prefix.\n3. Question gamma?"
+    res = ui.show_question(questions, "canvas context")
+
+    assert res == "user response text"
+    assert captured_screen is not None
+    # Verify prefilled right-text format matches questions
+    assert captured_screen._right_text == "1. <Enter answer here>\n2. <Enter answer here>\n3. <Enter answer here>"
+
+
+
 

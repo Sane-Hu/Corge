@@ -319,6 +319,7 @@ class DirectorySelectorApp(App[Path]):
 
         def on_save(new_cfg: dict[str, str] | None) -> None:
             if not new_cfg:
+                self.query_one(CorgeDirectoryTree).focus()
                 return
 
             existing = {}
@@ -390,8 +391,9 @@ class DirectorySelectorApp(App[Path]):
                     lines.append(f'{hk} = "{hv}"')
 
             config_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            self.query_one(CorgeDirectoryTree).focus()
 
-        self.push_screen(ProviderConfigScreen(prefill=prefill), on_save)
+        self.push_screen(ProviderConfigScreen(prefill=prefill, config_path=config_path), on_save)
 
     def action_create_dir(self) -> None:
         inp = self.query_one("#action_input", Input)
@@ -515,12 +517,23 @@ class CliUi(UiPort):
 
     def show_question(self, question: str, context: str) -> str:
         """Display a Socratic question and return the user's answer."""
+        import re
+        prefill = ""
+        for line in question.splitlines():
+            line_stripped = line.strip()
+            match = re.match(r"^(\d+)\.", line_stripped)
+            if match:
+                num = match.group(1)
+                prefill += f"{num}. <Enter answer here>\n"
+        if prefill:
+            prefill = prefill.rstrip("\n")
+
         result_text = self._run_screen(
             InteractiveDiffScreen(
                 left_title="Clarifying Questions",
                 left_text=question,
                 right_title="Your Answers",
-                right_text="",
+                right_text=prefill,
                 prompt_text="Please provide your answers. Click Submit when done.",
                 approve_text="Submit Answers",
                 reject_text="Skip",
@@ -797,8 +810,9 @@ class CliUi(UiPort):
         self, error_message: str | None = None, prefill: dict[str, str] | None = None
     ) -> dict[str, str] | None:
         """Present the provider configuration screen to the user."""
+        config_path = getattr(self._app, "config_path", None)
         res: dict[str, str] | None = self._run_screen(
-            ProviderConfigScreen(error_message=error_message, prefill=prefill)
+            ProviderConfigScreen(error_message=error_message, prefill=prefill, config_path=config_path)
         )
         return res
 

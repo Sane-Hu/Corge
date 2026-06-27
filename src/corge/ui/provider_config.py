@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from textual.app import ComposeResult
@@ -43,6 +44,12 @@ class ProviderConfigScreen(Screen[dict[str, str] | None]):
     .info-msg {
         margin-bottom: 1;
     }
+    .config-path {
+        color: $text-muted;
+        font-size: 85%;
+        margin-bottom: 1;
+        text-align: center;
+    }
     .field-row {
         height: auto;
         margin-bottom: 1;
@@ -63,15 +70,20 @@ class ProviderConfigScreen(Screen[dict[str, str] | None]):
         self,
         error_message: str | None = None,
         prefill: dict[str, str] | None = None,
+        config_path: Path | None = None,
     ) -> None:
         super().__init__()
         self.error_message = error_message
         self.prefill = prefill or {}
+        self.config_path = config_path
 
     def compose(self) -> ComposeResult:
         yield Header()
         with Vertical(classes="config-container"):
             yield Static("Corge LLM Provider Configuration", classes="config-title")
+
+            if self.config_path:
+                yield Static(f"Config File: {self.config_path}", classes="config-path")
 
             if self.error_message:
                 yield Static(f"Error: {self.error_message}", classes="error-msg")
