@@ -54,8 +54,8 @@ class UiPort(Protocol):
     def show_spec_wizard(self) -> Specification | None: ...
 
     def show_argumentation_diff(
-        self, canvas: CanvasSnapshot, spec: Specification, gaps: tuple[SemanticGap, ...]
-    ) -> Specification | None: ...
+        self, canvas_text: str, right_text: str
+    ) -> str | None: ...
 
     def show_question(self, question: str, context: str) -> str:
         """Display a Socratic question and return the user's answer."""

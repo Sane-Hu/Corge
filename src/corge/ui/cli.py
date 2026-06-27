@@ -11,7 +11,7 @@ import concurrent.futures
 import difflib
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from textual import on
 from textual.app import App, ComposeResult
@@ -511,7 +511,7 @@ class CliUi(UiPort):
                 reject_text="Back",
             )
         )
-        return result_text
+        return cast(str | None, result_text)
 
     def show_question(self, question: str, context: str) -> str:
         """Display a Socratic question and return the user's answer."""
@@ -543,7 +543,7 @@ class CliUi(UiPort):
             f"{i}. [{s.identifier}] {s.description}"
             for i, s in enumerate(plan.steps, 1)
         )
-        return self._run_screen(MessageScreen("Execution Plan", msg or "(no steps)", show_back=True)) == "continue"
+        return bool(self._run_screen(MessageScreen("Execution Plan", msg or "(no steps)", show_back=True)) == "continue")
 
     def show_tech_plan_editor(self, plan: TechnicalPlan) -> TechnicalPlan | None:
         result_text = self._run_screen(
@@ -622,7 +622,7 @@ class CliUi(UiPort):
             f"Specification: {context.specification.title}\n\n"
             f"Executing plan steps:\n{step_lines or '  (none)'}"
         )
-        return self._run_screen(MessageScreen("Execution in Progress", msg, show_back=True)) == "continue"
+        return bool(self._run_screen(MessageScreen("Execution in Progress", msg, show_back=True)) == "continue")
 
     def request_approval(self, request: ApprovalRequest) -> ApprovalDecision:
         """Show approval request via split pane (finding 8.7 — has Reject button)."""
@@ -691,7 +691,7 @@ class CliUi(UiPort):
             pending = sum(1 for s in plan.steps if not s.completed)
             lines.append(f"\n{pending} step(s) still pending.")
 
-        return self._run_screen(MessageScreen("Completion Review", "\n".join(lines), show_back=True)) == "continue"
+        return bool(self._run_screen(MessageScreen("Completion Review", "\n".join(lines), show_back=True)) == "continue")
 
     # ------------------------------------------------------------------
     # Repository & profile display screens (finding 8.6)
@@ -705,7 +705,7 @@ class CliUi(UiPort):
             f"Files ({len(repository_context.tree)}):\n{tree_lines or '  (empty)'}\n\n"
             f"Config files:\n{config_lines or '  (none)'}"
         )
-        return self._run_screen(MessageScreen("Repository Analysis", msg, show_back=True)) == "continue"
+        return bool(self._run_screen(MessageScreen("Repository Analysis", msg, show_back=True)) == "continue")
 
     def show_repository_understanding(
         self, repository_context: RepositoryContext
@@ -715,7 +715,7 @@ class CliUi(UiPort):
             f"Total tracked paths: {len(repository_context.tree)}\n"
             f"Config/build files: {len(repository_context.config_files)}"
         )
-        return self._run_screen(MessageScreen("Repository Understanding", msg, show_back=False)) == "continue"
+        return bool(self._run_screen(MessageScreen("Repository Understanding", msg, show_back=False)) == "continue")
 
     def show_engineering_profile(self, profile: EngineeringProfile) -> bool:
         if profile.rules:
@@ -729,7 +729,7 @@ class CliUi(UiPort):
             )
         else:
             msg = "No engineering conventions recorded yet."
-        return self._run_screen(MessageScreen("Engineering Profile", msg, show_back=True)) == "continue"
+        return bool(self._run_screen(MessageScreen("Engineering Profile", msg, show_back=True)) == "continue")
 
     def show_memory(self, events: tuple[MemoryEvent, ...]) -> str:
         if events:
@@ -791,7 +791,7 @@ class CliUi(UiPort):
                 msg = "No logs found."
         except Exception as e:
             msg = f"Error loading logs: {e}"
-        return self._run_screen(MessageScreen("Audit Logs", msg, show_back=True)) == "continue"
+        return bool(self._run_screen(MessageScreen("Audit Logs", msg, show_back=True)) == "continue")
 
     def show_provider_config_screen(
         self, error_message: str | None = None, prefill: dict[str, str] | None = None
