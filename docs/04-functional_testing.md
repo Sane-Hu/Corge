@@ -233,7 +233,7 @@ The TUI opens the `InteractiveDiffScreen` split-editor unconditionally (even if 
 
 **Functional check — review/edit**: If no gaps exist or for general edits, tweak the right pane text and press **Approve**.
 
-**Functional check — rejection**: Press **Reject** (or `Escape`). Verify that the application navigates backward to the canvas screen (`SPEC_ENTRY`).
+**Functional check — rejection**: Press **Back** (or `Escape`). Verify that the application navigates backward to the canvas screen (`SPEC_ENTRY`).
 
 **Expected**: The spec manual refinement editor is shown unconditionally. Gaps are resolved using inline placeholder templates. The user's changes are merged into the final specification fields upon Approve. The spec transitions to `SPEC_METASTABLE` upon Approve. The `ArgumentationLog` writes the Socratic Q&A log to `.agent/` for future heuristic updates. If rejected, the controller transitions back to spec entry.
 
@@ -265,7 +265,7 @@ The `PlanningAgent` drafts the architectural `TechnicalPlan` in markdown. The `I
 - The plan is readable and addresses the accepted spec requirements.
 - The plan can be edited in the right pane before approval.
 - Pressing **Approve** locks the technical plan.
-- Pressing **Reject** (or `Escape`). Verify that the application navigates backward to the specification validation state (`SPEC_VALIDATION`).
+- Pressing **Back** (or `Escape`). Verify that the application navigates backward to the specification validation state (`SPEC_VALIDATION`).
 
 ### 5.2 Procedural Steps generation (`STEPS_REITERATION`)
 
@@ -276,7 +276,7 @@ The agent translates the technical plan into granular, sequenced `ProceduralStep
 - Custom bracketed step identifiers (e.g. `[step-auth] authentication`) can be manually typed in the editor. Verify that they are parsed and preserved in the final plan rather than overwritten with sequential `step-N` IDs.
 - Steps are granular enough to be individually executable.
 - The right pane is editable; modifications are respected on approval.
-- Pressing **Reject** (or `Escape`). Verify that the application navigates backward to the technical plan generation state (`PLAN_GENERATION`).
+- Pressing **Back** (or `Escape`). Verify that the application navigates backward to the technical plan generation state (`PLAN_GENERATION`).
 
 **Expected**: On approval, the agent advances to `MasterPhase.CODING`. The `Plan` (containing all `ProceduralStep` entries) is passed to the `CodingAgent`. If rejected, the controller transitions to the previous phase.
 

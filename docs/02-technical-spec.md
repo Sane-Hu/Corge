@@ -281,24 +281,24 @@ The presentation layer utilizes the `DirectorySelectorApp` and several fundament
         *   Automatically focuses the directory tree on app mount.
 1.  **`CanvasScreen` (Freestyle Brainstorming / Spec Entry)**
     *   **Purpose**: Captured during the `CANVAS_FREESTYLE` sub-state. Allows free-form writing of feature goals, user stories, and technical requirements.
-    *   **Key Widgets**: `TextArea` for raw text input, `Button` ("Submit to Concretization").
-    *   **Transition**: On pressing Submit, dismisses canvas text to advance the agent to the `CONCRETIZATION` state. Automatically focuses the text area on mount.
+    *   **Key Widgets**: `TextArea` for raw text input, `Button` ("Submit to Concretization"), `Button` ("Back").
+    *   **Transition**: On pressing Submit, dismisses canvas text to advance the agent to the `CONCRETIZATION` state. Pressing the "Back" button (or the `Escape` key) dismisses the screen and transitions the state machine back to the `REPOSITORY_ANALYSIS` phase. Automatically focuses the text area on mount.
 2.  **`InteractiveDiffScreen` (Reused Split-Pane Editor)**
     *   **Purpose**: Side-by-side display of context references against editable drafts. This screen is highly parameterized and reused dynamically for:
         *   *Socratic Argumentation Diff*: Left pane displays raw Canvas text; right pane displays the Concretized Specification draft with unresolved semantic gaps formatted as inline templates (e.g. `[GAP: Topic]`). Prompt: "Resolve any gaps in the Specification."
         *   *Technical Plan Editor*: Left pane shows previous approved 'conceretized specification'; right pane displays the draft `TechnicalPlan` in custom `Corge`'s markdown format.
         *   *Procedural Steps Editor*: Left pane maps the `TechnicalPlan` draft; right pane renders editable `ProceduralStep` identifiers and lines. The editor parses bracketed step identifiers (e.g. `[step-auth] description`) using regex to preserve them rather than overwriting them with sequential IDs.
         *   *Human Approval Gateway*: Left pane defaults to the approval request context, toggling via `Ctrl+D` to a live diff of the proposed code change; right pane details the requested `ToolAction` parameter payload. The right pane details are set to read-only during tool approvals to prevent misleading edit text from being discarded.
-    *   **Key Widgets**: Left pane defaults to a read-only `TextArea` showing reference material, but toggles via `Ctrl+D` to a hidden `RichLog` displaying a `difflib.unified_diff` of the current draft against the original draft (with syntax highlighting). Right pane is a `TextArea` for editable content, with "Approve" and "Reject" buttons.
-    *   **Transition**: On pressing Approve (or `Ctrl+A`), returning the modified content to the caller and proceeding to the next step. Pressing Reject (or `Escape`) returns `None`, signaling the `SessionController` to execute a backward transition and request an updated plan/spec from the agent. Automatically focuses the interactive edit area on mount.
+    *   **Key Widgets**: Left pane defaults to a read-only `TextArea` showing reference material, but toggles via `Ctrl+D` to a hidden `RichLog` displaying a `difflib.unified_diff` of the current draft against the original draft (with syntax highlighting). Right pane is a `TextArea` for editable content, with "Approve" and "Back" / "Reject" buttons.
+    *   **Transition**: On pressing Approve (or `Ctrl+A`), returning the modified content to the caller and proceeding to the next step. Pressing the customized "Back" / "Reject" button (or the `Escape` key) returns `None`, signaling the `SessionController` to execute a backward transition and request an updated plan/spec from the agent. The keybinding labels dynamically reflect the customized button text. Automatically focuses the interactive edit area on mount.
 3.  **`MessageScreen` (Read-Only Dialogs / Alerts)**
     *   **Purpose**: Simulates modal notifications or summaries to the engineer.
-    *   **Key Widgets**: Header `Static` title, Read-only `TextArea` showing messaging, and `Button` ("Continue").
+    *   **Key Widgets**: Header `Static` title, Read-only `TextArea` showing messaging, `Button` ("Continue"), and optionally `Button` ("Back") when back-navigation is supported.
     *   **Reused Cases**:
         *   *Execution Plan View*: Renders the plan steps layout while Corge's coding agent is executing the execution cycle.
         *   *Completion Review*: Notifies that the implementation has successfully passed all acceptance and verification tests. (TODO: Add implementation status tracking and verification results in the message, per plan step)
         *   *Audit Logs view*: Parses JSONL records from `.agent/audit.jsonl` and formats them into a clean, human-readable bulleted list of proposed actions, approvals, and outcomes.
-    *   **Transition**: Blocks execution until the Continue button/user input is provided. If there are pending approvals, it will display a message asking to approve or reject the pending approvals first with what the agent should realize first. If there are no pending approvals, it will proceed to the next step.
+    *   **Transition**: Blocks execution until the Continue button/user input is provided. If the screen supports back-navigation (`show_back=True`), the user can click the "Back" button (or press `Escape`) to return to the previous screen or lifecycle state. If there are pending approvals, it will display a message asking to approve or reject the pending approvals first with what the agent should realize first. If there are no pending approvals, it will proceed to the next step.
 4.  **`ConfirmScreen` (Confirmation Dialog / Prompts)**
     *   **Purpose**: Dialog box asking for user confirmation before executing potentially destructive actions or opting into interactive workflows.
     *   **Key Widgets**: Title `Static` label, Message `TextArea`, and `Button` controls ("Yes", "No").

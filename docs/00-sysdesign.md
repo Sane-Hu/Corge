@@ -176,7 +176,7 @@ To maintain the modular monolith, cross-communication is heavily restricted. Eac
 
 ### 1. UI Module (Purple)
 - **Role**: Pure presentation layer with zero business logic.
-- **Components**: Handles the directory selector (supporting visual context, safe folder creation, escape-based cancellation, and hidden files toggles via `CorgeDirectoryTree`), the specification wizard, the interactive Freestyle Canvas with sticky notes (supporting confirmation-protected clearing), formatting repository analysis for the user, the step by step plan outputs side by side with structured specs output, throwing human-in-the-loop approval requests (featuring live code diff toggles and read-only details to prevent misleading edits), custom confirmation screens (ConfirmScreen) for opt-ins and destructive prompts, ensuring default initial focus on screen mount for keyboard-only usability, structured audit log parsing and formatting, and displaying completion review.
+- **Components**: Handles the directory selector (supporting visual context, safe folder creation, escape-based cancellation, and hidden files toggles via `CorgeDirectoryTree`), the specification wizard, the interactive Freestyle Canvas with sticky notes (supporting confirmation-protected clearing), formatting repository analysis for the user, the step by step plan outputs side by side with structured specs output, throwing human-in-the-loop approval requests (featuring live code diff toggles and read-only details to prevent misleading edits), custom confirmation screens (ConfirmScreen) for opt-ins and destructive prompts, ensuring default initial focus on screen mount for keyboard-only usability, structured audit log parsing and formatting, displaying completion review, and providing explicit "Back" buttons on screens to allow navigating back to the previous screen or lifecycle state (supporting backspace/escape keyboard bindings).
 
 ### 2. Agent Modules (Yellow)
 - **Role**: The operational state machine and learning engine.
@@ -186,7 +186,7 @@ To maintain the modular monolith, cross-communication is heavily restricted. Eac
   - `Coding Agent`: handles the tool execution loop. 
   - `Schema Tailor`: for framework-aware prompts 
   - `Heuristic Updater`: for Bayesian self-improvement of the spec wizard in a subsequent, post-execution phase. 
-  - `Session Controller`: manages transitions between these three master phases, implementing robust backward navigation on cancel/rejection, wrapping bootstrap connection errors with actionable advice, and step-retry loops on tool failures. 
+  - `Session Controller`: manages transitions between these three master phases, implementing robust backward navigation on cancel/rejection (including back-navigation buttons on all major screens), wrapping bootstrap connection errors with actionable advice, and step-retry loops on tool failures. 
 
 ### 3. Context Engineering Modules (Green)
 - **Role**: Gathering and optimizing context data to ensure LLM interactions are precise and under token limits.

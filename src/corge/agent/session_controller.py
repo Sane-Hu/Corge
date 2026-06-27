@@ -24,6 +24,7 @@ from corge.contracts import (
     BudgetManagerPort,
     ContextBundle,
     ContextPort,
+    HeuristicConfig,
     HeuristicUpdaterPort,
     KnowledgeGraphPort,
     LifecycleState,
