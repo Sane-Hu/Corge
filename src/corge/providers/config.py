@@ -49,6 +49,9 @@ class ProviderConfig:
         timeout: HTTP request timeout in seconds.
         extra_headers: Optional headers forwarded verbatim to every request
             (e.g. ``{"X-Title": "corge"}``).
+        auto_advance_informational_screens: When ``True``, automatically advance
+            through read-only informational TUI screens (e.g. startup repo views,
+            pre-step execution logs) without blocking for manual user input.
     """
 
     model: str
@@ -64,6 +67,7 @@ class ProviderConfig:
     timeout: float = 120.0
     extra_headers: dict[str, str] = field(default_factory=dict)
     max_socratic_questions: int = 3
+    auto_advance_informational_screens: bool = False
 
     @classmethod
     def from_toml(cls, toml_text: str) -> ProviderConfig:

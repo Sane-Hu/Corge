@@ -274,6 +274,66 @@ def test_directory_selector_configure_api_resolution_order(tmp_path: Path) -> No
     assert pushed_screen.config_path == dot_agents_config
 
 
+def test_message_screen_auto_advance_on_mount() -> None:
+    from textual._context import active_app
+    from corge.ui.cli import MessageScreen
+
+    screen = MessageScreen("Title", "Message text")
+    screen.dismiss = MagicMock()
+    
+    mock_app = MagicMock()
+    mock_app.auto_advance = True
+    token = active_app.set(mock_app)
+    try:
+        screen.on_mount()
+        screen.dismiss.assert_called_once_with("continue")
+    finally:
+        active_app.reset(token)
+
+
+def test_message_screen_toggle_auto_advance() -> None:
+    from textual._context import active_app
+    from corge.ui.cli import MessageScreen
+
+    screen = MessageScreen("Title", "Message text")
+    screen.dismiss = MagicMock()
+    screen.notify = MagicMock()
+    
+    mock_app = MagicMock()
+    mock_app.auto_advance = False
+    token = active_app.set(mock_app)
+    try:
+        # Toggle ON
+        screen.action_toggle_auto_advance()
+        assert mock_app.auto_advance is True
+        screen.dismiss.assert_called_once_with("continue")
+        screen.notify.assert_called_once_with("Auto-advance: ENABLED")
+        
+        # Toggle OFF (mock_app auto_advance is True now)
+        screen.dismiss.reset_mock()
+        screen.notify.reset_mock()
+        
+        screen.action_toggle_auto_advance()
+        assert mock_app.auto_advance is False
+        screen.dismiss.assert_not_called()
+        screen.notify.assert_called_once_with("Auto-advance: DISABLED")
+    finally:
+        active_app.reset(token)
+
+
+def test_provider_config_parses_auto_advance() -> None:
+    from corge.providers.config import ProviderConfig
+
+    toml_content = """
+    model = "test-model"
+    api_key = "test-key"
+    auto_advance_informational_screens = true
+    """
+    config = ProviderConfig.from_toml(toml_content)
+    assert config.auto_advance_informational_screens is True
+
+
+
 
 
 

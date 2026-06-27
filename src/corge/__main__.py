@@ -106,6 +106,7 @@ class RealCorgeApp(CorgeApp):
                 ui.show_loading("Validating API connection...")
                 try:
                     provider = bootstrap_provider(self.config_path)
+                    self.auto_advance = getattr(provider._config, "auto_advance_informational_screens", False)
                 finally:
                     ui.hide_loading()
             except (FileNotFoundError, ValueError, ConnectionError) as e:

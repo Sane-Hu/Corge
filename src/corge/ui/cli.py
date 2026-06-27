@@ -90,10 +90,19 @@ class MessageScreen(Screen[str]):
                 if self._show_new_spec:
                     yield Button("New Spec", id="new_spec", variant="warning")
                 yield Button("Copy (c)", id="copy", variant="default")
+                auto_adv = getattr(self.app, "auto_advance", False)
+                yield Button(
+                    "Auto: ON (a)" if auto_adv else "Auto: OFF (a)",
+                    id="auto_advance",
+                    variant="success" if auto_adv else "default",
+                )
                 yield Button("Continue", id="continue", variant="primary")
         yield Footer()
 
     def on_mount(self) -> None:
+        if getattr(self.app, "auto_advance", False):
+            self.dismiss("continue")
+            return
         if self._show_back:
             self._bindings.bind("escape", "back", "Back")
         else:
@@ -101,6 +110,7 @@ class MessageScreen(Screen[str]):
         if self._show_new_spec:
             self._bindings.bind("n", "new_spec", "New Spec")
         self._bindings.bind("c", "copy_text", "Copy")
+        self._bindings.bind("a", "toggle_auto_advance", "Auto-advance")
         self.query_one("#continue", Button).focus()
 
     def action_continue(self) -> None:
@@ -116,6 +126,22 @@ class MessageScreen(Screen[str]):
         self.app.copy_to_clipboard(self._message)
         self.notify("Copied screen content to clipboard!")
 
+    def action_toggle_auto_advance(self) -> None:
+        current = getattr(self.app, "auto_advance", False)
+        new_val = not current
+        setattr(self.app, "auto_advance", new_val)
+        status = "ENABLED" if new_val else "DISABLED"
+        self.notify(f"Auto-advance: {status}")
+        if new_val:
+            self.dismiss("continue")
+        else:
+            try:
+                btn = self.query_one("#auto_advance", Button)
+                btn.label = "Auto: OFF (a)"
+                btn.variant = "default"
+            except Exception:
+                pass
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "continue":
             self.dismiss("continue")
@@ -125,6 +151,8 @@ class MessageScreen(Screen[str]):
             self.dismiss("new_spec")
         elif event.button.id == "copy":
             self.action_copy_text()
+        elif event.button.id == "auto_advance":
+            self.action_toggle_auto_advance()
 
 
 class LoadingScreen(Screen[None]):
@@ -149,6 +177,8 @@ class LoadingScreen(Screen[None]):
 
 class CorgeApp(App[None]):
     """The main Textual application for Corge."""
+
+    auto_advance: bool = False
 
     def copy_to_clipboard(self, text: str) -> None:
         """Robust system clipboard copy with OSC 52 and Linux tool fallbacks."""

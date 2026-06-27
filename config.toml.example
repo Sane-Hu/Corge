@@ -10,6 +10,7 @@ reasoning_effort = "medium"              # Optional: "low", "medium", "high" for
 enable_prefix_caching = true             # Enable prompt caching (e.g. DeepSeek)
 keep_alive = "-1"                        # Ollama model load residency duration (-1 to hold in memory)
 timeout = 120.0                          # Connection/request timeout in seconds
+auto_advance_informational_screens = false # Auto-advance through informational screens without prompting
 
 [extra_headers]
 # Verbatim custom headers to pass to every request (e.g. for OpenRouter or corporate proxies)
