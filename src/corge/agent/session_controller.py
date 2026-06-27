@@ -362,8 +362,28 @@ class SessionController:
         """Merge resolved gap templates back into structured specification fields."""
         updated_spec = self._spec_agent.merge_templated_responses(spec, edited_text)
         self._specification = updated_spec
-        # Re-run gap analysis to update pending gaps
-        self._pending_gaps = self._spec_agent.analyze_specification_gaps(updated_spec.body)
+        
+        # Check deterministically which of the pending gaps were resolved by looking for their placeholder in edited_text
+        import dataclasses
+        resolved_gaps = []
+        normalized_text = edited_text.replace("\r\n", "\n")
+        for gap in self._pending_gaps:
+            placeholder = f"[GAP: {gap.topic}]"
+            default_res = "Resolution: <Enter details here>"
+            
+            # If the placeholder is completely removed, it is resolved
+            if placeholder not in normalized_text:
+                resolved_gaps.append(dataclasses.replace(gap, resolved=True))
+                continue
+                
+            # If the placeholder is present, check if the default resolution line is still there
+            unresolved_block = f"{placeholder}\n{default_res}"
+            if unresolved_block in normalized_text:
+                resolved_gaps.append(gap)  # Still unresolved
+            else:
+                resolved_gaps.append(dataclasses.replace(gap, resolved=True))
+                
+        self._pending_gaps = tuple(resolved_gaps)
         return updated_spec
 
     # ------------------------------------------------------------------

@@ -133,3 +133,54 @@ def test_sync_nested_states_enters_argumentation_diff_when_gaps_present() -> Non
 
     assert controller._state == LifecycleState.SPEC_VALIDATION
     assert controller._spec_state == SpecState.ARGUMENTATION_DIFF
+
+
+def test_merge_templated_responses_resolves_gaps() -> None:
+    from corge.contracts import Specification, AcceptanceCriteria, SemanticGap
+    controller = SessionController(
+        provider=MagicMock(),
+        tool_runtime=MagicMock(),
+        approval_gateway=MagicMock(),
+        context_service=MagicMock(),
+        memory_store=MagicMock(),
+        heuristic_updater=MagicMock(),
+        knowledge_graph=MagicMock(),
+        schema_tailor=MagicMock(),
+        budget_manager=MagicMock(),
+        audit_logger=MagicMock(),
+        artifact_store=MagicMock(),
+    )
+    
+    # Mock SpecificationAgent merge to return a dummy specification
+    spec = Specification(title="Test", body="Body text", acceptance_criteria=AcceptanceCriteria(items=()))
+    controller._spec_agent.merge_templated_responses = MagicMock(return_value=spec)
+
+    # Set up pending gaps
+    controller._pending_gaps = (
+        SemanticGap(topic="routing", resolved=False),
+        SemanticGap(topic="database", resolved=False),
+    )
+
+    # Case 1: All gaps unresolved (default placeholder template is kept)
+    edited_text = (
+        "# Requirements\n"
+        "[GAP: routing]\n"
+        "Resolution: <Enter details here>\n\n"
+        "[GAP: database]\n"
+        "Resolution: <Enter details here>\n"
+    )
+    controller.merge_templated_responses(spec, edited_text)
+    assert not controller._pending_gaps[0].resolved
+    assert not controller._pending_gaps[1].resolved
+
+    # Case 2: One gap resolved by entering text, one gap removed entirely
+    edited_text = (
+        "# Requirements\n"
+        "[GAP: routing]\n"
+        "Resolution: Use fastapi router.\n"
+    )
+    controller.merge_templated_responses(spec, edited_text)
+    # routing gap was resolved (the default Resolution template was modified)
+    assert controller._pending_gaps[0].resolved
+    # database gap was resolved because its placeholder is completely absent
+    assert controller._pending_gaps[1].resolved
