@@ -276,6 +276,7 @@ The presentation layer utilizes the `DirectorySelectorApp` and several fundament
     *   **Interactive Features**:
         *   Pressing `h` toggles visibility of hidden files/folders (e.g. `.agent`, `.git`) in the directory tree.
         *   Pressing `Escape` while inputting folder paths/names safely cancels the input mode and refocuses the tree.
+        *   Pressing `a` or clicking "Configure API (a)" displays `ProviderConfigScreen` to modify target or global API credentials directly on initial start.
         *   Fails gracefully if folder creation raises an OS permission/invalid character error, showing a description inline.
         *   Maintains the directory tree visible at all times during folder input.
         *   Automatically focuses the directory tree on app mount.

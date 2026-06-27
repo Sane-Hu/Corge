@@ -133,6 +133,7 @@ uv run python -m corge
 - Press `Enter` or `s` to select the currently highlighted directory.
 - Press `h` to toggle the visibility of hidden files/folders.
 - Press `c` to create a directory or `m` to manually enter a path. Hitting `Escape` while typing inside these inputs will safely cancel the input and refocus the tree, rather than quitting the entire application.
+- Press `a` or click "Configure API" to edit LLM model, API key, and base URL settings in a modal overlay, writing back to the corresponding configuration file upon saving.
 - Verify that directory creation errors (like writing to write-protected paths) show a clean inline error message instead of crashing the app.
 
 ### 3.2 Select the target repository
