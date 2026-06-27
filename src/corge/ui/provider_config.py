@@ -46,7 +46,6 @@ class ProviderConfigScreen(Screen[dict[str, str] | None]):
     }
     .config-path {
         color: $text-muted;
-        font-size: 85%;
         margin-bottom: 1;
         text-align: center;
     }
