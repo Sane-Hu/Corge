@@ -286,6 +286,15 @@ The agent translates the technical plan into granular, sequenced `ProceduralStep
 
 The 9-Step execution cycle runs autonomously for each `ProceduralStep`. The test scenarios below cover the critical paths within this loop.
 
+### 6.0 Memory Events and New Spec Option
+
+Before executing each plan step, the `MessageScreen` displays the "Recent memory events" screen.
+
+**Functional checks**:
+- **Back transition**: Press **Back** (or `Escape`). Verify that the application navigates backward to the previous step (or to `PLAN_REVIEW` if on the first step).
+- **New Spec opt-out**: Press **New Spec** (or `n`). Verify that the active specification and execution plan are discarded/reset, and the application transitions back to the Freestyle Canvas (`SPEC_ENTRY`) to let you start a new fresh specification.
+- **Continue**: Press **Continue** (or `Enter`). Verify that the application proceeds to the execution progress screen.
+
 ### 6.1 Context hydration
 
 **Expected per step**: The `ContextService` queries the knowledge graph and memory pyramid and assembles a `ContextBundle`. The prompt assembler renders the semantically tagged ephemeral prompt. The budget manager clips and deduplicates content without destroying critical context.

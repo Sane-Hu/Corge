@@ -51,7 +51,7 @@ from corge.ui.interactive_diff import InteractiveDiffScreen
 from corge.ui.provider_config import ProviderConfigScreen
 
 
-class MessageScreen(Screen[bool]):
+class MessageScreen(Screen[str]):
     """Generic read-only dialog (spec §5 item 3 — MessageScreen).
 
     Used for: execution plan view, errors, completion review.
@@ -72,11 +72,12 @@ class MessageScreen(Screen[bool]):
     }
     """
 
-    def __init__(self, title: str, message: str, show_back: bool = False) -> None:
+    def __init__(self, title: str, message: str, show_back: bool = False, show_new_spec: bool = False) -> None:
         super().__init__()
         self._title = title
         self._message = message
         self._show_back = show_back
+        self._show_new_spec = show_new_spec
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -86,27 +87,36 @@ class MessageScreen(Screen[bool]):
             with Horizontal(classes="footer-buttons"):
                 if self._show_back:
                     yield Button("Back", id="back", variant="error")
+                if self._show_new_spec:
+                    yield Button("New Spec", id="new_spec", variant="warning")
                 yield Button("Continue", id="continue", variant="primary")
         yield Footer()
 
     def on_mount(self) -> None:
         if self._show_back:
-            self.bind("escape", "back", "Back")
+            self._bindings.bind("escape", "back", "Back")
         else:
-            self.bind("escape", "continue", "Continue")
+            self._bindings.bind("escape", "continue", "Continue")
+        if self._show_new_spec:
+            self._bindings.bind("n", "new_spec", "New Spec")
         self.query_one("#continue", Button).focus()
 
     def action_continue(self) -> None:
-        self.dismiss(True)
+        self.dismiss("continue")
 
     def action_back(self) -> None:
-        self.dismiss(False)
+        self.dismiss("back")
+
+    def action_new_spec(self) -> None:
+        self.dismiss("new_spec")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "continue":
-            self.dismiss(True)
+            self.dismiss("continue")
         elif event.button.id == "back":
-            self.dismiss(False)
+            self.dismiss("back")
+        elif event.button.id == "new_spec":
+            self.dismiss("new_spec")
 
 
 class LoadingScreen(Screen[None]):
@@ -408,7 +418,7 @@ class CliUi(UiPort):
             f"{i}. [{s.identifier}] {s.description}"
             for i, s in enumerate(plan.steps, 1)
         )
-        return bool(self._run_screen(MessageScreen("Execution Plan", msg or "(no steps)", show_back=True)))
+        return self._run_screen(MessageScreen("Execution Plan", msg or "(no steps)", show_back=True)) == "continue"
 
     def show_tech_plan_editor(self, plan: TechnicalPlan) -> TechnicalPlan | None:
         result_text = self._run_screen(
@@ -487,7 +497,7 @@ class CliUi(UiPort):
             f"Specification: {context.specification.title}\n\n"
             f"Executing plan steps:\n{step_lines or '  (none)'}"
         )
-        return bool(self._run_screen(MessageScreen("Execution in Progress", msg, show_back=True)))
+        return self._run_screen(MessageScreen("Execution in Progress", msg, show_back=True)) == "continue"
 
     def request_approval(self, request: ApprovalRequest) -> ApprovalDecision:
         """Show approval request via split pane (finding 8.7 — has Reject button)."""
@@ -556,7 +566,7 @@ class CliUi(UiPort):
             pending = sum(1 for s in plan.steps if not s.completed)
             lines.append(f"\n{pending} step(s) still pending.")
 
-        return bool(self._run_screen(MessageScreen("Completion Review", "\n".join(lines), show_back=True)))
+        return self._run_screen(MessageScreen("Completion Review", "\n".join(lines), show_back=True)) == "continue"
 
     # ------------------------------------------------------------------
     # Repository & profile display screens (finding 8.6)
@@ -570,7 +580,7 @@ class CliUi(UiPort):
             f"Files ({len(repository_context.tree)}):\n{tree_lines or '  (empty)'}\n\n"
             f"Config files:\n{config_lines or '  (none)'}"
         )
-        return bool(self._run_screen(MessageScreen("Repository Analysis", msg, show_back=True)))
+        return self._run_screen(MessageScreen("Repository Analysis", msg, show_back=True)) == "continue"
 
     def show_repository_understanding(
         self, repository_context: RepositoryContext
@@ -580,7 +590,7 @@ class CliUi(UiPort):
             f"Total tracked paths: {len(repository_context.tree)}\n"
             f"Config/build files: {len(repository_context.config_files)}"
         )
-        return bool(self._run_screen(MessageScreen("Repository Understanding", msg, show_back=False)))
+        return self._run_screen(MessageScreen("Repository Understanding", msg, show_back=False)) == "continue"
 
     def show_engineering_profile(self, profile: EngineeringProfile) -> bool:
         if profile.rules:
@@ -594,15 +604,15 @@ class CliUi(UiPort):
             )
         else:
             msg = "No engineering conventions recorded yet."
-        return bool(self._run_screen(MessageScreen("Engineering Profile", msg, show_back=True)))
+        return self._run_screen(MessageScreen("Engineering Profile", msg, show_back=True)) == "continue"
 
-    def show_memory(self, events: tuple[MemoryEvent, ...]) -> bool:
+    def show_memory(self, events: tuple[MemoryEvent, ...]) -> str:
         if events:
             lines = [f"  [{e.timestamp or '—'}] {e.kind}" for e in events[:50]]
             msg = f"Recent memory events ({len(events)}):\n\n" + "\n".join(lines)
         else:
             msg = "No memory events recorded yet."
-        return bool(self._run_screen(MessageScreen("Memory Events", msg, show_back=True)))
+        return str(self._run_screen(MessageScreen("Memory Events", msg, show_back=True, show_new_spec=True)))
 
     def show_logs(self) -> bool:
         try:
@@ -656,7 +666,7 @@ class CliUi(UiPort):
                 msg = "No logs found."
         except Exception as e:
             msg = f"Error loading logs: {e}"
-        return bool(self._run_screen(MessageScreen("Audit Logs", msg, show_back=True)))
+        return self._run_screen(MessageScreen("Audit Logs", msg, show_back=True)) == "continue"
 
     def show_provider_config_screen(
         self, error_message: str | None = None, prefill: dict[str, str] | None = None

@@ -326,7 +326,15 @@ class RealCorgeApp(CorgeApp):
                     go_back = False
                     while True:
                         res_mem = ui.show_memory(bundle.scenario_memory)
-                        if res_mem is False:
+                        if res_mem == "new_spec":
+                            spec = None
+                            plan = None
+                            tech_plan = None
+                            proc_steps = ()
+                            controller.transition_to(LifecycleState.SPEC_ENTRY)
+                            go_back = True
+                            break
+                        elif res_mem == "back":
                             if step_idx > 0:
                                 step_idx -= 1
                                 prev_step = updated_steps[step_idx]
@@ -345,7 +353,7 @@ class RealCorgeApp(CorgeApp):
                         break
                     
                     if go_back:
-                        if controller.state == LifecycleState.PLAN_REVIEW:
+                        if controller.state in (LifecycleState.PLAN_REVIEW, LifecycleState.SPEC_ENTRY):
                             break
                         continue
 

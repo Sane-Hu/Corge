@@ -56,7 +56,15 @@ def test_message_screen_back_button() -> None:
     screen = MessageScreen("Title", "Message", show_back=True)
     screen.dismiss = MagicMock()
     screen.action_back()
-    screen.dismiss.assert_called_once_with(False)
+    screen.dismiss.assert_called_once_with("back")
+
+
+def test_message_screen_new_spec_button() -> None:
+    from corge.ui.cli import MessageScreen
+    screen = MessageScreen("Title", "Message", show_back=True, show_new_spec=True)
+    screen.dismiss = MagicMock()
+    screen.action_new_spec()
+    screen.dismiss.assert_called_once_with("new_spec")
 
 
 def test_canvas_screen_cancel_returns_none() -> None:
