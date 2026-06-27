@@ -99,3 +99,22 @@ def test_update_config_toml_merges_existing_config(tmp_path: Path) -> None:
     assert data["max_tokens"] == 2048
     assert data["enable_prefix_caching"] is False
     assert data["extra_headers"] == {"X-Test": "value"}
+
+
+def test_update_config_toml_creates_parent_directory(tmp_path: Path) -> None:
+    """_update_config_toml creates the parent directory (e.g. .agents) if it does not exist."""
+    config_dir = tmp_path / ".agents"
+    config_file = config_dir / "CorgeAPIConfig.toml"
+    assert not config_dir.exists()
+
+    app = RealCorgeApp(target_repo=tmp_path, config_path=config_file, global_dir=tmp_path)
+    new_cfg = {
+        "model": "test-model",
+        "api_key": "test-key",
+        "base_url": "https://api.test.com",
+    }
+    app._update_config_toml(new_cfg)
+
+    assert config_dir.exists()
+    assert config_file.exists()
+

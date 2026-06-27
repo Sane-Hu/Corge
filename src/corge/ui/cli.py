@@ -349,15 +349,22 @@ class DirectorySelectorApp(App[Path]):
             else:
                 target_path = cursor_path.parent
 
-        global_dir = Path.home() / ".config" / "corge"
-        global_dir.mkdir(parents=True, exist_ok=True)
-        config_path = target_path / "CorgeAPIConfig.toml"
+        # Config resolution order:
+        # 1. target_path / ".agents" / "CorgeAPIConfig.toml"
+        # 2. target_path / "agents" / "CorgeAPIConfig.toml"
+        # 3. target_path / "CorgeAPIConfig.toml"
+        # 4. target_path / ".agent" / "CorgeAPIConfig.toml"
+        # Defaults to target_path / ".agents" / "CorgeAPIConfig.toml"
+        config_path = target_path / ".agents" / "CorgeAPIConfig.toml"
         if not config_path.exists():
-            fallback_path = target_path / ".agent" / "CorgeAPIConfig.toml"
-            if fallback_path.exists():
-                config_path = fallback_path
-            else:
-                config_path = global_dir / "CorgeAPIConfig.toml"
+            for path in [
+                target_path / "agents" / "CorgeAPIConfig.toml",
+                target_path / "CorgeAPIConfig.toml",
+                target_path / ".agent" / "CorgeAPIConfig.toml",
+            ]:
+                if path.exists():
+                    config_path = path
+                    break
 
         prefill = {}
         import tomllib
@@ -444,6 +451,7 @@ class DirectorySelectorApp(App[Path]):
                 for hk, hv in extra_headers.items():
                     lines.append(f'{hk} = "{hv}"')
 
+            config_path.parent.mkdir(parents=True, exist_ok=True)
             config_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
             self.query_one(CorgeDirectoryTree).focus()
 

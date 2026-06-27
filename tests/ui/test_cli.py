@@ -217,5 +217,61 @@ def test_show_question_prefill_numbered_list() -> None:
     assert captured_screen._right_text == "1. <Enter answer here>\n2. <Enter answer here>\n3. <Enter answer here>"
 
 
+def test_directory_selector_configure_api_resolution_order(tmp_path: Path) -> None:
+    """Verifies that action_configure_api resolves config paths in the correct priority order."""
+    app = DirectorySelectorApp()
+
+    # Mock tree
+    tree_mock = MagicMock()
+    tree_mock.path = str(tmp_path)
+    tree_mock.cursor_node = None
+    app.query_one = MagicMock(return_value=tree_mock)
+
+    # 1. No configuration files exist -> should default to target_path / ".agents" / "CorgeAPIConfig.toml"
+    pushed_screen = None
+    def mock_push_screen(screen, callback=None):
+        nonlocal pushed_screen
+        pushed_screen = screen
+    app.push_screen = mock_push_screen
+
+    app.action_configure_api()
+    assert pushed_screen.config_path == tmp_path / ".agents" / "CorgeAPIConfig.toml"
+
+    # 2. Only target_path / ".agent" / "CorgeAPIConfig.toml" exists
+    agent_dir = tmp_path / ".agent"
+    agent_dir.mkdir()
+    legacy_agent_config = agent_dir / "CorgeAPIConfig.toml"
+    legacy_agent_config.touch()
+    
+    app.action_configure_api()
+    assert pushed_screen.config_path == legacy_agent_config
+
+    # 3. Target_path / "CorgeAPIConfig.toml" exists (should override .agent)
+    root_config = tmp_path / "CorgeAPIConfig.toml"
+    root_config.touch()
+
+    app.action_configure_api()
+    assert pushed_screen.config_path == root_config
+
+    # 4. Target_path / "agents" / "CorgeAPIConfig.toml" exists (should override root config)
+    agents_dir = tmp_path / "agents"
+    agents_dir.mkdir()
+    agents_config = agents_dir / "CorgeAPIConfig.toml"
+    agents_config.touch()
+
+    app.action_configure_api()
+    assert pushed_screen.config_path == agents_config
+
+    # 5. Target_path / ".agents" / "CorgeAPIConfig.toml" exists (should override agents)
+    dot_agents_dir = tmp_path / ".agents"
+    dot_agents_dir.mkdir()
+    dot_agents_config = dot_agents_dir / "CorgeAPIConfig.toml"
+    dot_agents_config.touch()
+
+    app.action_configure_api()
+    assert pushed_screen.config_path == dot_agents_config
+
+
+
 
 
