@@ -201,9 +201,19 @@ class DirectorySelectorApp(App[Path]):
     CSS = """
     .title { padding: 1; background: $boost; }
     .hidden { display: none; }
+    #action_buttons {
+        layout: horizontal;
+        height: auto;
+        margin: 0;
+        padding: 0;
+    }
     #select_btn {
-        margin: 1 2;
-        width: 100%;
+        margin: 1 1 1 2;
+        width: 1fr;
+    }
+    #api_btn {
+        margin: 1 2 1 1;
+        width: 1fr;
     }
     """
 
@@ -215,6 +225,7 @@ class DirectorySelectorApp(App[Path]):
         ("c", "create_dir", "Create Dir"),
         ("m", "manual_path", "Manual Path"),
         ("h", "toggle_hidden", "Toggle Hidden"),
+        ("a", "configure_api", "Configure API"),
     ]
 
     _input_mode: str | None = None
@@ -229,7 +240,9 @@ class DirectorySelectorApp(App[Path]):
         inp.styles.display = "none"
         yield inp
         yield CorgeDirectoryTree(str(Path.cwd()))
-        yield Button("Select Highlighted Directory (s)", id="select_btn", variant="success")
+        with Horizontal(id="action_buttons"):
+            yield Button("Select Highlighted Directory (s)", id="select_btn", variant="success")
+            yield Button("Configure API (a)", id="api_btn", variant="primary")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -267,6 +280,106 @@ class DirectorySelectorApp(App[Path]):
     @on(Button.Pressed, "#select_btn")
     def handle_select_btn(self) -> None:
         self.action_select_current()
+
+    @on(Button.Pressed, "#api_btn")
+    def handle_api_btn(self) -> None:
+        self.action_configure_api()
+
+    def action_configure_api(self) -> None:
+        tree = self.query_one(CorgeDirectoryTree)
+        target_path = Path(tree.path).resolve()
+        if tree.cursor_node and tree.cursor_node.data:
+            cursor_path = Path(tree.cursor_node.data.path).resolve()
+            if cursor_path.is_dir():
+                target_path = cursor_path
+            else:
+                target_path = cursor_path.parent
+
+        global_dir = Path.home() / ".config" / "corge"
+        global_dir.mkdir(parents=True, exist_ok=True)
+        config_path = target_path / "CorgeAPIConfig.toml"
+        if not config_path.exists():
+            fallback_path = target_path / ".agent" / "CorgeAPIConfig.toml"
+            if fallback_path.exists():
+                config_path = fallback_path
+            else:
+                config_path = global_dir / "CorgeAPIConfig.toml"
+
+        prefill = {}
+        import tomllib
+        if config_path.exists():
+            try:
+                with open(config_path, "rb") as f:
+                    prefill = tomllib.load(f)
+            except Exception:
+                pass
+
+        if prefill.get("api_key") == "your-api-key-here":
+            prefill["api_key"] = ""
+
+        def on_save(new_cfg: dict[str, str] | None) -> None:
+            if not new_cfg:
+                return
+
+            existing = {}
+            if config_path.exists():
+                try:
+                    with open(config_path, "rb") as f:
+                        existing = tomllib.load(f)
+                except Exception:
+                    pass
+            else:
+                # Prefill from config.toml.example
+                template_path = (
+                    Path(__file__).resolve().parent.parent.parent / "config.toml.example"
+                )
+                if not template_path.exists():
+                    template_path = Path("config.toml.example")
+                if template_path.exists():
+                    try:
+                        with open(template_path, "rb") as f:
+                            existing = tomllib.load(f)
+                    except Exception:
+                        pass
+
+            existing["model"] = new_cfg["model"]
+            existing["api_key"] = new_cfg["api_key"]
+            existing["base_url"] = new_cfg.get("base_url", "")
+
+            # Make sure standard defaults exist if missing
+            if "max_tokens" not in existing:
+                existing["max_tokens"] = 4096
+            if "keep_alive" not in existing:
+                existing["keep_alive"] = "-1"
+            if "timeout" not in existing:
+                existing["timeout"] = 120.0
+            if "enable_prefix_caching" not in existing:
+                existing["enable_prefix_caching"] = True
+
+            # Custom flat-dictionary to TOML serializer
+            lines = ["# Corge LLM Provider Configuration"]
+            extra_headers = {}
+            for k, v in existing.items():
+                if k == "extra_headers":
+                    extra_headers = v
+                    continue
+                if v is None:
+                    continue
+                if isinstance(v, bool):
+                    lines.append(f"{k} = {str(v).lower()}")
+                elif isinstance(v, (int, float)):
+                    lines.append(f"{k} = {v}")
+                else:
+                    lines.append(f'{k} = "{v}"')
+
+            if extra_headers:
+                lines.append("\n[extra_headers]")
+                for hk, hv in extra_headers.items():
+                    lines.append(f'{hk} = "{hv}"')
+
+            config_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+        self.push_screen(ProviderConfigScreen(prefill=prefill), on_save)
 
     def action_create_dir(self) -> None:
         inp = self.query_one("#action_input", Input)
