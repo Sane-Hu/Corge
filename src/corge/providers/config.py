@@ -63,6 +63,7 @@ class ProviderConfig:
     keep_alive: str = "-1"
     timeout: float = 120.0
     extra_headers: dict[str, str] = field(default_factory=dict)
+    max_socratic_questions: int = 3
 
     @classmethod
     def from_toml(cls, toml_text: str) -> ProviderConfig:

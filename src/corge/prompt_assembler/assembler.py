@@ -41,10 +41,10 @@ class PromptAssembler:
         """Assemble the objective/constraint-based prompt for the Specification phase."""
         context = self._enforce_budget(context)
         sections = [
-            f"<objective>\n{instruction}\n</objective>",
+            self._render_schema(context),
             self._render_engineering_profile(context),
             self._render_repository_facts(context),
-            self._render_schema(context),
+            f"<objective>\n{instruction}\n</objective>",
         ]
         return "\n\n".join(filter(bool, sections))
 
@@ -52,12 +52,12 @@ class PromptAssembler:
         """Assemble the objective/constraint-based prompt for the Planning phase."""
         context = self._enforce_budget(context)
         sections = [
-            f"<objective>\n{instruction}\n</objective>",
-            self._render_specification(context),
+            self._render_schema(context),
             self._render_engineering_profile(context),
             self._render_repository_facts(context),
+            self._render_specification(context),
             self._render_relevant_files(context),
-            self._render_schema(context),
+            f"<objective>\n{instruction}\n</objective>",
         ]
         return "\n\n".join(filter(bool, sections))
 
@@ -69,10 +69,8 @@ class PromptAssembler:
         step_desc = step.description if step else "Execute step"
         step_id = step.identifier if step else "unknown"
         
-        instruction = (
-            "You are a coding agent executing a precise implementation plan.\n"
-            f"Current step: {step_desc}\n"
-            f"Step identifier: {step_id}\n\n"
+        static_instruction = (
+            "You are a coding agent executing a precise implementation plan.\n\n"
             "Determine the next tool action required. Respond with a JSON block:\n"
             "```json\n"
             "{\n"
@@ -99,14 +97,20 @@ class PromptAssembler:
             "- For READ, request all needed files at once.\n"
             "- Set 'done': true when the step is complete."
         )
+        
+        dynamic_step = (
+            f"Current step: {step_desc}\n"
+            f"Step identifier: {step_id}"
+        )
 
         sections = [
-            f"<objective>\n{instruction}\n</objective>",
-            self._render_specification(context),
+            self._render_schema(context),
             self._render_engineering_profile(context),
             self._render_repository_facts(context),
+            self._render_specification(context),
             self._render_relevant_files(context),
-            self._render_schema(context),
+            f"<coding_instructions>\n{static_instruction}\n</coding_instructions>",
+            f"<current_step>\n{dynamic_step}\n</current_step>",
             self._render_scenario_memory(context),
             self._render_recent_activity(context),
             self._render_artifacts(context),

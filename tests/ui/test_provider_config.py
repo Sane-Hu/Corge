@@ -13,12 +13,20 @@ def test_provider_config_screen_init() -> None:
     """ProviderConfigScreen should initialize fields correctly."""
     screen = ProviderConfigScreen(
         error_message="Test connection error",
-        prefill={"model": "gpt-4o", "api_key": "sk-key", "base_url": "https://api.com"},
+        prefill={
+            "model": "gpt-4o",
+            "api_key": "sk-key",
+            "base_url": "https://api.com",
+            "reasoning_effort": "medium",
+            "max_socratic_questions": "5",
+        },
     )
     assert screen.error_message == "Test connection error"
     assert screen.prefill["model"] == "gpt-4o"
     assert screen.prefill["api_key"] == "sk-key"
     assert screen.prefill["base_url"] == "https://api.com"
+    assert screen.prefill["reasoning_effort"] == "medium"
+    assert screen.prefill["max_socratic_questions"] == "5"
 
 
 def test_update_config_toml_overwrites_correctly(tmp_path: Path) -> None:
@@ -31,6 +39,8 @@ def test_update_config_toml_overwrites_correctly(tmp_path: Path) -> None:
         "model": "deepseek-chat",
         "api_key": "sk-1234",
         "base_url": "https://api.deepseek.com/v1",
+        "reasoning_effort": "low",
+        "max_socratic_questions": "2",
     }
     app._update_config_toml(new_cfg)
 
@@ -42,6 +52,8 @@ def test_update_config_toml_overwrites_correctly(tmp_path: Path) -> None:
     assert data["model"] == "deepseek-chat"
     assert data["api_key"] == "sk-1234"
     assert data["base_url"] == "https://api.deepseek.com/v1"
+    assert data["reasoning_effort"] == "low"
+    assert data["max_socratic_questions"] == 2
     # defaults
     assert data["max_tokens"] == 4096
     assert data["keep_alive"] == "-1"
@@ -57,6 +69,8 @@ def test_update_config_toml_merges_existing_config(tmp_path: Path) -> None:
     api_key = "placeholder"
     max_tokens = 2048
     enable_prefix_caching = false
+    reasoning_effort = "medium"
+    max_socratic_questions = 4
     
     [extra_headers]
     X-Test = "value"
@@ -68,6 +82,8 @@ def test_update_config_toml_merges_existing_config(tmp_path: Path) -> None:
         "model": "new-model",
         "api_key": "new-key",
         "base_url": "https://api.new.com",
+        "reasoning_effort": "",
+        "max_socratic_questions": "3",
     }
     app._update_config_toml(new_cfg)
 
@@ -77,6 +93,8 @@ def test_update_config_toml_merges_existing_config(tmp_path: Path) -> None:
     assert data["model"] == "new-model"
     assert data["api_key"] == "new-key"
     assert data["base_url"] == "https://api.new.com"
+    assert "reasoning_effort" not in data
+    assert data["max_socratic_questions"] == 3
     # custom fields from initial config must be preserved
     assert data["max_tokens"] == 2048
     assert data["enable_prefix_caching"] is False

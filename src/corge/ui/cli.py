@@ -346,6 +346,18 @@ class DirectorySelectorApp(App[Path]):
             existing["api_key"] = new_cfg["api_key"]
             existing["base_url"] = new_cfg.get("base_url", "")
 
+            effort = new_cfg.get("reasoning_effort", "")
+            if effort:
+                existing["reasoning_effort"] = effort
+            elif "reasoning_effort" in existing:
+                del existing["reasoning_effort"]
+
+            questions = new_cfg.get("max_socratic_questions", "3")
+            try:
+                existing["max_socratic_questions"] = int(questions)
+            except (ValueError, TypeError):
+                existing["max_socratic_questions"] = 3
+
             # Make sure standard defaults exist if missing
             if "max_tokens" not in existing:
                 existing["max_tokens"] = 4096

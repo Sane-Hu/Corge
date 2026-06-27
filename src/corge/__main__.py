@@ -89,6 +89,8 @@ class RealCorgeApp(CorgeApp):
                         "model": prefill.get("model", ""),
                         "api_key": prefill.get("api_key", ""),
                         "base_url": prefill.get("base_url", ""),
+                        "reasoning_effort": prefill.get("reasoning_effort", ""),
+                        "max_socratic_questions": prefill.get("max_socratic_questions", 3),
                     },
                 )
                 if not new_cfg:
@@ -226,7 +228,7 @@ class RealCorgeApp(CorgeApp):
                 assert spec is not None
                 # Load configured max socratic questions
                 heuristics_cfg = controller.load_heuristic_config()
-                max_questions = heuristics_cfg.max_socratic_questions
+                max_questions = getattr(provider._config, "max_socratic_questions", heuristics_cfg.max_socratic_questions)
 
                 # Run the iterative and capped Socratic wizard loop
                 new_spec_body, gaps = controller.run_socratic_loop(
@@ -476,6 +478,18 @@ class RealCorgeApp(CorgeApp):
         existing["model"] = new_cfg["model"]
         existing["api_key"] = new_cfg["api_key"]
         existing["base_url"] = new_cfg.get("base_url", "")
+
+        effort = new_cfg.get("reasoning_effort", "")
+        if effort:
+            existing["reasoning_effort"] = effort
+        elif "reasoning_effort" in existing:
+            del existing["reasoning_effort"]
+
+        questions = new_cfg.get("max_socratic_questions", "3")
+        try:
+            existing["max_socratic_questions"] = int(questions)
+        except (ValueError, TypeError):
+            existing["max_socratic_questions"] = 3
 
         # Make sure standard defaults exist if missing
         if "max_tokens" not in existing:

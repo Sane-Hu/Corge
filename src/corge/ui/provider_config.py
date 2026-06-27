@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Footer, Header, Input, Label, Static
+from textual.widgets import Button, Footer, Header, Input, Label, Select, Static
 
 
 class ProviderConfigScreen(Screen[dict[str, str] | None]):
@@ -108,6 +110,45 @@ class ProviderConfigScreen(Screen[dict[str, str] | None]):
                     value=base_url_val,
                 )
 
+            with Vertical(classes="field-row"):
+                yield Label("Reasoning Effort:")
+                pref_val: Any = self.prefill.get("reasoning_effort")
+                if pref_val not in ("low", "medium", "high"):
+                    pref_val = Select.NULL
+                yield Select(
+                    options=[
+                        ("Omitted (Default)", Select.NULL),
+                        ("Low", "low"),
+                        ("Medium", "medium"),
+                        ("High", "high"),
+                    ],
+                    value=pref_val,
+                    id="reasoning_effort_select",
+                    allow_blank=False,
+                )
+
+            with Vertical(classes="field-row"):
+                yield Label("Max Socratic Questions:")
+                pref_q = self.prefill.get("max_socratic_questions", 3)
+                try:
+                    pref_q_int = int(pref_q)
+                except (ValueError, TypeError):
+                    pref_q_int = 3
+                if pref_q_int not in (1, 2, 3, 4, 5):
+                    pref_q_int = 3
+                yield Select(
+                    options=[
+                        ("1", 1),
+                        ("2", 2),
+                        ("3", 3),
+                        ("4", 4),
+                        ("5", 5),
+                    ],
+                    value=pref_q_int,
+                    id="max_socratic_questions_select",
+                    allow_blank=False,
+                )
+
             with Horizontal(classes="buttons"):
                 yield Button("Save & Connect", id="save_btn", variant="success")
                 yield Button("Exit", id="exit_btn", variant="error")
@@ -120,11 +161,23 @@ class ProviderConfigScreen(Screen[dict[str, str] | None]):
         model = self.query_one("#model_input", Input).value.strip()
         api_key = self.query_one("#api_key_input", Input).value.strip()
         base_url = self.query_one("#base_url_input", Input).value.strip()
+        
+        effort_widget = self.query_one("#reasoning_effort_select", Select)
+        effort_val = effort_widget.value
+        reasoning_effort = ""
+        if effort_val is not None and effort_val is not Select.NULL:
+            reasoning_effort = str(effort_val)
+            
+        questions_widget = self.query_one("#max_socratic_questions_select", Select)
+        max_socratic_questions = str(questions_widget.value) if questions_widget.value is not Select.NULL else "3"
+
         self.dismiss(
             {
                 "model": model,
                 "api_key": api_key,
                 "base_url": base_url,
+                "reasoning_effort": reasoning_effort,
+                "max_socratic_questions": max_socratic_questions,
             }
         )
 
@@ -136,11 +189,23 @@ class ProviderConfigScreen(Screen[dict[str, str] | None]):
             model = self.query_one("#model_input", Input).value.strip()
             api_key = self.query_one("#api_key_input", Input).value.strip()
             base_url = self.query_one("#base_url_input", Input).value.strip()
+            
+            effort_widget = self.query_one("#reasoning_effort_select", Select)
+            effort_val = effort_widget.value
+            reasoning_effort = ""
+            if effort_val is not None and effort_val is not Select.NULL:
+                reasoning_effort = str(effort_val)
+                
+            questions_widget = self.query_one("#max_socratic_questions_select", Select)
+            max_socratic_questions = str(questions_widget.value) if questions_widget.value is not Select.NULL else "3"
+
             self.dismiss(
                 {
                     "model": model,
                     "api_key": api_key,
                     "base_url": base_url,
+                    "reasoning_effort": reasoning_effort,
+                    "max_socratic_questions": max_socratic_questions,
                 }
             )
         elif event.button.id == "exit_btn":
