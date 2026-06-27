@@ -192,7 +192,7 @@ To maintain the modular monolith, cross-communication is heavily restricted. Eac
 - **Role**: Gathering and optimizing context data to ensure LLM interactions are precise and under token limits.
 - **Components**: 
   - `Context Service`: retrieves relevant context for each agent when needed, from the: repo knowledge base, user profiles, user inputs and memory pyramid, enforcing context-layer isolation and applying context-chaining policies. 
-  - `Prompt Assembler`: gathers context inputs for the current step, selects the appropriate `schema` for the current phase, and uses `schema tailoring` to generate framework-aware prompts. 
+  - `Prompt Assembler`: gathers context inputs for the current step, selects the appropriate `schema` for the current phase, and uses `schema tailoring` to generate framework-aware prompts. The assembler's templates are structured to place static components (schemas, specification, facts) at the beginning of the prompt to maximize LLM prompt/prefix caching.
   - `Budget Manager`: aggressively clips, deduplicates, and condenses context inputs to fit strict context windows when needed.
 
 ### 4. Knowledge & Persistence Modules (Blue)

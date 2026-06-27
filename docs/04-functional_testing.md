@@ -216,7 +216,7 @@ No manual input is required in this sub-state.
 
 #### 4.2.a Socratic Spec Wizard Clarifying Questions (Opt-in)
 
-If the concretization agent identifies semantic gaps in the specification draft, a `ConfirmScreen` dialog will ask: "Would you like to run the Socratic Spec Wizard to answer clarifying questions for the top N gaps?" (where N is capped by `max_socratic_questions` in `HeuristicConfig`, default 3, to prevent cognitive overload).
+If the concretization agent identifies semantic gaps in the specification draft, a `ConfirmScreen` dialog will ask: "Would you like to run the Socratic Spec Wizard to answer clarifying questions for the top N gaps?" (where N is capped by `max_socratic_questions` in the API config override or `HeuristicConfig`, default 3, to prevent cognitive overload).
 
 **Functional checks**:
 - Selecting **No** (Opt-out) immediately bypasses Socratic questions and proceeds directly to the manual split-editor `InteractiveDiffScreen` (Phase 4.3).
