@@ -68,8 +68,9 @@ def test_message_screen_new_spec_button() -> None:
 
 
 def test_message_screen_copy_button() -> None:
-    from corge.ui.cli import MessageScreen
     from textual._context import active_app
+
+    from corge.ui.cli import MessageScreen
     
     screen = MessageScreen("Title", "Message text to copy", show_back=True)
     mock_app = MagicMock()
@@ -84,8 +85,8 @@ def test_message_screen_copy_button() -> None:
 
 
 def test_show_repository_understanding_has_back_button() -> None:
-    from corge.ui.cli import CliUi
     from corge.contracts import RepositoryContext
+    from corge.ui.cli import CliUi
     app_mock = MagicMock()
     ui = CliUi(app_mock)
     
@@ -106,8 +107,9 @@ def test_show_repository_understanding_has_back_button() -> None:
 
 
 def test_interactive_diff_screen_copy_proposed() -> None:
-    from corge.ui.interactive_diff import InteractiveDiffScreen
     from textual._context import active_app
+
+    from corge.ui.interactive_diff import InteractiveDiffScreen
     
     screen = InteractiveDiffScreen(
         left_title="Left",

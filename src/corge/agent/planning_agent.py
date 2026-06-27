@@ -46,7 +46,11 @@ class PlanningAgent:
             "Create an architectural blueprint for the specification provided in the context.\n"
             "Focus STRICTLY on system architecture, database schema changes, "
             "and API contracts. Ensure you respect the engineering profile and repository facts.\n"
-            "Do NOT provide procedural steps or bash scripts here."
+            "Do NOT provide procedural steps or bash scripts here.\n\n"
+            "Design Rules for Cost & Time Efficiency:\n"
+            "1. YAGNI: Design the simplest, most direct architecture that satisfies requirements. Avoid speculative abstractions.\n"
+            "2. Locality: Keep changes localized to the fewest files possible to minimize execution complexity and edit iterations.\n"
+            "3. Reuse: Reuse existing utilities, dependencies, and code patterns instead of introducing new ones."
         )
 
         ctx_bundle = self._context_service.refresh_context(
@@ -74,12 +78,18 @@ class PlanningAgent:
             "Break down the technical plan below into strict procedural steps.\n"
             "Each step must be an actionable, sequential chunk of work aligned with repository facts.\n"
             "Output each step on a new line starting with STEP: \n\n"
+            "Planning Rules for Cost & Time Efficiency:\n"
+            "1. Grouping: Group related file changes into a single logical step to minimize agent transition overhead.\n"
+            "2. Linearity: Order steps logically to avoid reading or editing the same file multiple times across different steps.\n"
+            "3. Conciseness: Keep the total number of steps minimal (aim for 3-7 steps). Fewer steps mean faster execution.\n\n"
             f"Plan:\n{technical_plan.content}"
         )
 
         ctx_bundle = self._context_service.refresh_context(
             RepositoryContext(root=Path(".")), technical_plan
         )
+        if self._controller and self._controller.specification:
+            ctx_bundle = replace(ctx_bundle, specification=self._controller.specification)
         prompt = self._prompt_assembler.assemble_plan_prompt(ctx_bundle, instruction)
         msg = ProviderMessage(role="user", content=prompt)
         response = self._provider.chat((msg,), on_token=on_token)

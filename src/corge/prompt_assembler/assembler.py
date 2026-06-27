@@ -92,10 +92,13 @@ class PromptAssembler:
             "```\n"
             "Rules:\n"
             "- 'content' is required for WRITE.\n"
-            "- 'old' and 'new' are required for EDIT. "
-            "'old' must be unique in the file.\n"
+            "- 'old' and 'new' are required for EDIT. 'old' must be unique in the file.\n"
             "- For BASH, 'target' is the command string.\n"
-            "- For READ, request all needed files at once.\n"
+            "- Tool Selection Guidelines: Prefer EDIT over WRITE for modifying existing files. Only use WRITE to create new files or completely rewrite small files. This minimizes token consumption and output latency.\n"
+            "- Deduplication/Batching: Request all needed files at once in a single READ action to minimize turn count.\n"
+            "- Testing/Verification: Run verification tests (e.g. pytest or compile checks) immediately after editing/writing code, before completing the step.\n"
+            "- Bash Safety: Ensure that bash commands you run return exit code 0. Running commands that return non-zero exit codes will trigger a ToolExecutionError and halt execution.\n"
+            "- JSON Formatting: Respond strictly with the JSON block. Do not include verbose explanations or text outside the json block.\n"
             "- Set 'done': true when the step is complete."
         )
         
@@ -139,12 +142,12 @@ class PromptAssembler:
         lines = [
             "<specification>",
             f"Title: {spec.title}",
-            f"Goal: {spec.body}",
+            f"Requirements & User Stories:\n{spec.body}",
         ]
         if spec.constraints:
-            lines.append(f"Constraints: {spec.constraints}")
+            lines.append(f"Constraints:\n{spec.constraints}")
         if spec.testing_expectations:
-            lines.append(f"Testing Expectations: {spec.testing_expectations}")
+            lines.append(f"Testing Expectations:\n{spec.testing_expectations}")
         if spec.acceptance_criteria.items:
             lines.append("Acceptance Criteria:")
             for item in spec.acceptance_criteria.items:

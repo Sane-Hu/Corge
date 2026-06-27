@@ -192,3 +192,10 @@ def test_collect_context_delegates() -> None:
     spec = _make_spec()
     bundle = assembler.collect_context(step, spec)
     assert bundle is not None
+
+
+def test_render_specification_requirements_and_user_stories() -> None:
+    assembler = _make_assembler()
+    bundle = _make_bundle()
+    prompt = assembler.assemble_coding_prompt(bundle)
+    assert "Requirements & User Stories:\nImplement POST /login with JWT response." in prompt

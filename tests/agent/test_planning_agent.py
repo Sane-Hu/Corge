@@ -86,3 +86,28 @@ def test_draft_procedural_steps_fallback():
     assert len(steps) == 1
     assert steps[0].identifier == "step-1"
     assert steps[0].description == "Execute technical plan"
+
+
+def test_draft_procedural_steps_injects_specification():
+    mock_provider = Mock(spec=ProviderPort)
+    mock_provider.chat.return_value = ChatResponse(content="STEP: Test", usage={})
+    mock_ctx = Mock(spec=ContextPort)
+    
+    dummy_bundle = _mock_context()
+    mock_ctx.refresh_context.return_value = dummy_bundle
+    
+    mock_pa = Mock(spec=PromptAssemblerPort)
+    from corge.contracts import MasterPhase
+    mock_controller = Mock()
+    mock_controller.phase = MasterPhase.PLANNING
+    mock_controller.specification = dummy_bundle.specification
+    
+    agent = PlanningAgent(mock_provider, mock_ctx, mock_pa, controller=mock_controller)
+    agent.generate_procedural_steps(_mock_technical_plan())
+    
+    # Verify mock_ctx.refresh_context was called
+    mock_ctx.refresh_context.assert_called_once()
+    # And mock_pa.assemble_plan_prompt was called with context containing specification
+    mock_pa.assemble_plan_prompt.assert_called_once()
+    context_passed = mock_pa.assemble_plan_prompt.call_args[0][0]
+    assert context_passed.specification == dummy_bundle.specification

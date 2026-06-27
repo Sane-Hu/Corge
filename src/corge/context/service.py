@@ -21,6 +21,7 @@ from pathlib import Path
 from corge.contracts import (
     AcceptanceCriteria,
     ContextBundle,
+    EngineeringProfile,
     GraphQuery,
     KnowledgeGraphPort,
     MarkovStepContext,
@@ -79,9 +80,9 @@ class ContextService:
         self._recent_actions: list[str] = []
 
         # Context query caching (N-1 caching)
-        self._cached_profile = None
-        self._cached_facts = None
-        self._cached_files = None
+        self._cached_profile: EngineeringProfile | None = None
+        self._cached_facts: tuple[str, ...] | None = None
+        self._cached_files: tuple[str, ...] | None = None
 
     def clear_cache(self) -> None:
         """Clear query cache."""
@@ -199,7 +200,7 @@ class ContextService:
             if self._cached_files is None:
                 try:
                     result = self._kg.query_graph(GraphQuery(expression="files"))
-                    self._cached_files = tuple(n.node_id for n in result.nodes[:50])
+                    self._cached_files = tuple(sorted(n.node_id for n in result.nodes[:50]))
                 except (RuntimeError, sqlite3.OperationalError, ValueError) as exc:
                     _log.warning("KG query failed during context assembly: %s", exc)
                     self._cached_files = ()

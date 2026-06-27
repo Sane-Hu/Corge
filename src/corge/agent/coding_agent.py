@@ -277,15 +277,49 @@ class CodingAgent:
         if context.markov_context:
             trajectory = context.markov_context.compressed_trajectory
 
+        # Render specification and technical plan
+        spec_text = ""
+        if context.specification:
+            spec_items = []
+            if context.specification.title:
+                spec_items.append(f"Title: {context.specification.title}")
+            if context.specification.body:
+                spec_items.append(f"Requirements: {context.specification.body}")
+            spec_text = "\n".join(spec_items)
+
+        plan_text = ""
+        if plan:
+            if hasattr(plan, "steps"):
+                steps_info = []
+                for s in plan.steps:
+                    status = "Completed" if s.completed else "Pending"
+                    steps_info.append(f"- Step {s.identifier}: {s.description} ({status})")
+                plan_text = "\n".join(steps_info)
+            elif hasattr(plan, "identifier"):
+                status = "Completed" if getattr(plan, "completed", False) else "Pending"
+                plan_text = f"- Step {plan.identifier}: {getattr(plan, 'description', '')} ({status})"
+
+        tech_plan_text = ""
+        if context.technical_plan and context.technical_plan.content:
+            tech_plan_text = context.technical_plan.content
+
         prompt = (
-            "You are a completion verifier. Given the execution trajectory below,\n"
-            "determine whether ALL of the following acceptance criteria "
-            "are satisfied.\n"
-            'Return ONLY a JSON object: {"all_satisfied": true} or '
-            '{"all_satisfied": false}\n\n'
-            "Acceptance criteria:\n"
+            "You are a completion verifier. Evaluate whether all acceptance criteria "
+            "are satisfied based on the specification, planned steps, technical architecture, and the execution trajectory.\n\n"
+            "<specification>\n"
+            f"{spec_text}\n"
+            "</specification>\n\n"
+            "<technical_plan>\n"
+            f"{tech_plan_text}\n"
+            "</technical_plan>\n\n"
+            "<execution_plan_status>\n"
+            f"{plan_text}\n"
+            "</execution_plan_status>\n\n"
+            "Acceptance Criteria to Verify:\n"
             + "\n".join(f"- {c}" for c in criteria)
-            + f"\n\nExecution trajectory:\n{trajectory or '(no trajectory recorded)'}"
+            + f"\n\nExecution Trajectory (N-1 Markov history):\n{trajectory or '(no trajectory recorded)'}\n\n"
+            "Determine if ALL acceptance criteria are satisfied. "
+            "Respond ONLY with a JSON object: {\"all_satisfied\": true} or {\"all_satisfied\": false}."
         )
         msg = ProviderMessage(role="user", content=prompt)
         response = self._provider.chat((msg,), on_token=on_token)

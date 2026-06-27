@@ -234,8 +234,7 @@ class RealCorgeApp(CorgeApp):
                 new_spec_body, gaps = controller.run_socratic_loop(
                     spec.body, argumentation_log, ui, max_questions=max_questions
                 )
-                import dataclasses
-                spec = dataclasses.replace(spec, body=new_spec_body.body)
+                spec = new_spec_body
 
                 # Always show the manual refinement editor (Choice 1.2 Option A)
                 controller.advance_spec_state(SpecState.ARGUMENTATION_DIFF)

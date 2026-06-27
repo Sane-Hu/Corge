@@ -252,7 +252,7 @@ class CanvasScreen(Screen[str | None]):
             if isinstance(selected_item, BacklogItem):
                 self._delete_persistent_note(selected_item.note_dict)
         elif event.button.id == "clear-all-notes":
-            def confirm_callback(confirmed: bool) -> None:
+            def confirm_callback(confirmed: bool | None) -> None:
                 if confirmed:
                     self._save_persistent_notes([])
                     self._refresh_backlog_display()
@@ -315,7 +315,7 @@ class CanvasScreen(Screen[str | None]):
             item = event.item
             if isinstance(item, SearchResultItem):
                 node_tag = f"\n@node:{item.node_id} "
-                self._text_area.insert_text(node_tag)
+                self._text_area.insert(node_tag)
                 self._text_area.focus()
 
     # ------------------------------------------------------------------

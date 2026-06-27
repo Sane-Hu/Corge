@@ -136,7 +136,7 @@ def test_sync_nested_states_enters_argumentation_diff_when_gaps_present() -> Non
 
 
 def test_merge_templated_responses_resolves_gaps() -> None:
-    from corge.contracts import Specification, AcceptanceCriteria, SemanticGap
+    from corge.contracts import AcceptanceCriteria, SemanticGap, Specification
     controller = SessionController(
         provider=MagicMock(),
         tool_runtime=MagicMock(),

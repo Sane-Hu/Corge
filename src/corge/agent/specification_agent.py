@@ -14,7 +14,6 @@ import re
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-
 from typing import Any
 
 from corge.contracts import (
@@ -69,13 +68,16 @@ class SpecificationAgent:
 
         instruction = (
             "Extract the following structured fields from the raw "
-            "brainstorming text below. Ensure you respect the engineering profile and repository facts.\n"
+            "brainstorming text below. Ensure you respect the engineering profile.\n"
             "Return ONLY a JSON object with these exact keys:\n"
             '  "title": string — the main business goal (one sentence)\n'
             '  "body": string — narrative of user stories and functional requirements\n'
             '  "acceptance_criteria": list of strings — verifiable pass/fail criteria\n'
             '  "constraints": string — technical or business constraints\n'
             '  "testing_expectations": string — what tests are required\n\n'
+            "Guidelines for Speed & Cost Efficiency:\n"
+            "- Scope Minimization: Focus ONLY on the immediate user request. Do not extrapolate or add 'nice-to-have' requirements.\n"
+            "- Direct Acceptance Criteria: Keep acceptance criteria concise and highly testable.\n\n"
             "If a field cannot be determined from the text, use an empty "
             "string or empty list.\n\n"
             f"Brainstorming text:\n{canvas_text}"
@@ -129,8 +131,8 @@ class SpecificationAgent:
                 raise ValueError("SpecificationAgent operations are only allowed in SPECIFICATION phase.")
 
         instruction = (
-            "Analyze the following drafted specification for semantic gaps, "
-            "missing logic, or undefined edge cases. Apply rules from the engineering profile.\n"
+            "Analyze the following drafted specification for critical semantic gaps or missing logic "
+            "that would prevent basic implementation. Ignore minor edge cases, standard library features, or non-blocking details.\n"
             "Return ONLY a JSON array of objects with a 'topic' key.\n\n"
             f"Draft:\n{canvas_text}"
         )
@@ -409,7 +411,8 @@ class SpecificationAgent:
             f"The following specification has unresolved gaps:\n{topics}\n\n"
             f"Specification title: {spec.title}\n"
             f"Specification body: {spec.body[:500]}\n\n"
-            "Write a concise numbered list of clarifying questions to resolve these gaps.\n"
+            "Write a concise numbered list of clarifying questions to resolve these gaps. "
+            "Formulate the questions to be concrete and specific to the detected framework (if provided in <framework_schema>). "
             "Return ONLY the questions, no preamble."
         )
         ctx_bundle = self._context_service.load_context(
