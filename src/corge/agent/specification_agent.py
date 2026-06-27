@@ -68,7 +68,7 @@ class SpecificationAgent:
 
         instruction = (
             "Extract the following structured fields from the raw "
-            "brainstorming text below. Ensure you respect the engineering profile.\n"
+            "brainstorming text below. Ensure you respect the engineering profile and repository scope from <relevant_files>.\n"
             "Return ONLY a JSON object with these exact keys:\n"
             '  "title": string — the main business goal (one sentence)\n'
             '  "body": string — narrative of user stories and functional requirements\n'
@@ -89,10 +89,10 @@ class SpecificationAgent:
         msg = ProviderMessage(role="user", content=prompt)
         response = self._provider.chat((msg,), on_token=on_token)
 
-        match = re.search(r"\{.*\}", response.content, re.DOTALL)
-        if match:
+        start_idx = response.content.find("{")
+        if start_idx != -1:
             try:
-                data = json.loads(match.group(0))
+                data, _ = json.JSONDecoder().raw_decode(response.content[start_idx:])
                 criteria_items = tuple(
                     str(c) for c in data.get("acceptance_criteria", [])
                 )
@@ -132,7 +132,9 @@ class SpecificationAgent:
 
         instruction = (
             "Analyze the following drafted specification for critical semantic gaps or missing logic "
-            "that would prevent basic implementation. Ignore minor edge cases, standard library features, or non-blocking details.\n"
+            "that would prevent basic implementation within the current repository scope.\n"
+            "Review the existing architecture via <relevant_files> and <repository_facts> to ensure the draft integrates logically.\n"
+            "Ignore minor edge cases, standard library features, or non-blocking details.\n"
             "Return ONLY a JSON array of objects with a 'topic' key.\n\n"
             f"Draft:\n{canvas_text}"
         )
@@ -143,10 +145,10 @@ class SpecificationAgent:
         msg = ProviderMessage(role="user", content=prompt)
         response = self._provider.chat((msg,), on_token=on_token)
 
-        match = re.search(r"\[.*\]", response.content, re.DOTALL)
-        if match:
+        start_idx = response.content.find("[")
+        if start_idx != -1:
             try:
-                gaps = json.loads(match.group(0))
+                gaps, _ = json.JSONDecoder().raw_decode(response.content[start_idx:])
                 return tuple(
                     SemanticGap(topic=g["topic"])
                     for g in gaps
@@ -313,10 +315,10 @@ class SpecificationAgent:
         msg = ProviderMessage(role="user", content=prompt)
         response = self._provider.chat((msg,), on_token=on_token)
 
-        match = re.search(r"\{.*\}", response.content, re.DOTALL)
-        if match:
+        start_idx = response.content.find("{")
+        if start_idx != -1:
             try:
-                data = json.loads(match.group(0))
+                data, _ = json.JSONDecoder().raw_decode(response.content[start_idx:])
                 criteria_items = tuple(
                     str(c) for c in data.get("acceptance_criteria", [])
                 )
@@ -375,10 +377,10 @@ class SpecificationAgent:
         msg = ProviderMessage(role="user", content=prompt)
         response = self._provider.chat((msg,), on_token=on_token)
 
-        match = re.search(r"\{.*\}", response.content, re.DOTALL)
-        if match:
+        start_idx = response.content.find("{")
+        if start_idx != -1:
             try:
-                data = json.loads(match.group(0))
+                data, _ = json.JSONDecoder().raw_decode(response.content[start_idx:])
                 criteria_items = tuple(
                     str(c) for c in data.get("acceptance_criteria", [])
                 )

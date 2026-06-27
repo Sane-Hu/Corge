@@ -117,14 +117,28 @@ class CodingAgent:
             response = self._provider.chat((msg,), on_token=on_token)
 
             match = re.search(r"```(?:json)?\s*(.*?)\s*```", response.content, re.DOTALL)
-            json_text = match.group(1) if match else response.content
-
-            try:
-                data = json.loads(json_text)
-            except json.JSONDecodeError as exc:
-                raise ToolExecutionError(
-                    f"Malformed JSON in action block: {exc}\nResponse was:\n{response.content}"
-                ) from exc
+            if match:
+                json_text = match.group(1)
+                try:
+                    data = json.loads(json_text)
+                except json.JSONDecodeError as exc:
+                    raise ToolExecutionError(
+                        f"Malformed JSON in action block: {exc}\nResponse was:\n{response.content}"
+                    ) from exc
+            else:
+                start_idx = response.content.find("{")
+                if start_idx != -1:
+                    try:
+                        import json
+                        data, _ = json.JSONDecoder().raw_decode(response.content[start_idx:])
+                    except json.JSONDecodeError as exc:
+                        raise ToolExecutionError(
+                            f"Malformed JSON in action block: {exc}\nResponse was:\n{response.content}"
+                        ) from exc
+                else:
+                    raise ToolExecutionError(
+                        f"No JSON object found in response.\nResponse was:\n{response.content}"
+                    )
 
             actions = data.get("actions", [])
 
@@ -324,12 +338,12 @@ class CodingAgent:
         msg = ProviderMessage(role="user", content=prompt)
         response = self._provider.chat((msg,), on_token=on_token)
 
-        match = re.search(r"\{.*\}", response.content, re.DOTALL)
-        if match:
+        start_idx = response.content.find("{")
+        if start_idx != -1:
             try:
                 import json
 
-                data = json.loads(match.group(0))
+                data, _ = json.JSONDecoder().raw_decode(response.content[start_idx:])
                 return bool(data.get("all_satisfied", False))
             except json.JSONDecodeError as exc:
                 # Log JSON parsing error and return False to allow retry

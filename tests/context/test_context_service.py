@@ -121,9 +121,9 @@ def test_context_service_spec_isolation() -> None:
     repo_ctx = RepositoryContext(root=pathlib.Path("."))
 
     bundle = svc.load_context(repo_ctx)
-    # Repo facts must be empty during SPECIFICATION phase (3-Layer isolation)
-    assert len(bundle.engineering_facts) == 0
-    assert len(bundle.relevant_files) == 0
+    # Repo facts and files are now available during SPECIFICATION phase
+    assert len(bundle.engineering_facts) == 1
+    assert bundle.engineering_facts[0] == "secret_repo_fact"
 
 
 def test_context_service_argumentation_log(tmp_path: pathlib.Path) -> None:

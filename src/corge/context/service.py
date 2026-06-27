@@ -196,27 +196,25 @@ class ContextService:
 
         # Tier 2a — repo file list from KG
         relevant_files: tuple[str, ...] = ()
-        if phase != MasterPhase.SPECIFICATION:
-            if self._cached_files is None:
-                try:
-                    result = self._kg.query_graph(GraphQuery(expression="files"))
-                    self._cached_files = tuple(sorted(n.node_id for n in result.nodes[:50]))
-                except (RuntimeError, sqlite3.OperationalError, ValueError) as exc:
-                    _log.warning("KG query failed during context assembly: %s", exc)
-                    self._cached_files = ()
-            relevant_files = self._cached_files
+        if self._cached_files is None:
+            try:
+                result = self._kg.query_graph(GraphQuery(expression="files"))
+                self._cached_files = tuple(sorted(n.node_id for n in result.nodes[:50]))
+            except (RuntimeError, sqlite3.OperationalError, ValueError) as exc:
+                _log.warning("KG query failed during context assembly: %s", exc)
+                self._cached_files = ()
+        relevant_files = self._cached_files
 
-        # Tier 2 — repo conventions + local rules (only query if not in SPECIFICATION phase)
+        # Tier 2 — repo conventions + local rules
         engineering_facts: tuple[str, ...] = ()
-        if phase != MasterPhase.SPECIFICATION:
-            if self._cached_facts is None:
-                try:
-                    facts = self._memory.get_facts(limit=50)
-                    self._cached_facts = tuple(facts) if facts else ()
-                except (sqlite3.OperationalError, FileNotFoundError, OSError) as exc:
-                    _log.warning("Failed to load engineering facts: %s", exc)
-                    self._cached_facts = ()
-            engineering_facts = self._cached_facts
+        if self._cached_facts is None:
+            try:
+                facts = self._memory.get_facts(limit=50)
+                self._cached_facts = tuple(facts) if facts else ()
+            except (sqlite3.OperationalError, FileNotFoundError, OSError) as exc:
+                _log.warning("Failed to load engineering facts: %s", exc)
+                self._cached_facts = ()
+        engineering_facts = self._cached_facts
 
         # Argumentation entries (SPECIFICATION phase only)
         argumentation_entries: tuple[ArgumentationEntry, ...] = ()

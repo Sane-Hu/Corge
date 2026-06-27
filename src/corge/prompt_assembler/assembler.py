@@ -44,6 +44,8 @@ class PromptAssembler:
         sections = [
             self._render_schema(context),
             self._render_engineering_profile(context),
+            self._render_repository_facts(context),
+            self._render_relevant_files(context),
             self._render_argumentation_entries(context),
             f"<objective>\n{instruction}\n</objective>",
         ]

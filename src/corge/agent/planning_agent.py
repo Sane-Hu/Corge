@@ -46,6 +46,7 @@ class PlanningAgent:
             "Create an architectural blueprint for the specification provided in the context.\n"
             "Focus STRICTLY on system architecture, database schema changes, "
             "and API contracts. Ensure you respect the engineering profile and repository facts.\n"
+            "Analyze <relevant_files> to ensure your design integrates properly without duplicating existing modules.\n"
             "Do NOT provide procedural steps or bash scripts here.\n\n"
             "Design Rules for Cost & Time Efficiency:\n"
             "1. YAGNI: Design the simplest, most direct architecture that satisfies requirements. Avoid speculative abstractions.\n"
@@ -77,6 +78,7 @@ class PlanningAgent:
         instruction = (
             "Break down the technical plan below into strict procedural steps.\n"
             "Each step must be an actionable, sequential chunk of work aligned with repository facts.\n"
+            "Reference specific paths from <relevant_files> when proposing modifications.\n"
             "Output each step on a new line starting with STEP: \n\n"
             "Planning Rules for Cost & Time Efficiency:\n"
             "1. Grouping: Group related file changes into a single logical step to minimize agent transition overhead.\n"
