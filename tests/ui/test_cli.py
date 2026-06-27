@@ -50,3 +50,20 @@ def test_procedural_steps_editor_preserves_identifiers() -> None:
     assert result[2].identifier == "custom-id"
     assert result[2].description == "Step with spaces"
 
+
+def test_message_screen_back_button() -> None:
+    from corge.ui.cli import MessageScreen
+    screen = MessageScreen("Title", "Message", show_back=True)
+    screen.dismiss = MagicMock()
+    screen.action_back()
+    screen.dismiss.assert_called_once_with(False)
+
+
+def test_canvas_screen_cancel_returns_none() -> None:
+    from corge.ui.freestyle_canvas import CanvasScreen
+    canvas = CanvasScreen(validator=None)
+    canvas.dismiss = MagicMock()
+    canvas.action_cancel()
+    canvas.dismiss.assert_called_once_with(None)
+
+

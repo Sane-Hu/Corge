@@ -195,13 +195,31 @@ class RealCorgeApp(CorgeApp):
                         knowledge_graph.build_graph(bundle.repository_context)
                     finally:
                         ui.hide_loading()
-                ui.show_repository_understanding(bundle.repository_context)
-                ui.show_repository_analysis(bundle.repository_context)
-                ui.show_engineering_profile(bundle.engineering_profile)
+                
+                idx = 0
+                screens = [
+                    lambda: ui.show_repository_understanding(bundle.repository_context),
+                    lambda: ui.show_repository_analysis(bundle.repository_context),
+                    lambda: ui.show_engineering_profile(bundle.engineering_profile),
+                ]
+                while 0 <= idx < len(screens):
+                    res = screens[idx]()
+                    if res is False:
+                        idx -= 1
+                    else:
+                        idx += 1
+
+                if idx < 0:
+                    controller.transition_to(LifecycleState.REPOSITORY_SELECTION)
+                    continue
+
                 controller.advance()
 
             elif controller.state == LifecycleState.SPEC_ENTRY:
                 spec = ui.show_spec_wizard()
+                if spec is None:
+                    controller.transition_to(LifecycleState.REPOSITORY_ANALYSIS)
+                    continue
                 controller.advance()
 
             elif controller.state == LifecycleState.SPEC_VALIDATION:
@@ -242,14 +260,16 @@ class RealCorgeApp(CorgeApp):
 
             elif controller.state == LifecycleState.PLAN_GENERATION:
                 assert spec is not None
-                ui.show_loading("Generating technical plan...")
-                try:
-                    tech_plan = controller.generate_technical_plan(spec, on_token=ui.stream_token)
-                finally:
-                    ui.hide_loading()
+                if tech_plan is None:
+                    ui.show_loading("Generating technical plan...")
+                    try:
+                        tech_plan = controller.generate_technical_plan(spec, on_token=ui.stream_token)
+                    finally:
+                        ui.hide_loading()
                 
                 new_tech_plan = ui.show_tech_plan_editor(tech_plan)
                 if new_tech_plan is None:
+                    tech_plan = None
                     controller.transition_to(LifecycleState.SPEC_VALIDATION)
                     continue
                 tech_plan = new_tech_plan
@@ -258,14 +278,16 @@ class RealCorgeApp(CorgeApp):
             elif controller.state == LifecycleState.PLAN_REVIEW:
                 assert tech_plan is not None
                 assert spec is not None
-                ui.show_loading("Generating procedural steps...")
-                try:
-                    proc_steps = controller.generate_procedural_steps(tech_plan, on_token=ui.stream_token)
-                finally:
-                    ui.hide_loading()
+                if not proc_steps:
+                    ui.show_loading("Generating procedural steps...")
+                    try:
+                        proc_steps = controller.generate_procedural_steps(tech_plan, on_token=ui.stream_token)
+                    finally:
+                        ui.hide_loading()
                 
                 new_proc_steps = ui.show_procedural_steps_editor(proc_steps)
                 if new_proc_steps is None:
+                    proc_steps = ()
                     controller.transition_to(LifecycleState.PLAN_GENERATION)
                     continue
                 proc_steps = new_proc_steps
@@ -277,7 +299,9 @@ class RealCorgeApp(CorgeApp):
                     ),
                     specification_ref=spec.title,
                 )
-                ui.show_plan(plan)
+                res_plan = ui.show_plan(plan)
+                if res_plan is False:
+                    continue
                 controller.set_approved_plan(plan)
                 controller.advance()
 
@@ -298,8 +322,33 @@ class RealCorgeApp(CorgeApp):
                         step_idx += 1
                         continue
                     bundle = controller.collect_context(step, spec)
-                    ui.show_memory(bundle.scenario_memory)
-                    ui.show_execution(bundle)
+                    
+                    go_back = False
+                    while True:
+                        res_mem = ui.show_memory(bundle.scenario_memory)
+                        if res_mem is False:
+                            if step_idx > 0:
+                                step_idx -= 1
+                                prev_step = updated_steps[step_idx]
+                                updated_steps[step_idx] = dataclasses.replace(prev_step, completed=False)
+                                plan = dataclasses.replace(plan, steps=tuple(updated_steps))
+                                go_back = True
+                                break
+                            else:
+                                controller.transition_to(LifecycleState.PLAN_REVIEW)
+                                go_back = True
+                                break
+                        
+                        res_exec = ui.show_execution(bundle)
+                        if res_exec is False:
+                            continue
+                        break
+                    
+                    if go_back:
+                        if controller.state == LifecycleState.PLAN_REVIEW:
+                            break
+                        continue
+
                     ui.show_loading(f"Executing step: {step.identifier}...")
                     from datetime import datetime
 
@@ -334,8 +383,11 @@ class RealCorgeApp(CorgeApp):
                         if type(ui._app.screen).__name__ == "LoadingScreen":
                             ui.hide_loading()
 
-                plan = dataclasses.replace(plan, steps=tuple(updated_steps))
-                controller.advance()
+                if controller.state == LifecycleState.EXECUTION:
+                    plan = dataclasses.replace(plan, steps=tuple(updated_steps))
+                    controller.advance()
+                else:
+                    continue
 
             elif controller.state == LifecycleState.VERIFICATION:
                 assert plan is not None
@@ -368,9 +420,16 @@ class RealCorgeApp(CorgeApp):
 
             elif controller.state == LifecycleState.COMPLETION_REVIEW:
                 assert plan is not None
-                ui.show_completion_review(plan)
-                ui.show_logs()
-                controller.advance()
+                while True:
+                    res_review = ui.show_completion_review(plan)
+                    if res_review is False:
+                        controller.transition_to(LifecycleState.VERIFICATION)
+                        break
+                    res_logs = ui.show_logs()
+                    if res_logs is False:
+                        continue
+                    controller.advance()
+                    break
 
             else:
                 break

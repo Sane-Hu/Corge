@@ -15,7 +15,7 @@ from typing import Any
 
 from textual import on
 from textual.app import App, ComposeResult
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import (
     Button,
@@ -51,39 +51,62 @@ from corge.ui.interactive_diff import InteractiveDiffScreen
 from corge.ui.provider_config import ProviderConfigScreen
 
 
-class MessageScreen(Screen[None]):
+class MessageScreen(Screen[bool]):
     """Generic read-only dialog (spec §5 item 3 — MessageScreen).
 
     Used for: execution plan view, errors, completion review.
     """
 
     BINDINGS = [
-        ("escape", "continue", "Continue"),
         ("enter", "continue", "Continue"),
     ]
 
-    def __init__(self, title: str, message: str) -> None:
+    CSS = """
+    .footer-buttons {
+        height: auto;
+        align: center middle;
+        margin-top: 1;
+    }
+    .footer-buttons Button {
+        margin: 0 2;
+    }
+    """
+
+    def __init__(self, title: str, message: str, show_back: bool = False) -> None:
         super().__init__()
         self._title = title
         self._message = message
+        self._show_back = show_back
 
     def compose(self) -> ComposeResult:
         yield Header()
         with Vertical():
             yield Static(self._title, classes="title")
             yield TextArea(self._message, read_only=True)
-            yield Button("Continue", id="continue", variant="primary")
+            with Horizontal(classes="footer-buttons"):
+                if self._show_back:
+                    yield Button("Back", id="back", variant="error")
+                yield Button("Continue", id="continue", variant="primary")
         yield Footer()
 
     def on_mount(self) -> None:
+        if self._show_back:
+            self.bind("escape", "back", "Back")
+        else:
+            self.bind("escape", "continue", "Continue")
         self.query_one("#continue", Button).focus()
 
     def action_continue(self) -> None:
-        self.dismiss(None)
+        self.dismiss(True)
+
+    def action_back(self) -> None:
+        self.dismiss(False)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "continue":
-            self.dismiss(None)
+            self.dismiss(True)
+        elif event.button.id == "back":
+            self.dismiss(False)
 
 
 class LoadingScreen(Screen[None]):
@@ -327,13 +350,15 @@ class CliUi(UiPort):
     # Specification phase screens
     # ------------------------------------------------------------------
 
-    def show_spec_wizard(self) -> Specification:
+    def show_spec_wizard(self) -> Specification | None:
         """Present a freestyle brainstorming canvas to the user."""
         text = self._run_screen(CanvasScreen(validator=self._validator))
+        if text is None:
+            return None
         # Wrap raw canvas text; SpecificationAgent.concretize() will structure it.
         return Specification(
             title="Canvas Draft",
-            body=text or "",
+            body=text,
             acceptance_criteria=AcceptanceCriteria(items=()),
         )
 
@@ -348,6 +373,7 @@ class CliUi(UiPort):
                 right_title="Specification",
                 right_text=right_text,
                 prompt_text="Resolve any gaps in the Specification.",
+                reject_text="Back",
             )
         )
         return result_text
@@ -376,13 +402,13 @@ class CliUi(UiPort):
     # Planning phase screens
     # ------------------------------------------------------------------
 
-    def show_plan(self, plan: Plan) -> None:
+    def show_plan(self, plan: Plan) -> bool:
         """Display the execution plan steps (spec §5 MessageScreen)."""
         msg = "\n".join(
             f"{i}. [{s.identifier}] {s.description}"
             for i, s in enumerate(plan.steps, 1)
         )
-        self._run_screen(MessageScreen("Execution Plan", msg or "(no steps)"))
+        return bool(self._run_screen(MessageScreen("Execution Plan", msg or "(no steps)", show_back=True)))
 
     def show_tech_plan_editor(self, plan: TechnicalPlan) -> TechnicalPlan | None:
         result_text = self._run_screen(
@@ -394,6 +420,7 @@ class CliUi(UiPort):
                 prompt_text=(
                     "Review and refine the Technical Plan. Click Approve when ready."
                 ),
+                reject_text="Back",
             )
         )
         if result_text is None:
@@ -414,6 +441,7 @@ class CliUi(UiPort):
                 right_title="Procedural Steps",
                 right_text=steps_text,
                 prompt_text="Edit procedural steps. Each line becomes one step.",
+                reject_text="Back",
             )
         )
         if result_text is None:
@@ -445,7 +473,7 @@ class CliUi(UiPort):
     # Coding phase screens
     # ------------------------------------------------------------------
 
-    def show_execution(self, context: ContextBundle) -> None:
+    def show_execution(self, context: ContextBundle) -> bool:
         """Display current execution state during the coding phase (finding 8.5).
 
         Shows the active plan step and spec title so the engineer can
@@ -459,7 +487,7 @@ class CliUi(UiPort):
             f"Specification: {context.specification.title}\n\n"
             f"Executing plan steps:\n{step_lines or '  (none)'}"
         )
-        self._run_screen(MessageScreen("Execution in Progress", msg))
+        return bool(self._run_screen(MessageScreen("Execution in Progress", msg, show_back=True)))
 
     def request_approval(self, request: ApprovalRequest) -> ApprovalDecision:
         """Show approval request via split pane (finding 8.7 — has Reject button)."""
@@ -512,7 +540,7 @@ class CliUi(UiPort):
             return ApprovalDecision.APPROVED
         return ApprovalDecision.REJECTED
 
-    def show_completion_review(self, plan: Plan) -> None:
+    def show_completion_review(self, plan: Plan) -> bool:
         """Display per-step completion status (spec §5 item 3, finding 8.9)."""
         lines = ["Completion Review\n"]
         for step in plan.steps:
@@ -528,13 +556,13 @@ class CliUi(UiPort):
             pending = sum(1 for s in plan.steps if not s.completed)
             lines.append(f"\n{pending} step(s) still pending.")
 
-        self._run_screen(MessageScreen("Completion Review", "\n".join(lines)))
+        return bool(self._run_screen(MessageScreen("Completion Review", "\n".join(lines), show_back=True)))
 
     # ------------------------------------------------------------------
     # Repository & profile display screens (finding 8.6)
     # ------------------------------------------------------------------
 
-    def show_repository_analysis(self, repository_context: RepositoryContext) -> None:
+    def show_repository_analysis(self, repository_context: RepositoryContext) -> bool:
         tree_lines = "\n".join(f"  {p}" for p in repository_context.tree[:100])
         config_lines = "\n".join(f"  {c}" for c in repository_context.config_files)
         msg = (
@@ -542,19 +570,19 @@ class CliUi(UiPort):
             f"Files ({len(repository_context.tree)}):\n{tree_lines or '  (empty)'}\n\n"
             f"Config files:\n{config_lines or '  (none)'}"
         )
-        self._run_screen(MessageScreen("Repository Analysis", msg))
+        return bool(self._run_screen(MessageScreen("Repository Analysis", msg, show_back=True)))
 
     def show_repository_understanding(
         self, repository_context: RepositoryContext
-    ) -> None:
+    ) -> bool:
         msg = (
             f"Repository: {repository_context.root}\n\n"
             f"Total tracked paths: {len(repository_context.tree)}\n"
             f"Config/build files: {len(repository_context.config_files)}"
         )
-        self._run_screen(MessageScreen("Repository Understanding", msg))
+        return bool(self._run_screen(MessageScreen("Repository Understanding", msg, show_back=False)))
 
-    def show_engineering_profile(self, profile: EngineeringProfile) -> None:
+    def show_engineering_profile(self, profile: EngineeringProfile) -> bool:
         if profile.rules:
             lines = [
                 f"  • {rule}  (confidence: {profile.confidence.get(rule, 1.0):.0%})"
@@ -566,17 +594,17 @@ class CliUi(UiPort):
             )
         else:
             msg = "No engineering conventions recorded yet."
-        self._run_screen(MessageScreen("Engineering Profile", msg))
+        return bool(self._run_screen(MessageScreen("Engineering Profile", msg, show_back=True)))
 
-    def show_memory(self, events: tuple[MemoryEvent, ...]) -> None:
+    def show_memory(self, events: tuple[MemoryEvent, ...]) -> bool:
         if events:
             lines = [f"  [{e.timestamp or '—'}] {e.kind}" for e in events[:50]]
             msg = f"Recent memory events ({len(events)}):\n\n" + "\n".join(lines)
         else:
             msg = "No memory events recorded yet."
-        self._run_screen(MessageScreen("Memory Events", msg))
+        return bool(self._run_screen(MessageScreen("Memory Events", msg, show_back=True)))
 
-    def show_logs(self) -> None:
+    def show_logs(self) -> bool:
         try:
             import json
             from pathlib import Path
@@ -628,7 +656,7 @@ class CliUi(UiPort):
                 msg = "No logs found."
         except Exception as e:
             msg = f"Error loading logs: {e}"
-        self._run_screen(MessageScreen("Audit Logs", msg))
+        return bool(self._run_screen(MessageScreen("Audit Logs", msg, show_back=True)))
 
     def show_provider_config_screen(
         self, error_message: str | None = None, prefill: dict[str, str] | None = None

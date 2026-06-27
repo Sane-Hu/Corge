@@ -15,7 +15,6 @@ class InteractiveDiffScreen(Screen[str | None]):
 
     BINDINGS = [
         ("ctrl+a", "approve", "Approve"),
-        ("escape", "reject", "Reject"),
         ("ctrl+d", "toggle_diff", "Toggle Diff"),
     ]
 
@@ -124,6 +123,7 @@ class InteractiveDiffScreen(Screen[str | None]):
             self.left_title_widget.update(self._left_title)
 
     def on_mount(self) -> None:
+        self.bind("escape", "reject", self._reject_text)
         self.update_diff()
         if not self.right_area.read_only:
             self.right_area.focus()

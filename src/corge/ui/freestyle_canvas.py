@@ -74,7 +74,7 @@ class BacklogItem(ListItem):
         self.note_dict = note_dict
 
 
-class CanvasScreen(Screen[str]):
+class CanvasScreen(Screen[str | None]):
     """Freestyle brainstorming canvas (CANVAS_FREESTYLE sub-state).
 
     Provides:
@@ -88,7 +88,7 @@ class CanvasScreen(Screen[str]):
 
     BINDINGS = [
         ("ctrl+s", "submit", "Submit Canvas"),
-        ("escape", "cancel", "Cancel"),
+        ("escape", "cancel", "Back"),
     ]
 
     CSS = """
@@ -213,6 +213,7 @@ class CanvasScreen(Screen[str]):
                     yield Button("Clear All Notes", id="clear-all-notes", variant="error")
 
         with Horizontal(classes="footer"):
+            yield Button("Back", id="back", variant="error")
             yield Button("Submit to Concretization", id="submit", variant="primary")
         yield Footer()
 
@@ -242,7 +243,7 @@ class CanvasScreen(Screen[str]):
         self.dismiss(text)
 
     def action_cancel(self) -> None:
-        self.dismiss("")
+        self.dismiss(None)
 
     @on(Button.Pressed)
     def handle_button_pressed(self, event: Button.Pressed) -> None:
@@ -264,6 +265,8 @@ class CanvasScreen(Screen[str]):
             )
         elif event.button.id == "submit":
             self.action_submit()
+        elif event.button.id == "back":
+            self.action_cancel()
 
     @on(TextArea.Changed)
     def handle_text_changed(self) -> None:
