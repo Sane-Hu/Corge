@@ -318,11 +318,12 @@ class RealCorgeApp(CorgeApp):
 
                 updated_steps = list(plan.steps)
                 step_idx = 0
-                while step_idx < len(plan.steps):
-                    step = plan.steps[step_idx]
+                while step_idx < len(updated_steps):
+                    step = updated_steps[step_idx]
                     if getattr(step, "completed", False):
                         step_idx += 1
                         continue
+                    assert spec is not None
                     bundle = controller.collect_context(step, spec)
                     
                     go_back = False
@@ -341,6 +342,7 @@ class RealCorgeApp(CorgeApp):
                                 step_idx -= 1
                                 prev_step = updated_steps[step_idx]
                                 updated_steps[step_idx] = dataclasses.replace(prev_step, completed=False)
+                                assert plan is not None
                                 plan = dataclasses.replace(plan, steps=tuple(updated_steps))
                                 go_back = True
                                 break
@@ -371,7 +373,7 @@ class RealCorgeApp(CorgeApp):
                     except ToolExecutionError as e:
                         memory_store.store_scenario(
                             MemoryEvent(
-                                kind=spec.title,
+                                kind=spec.title if spec else (plan.specification_ref if plan else "Unknown"),
                                 payload={"step": step.identifier, "error": str(e)},
                                 timestamp=datetime.now(UTC).isoformat(),
                             )
@@ -394,6 +396,7 @@ class RealCorgeApp(CorgeApp):
                             ui.hide_loading()
 
                 if controller.state == LifecycleState.EXECUTION:
+                    assert plan is not None
                     plan = dataclasses.replace(plan, steps=tuple(updated_steps))
                     controller.advance()
                 else:
@@ -531,9 +534,10 @@ def main() -> None:
         target_path = Path(sys.argv[1]).resolve()
     else:
         from corge.ui.cli import DirectorySelectorApp
-        target_path = DirectorySelectorApp().run()
-        if not target_path:
+        selected = DirectorySelectorApp().run()
+        if not selected:
             sys.exit(0)
+        target_path = selected
 
     if not target_path.exists():
         print(f"Error: Target path '{target_path}' does not exist.", file=sys.stderr)
