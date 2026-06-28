@@ -258,7 +258,19 @@ class RealCorgeApp(CorgeApp):
 
             elif controller.state == LifecycleState.SPEC_APPROVAL:
                 controller.finalize_spec_phase(abandoned=False)
-                controller.advance()
+                from corge.agent.session_controller import InvalidTransitionError
+                try:
+                    controller.advance()
+                except InvalidTransitionError:
+                    # Unresolved semantic gaps still exist — tell the user and
+                    # loop back to the argumentation diff editor.
+                    ui.show_confirm(
+                        "Unresolved Specification Gaps",
+                        "Your specification still contains unresolved gap placeholders\n"
+                        "('[GAP: ...]' sections). Please fill them in before proceeding.",
+                    )
+                    controller.transition_to(LifecycleState.SPEC_VALIDATION)
+                    continue
 
             elif controller.state == LifecycleState.PLAN_GENERATION:
                 assert spec is not None
@@ -328,29 +340,32 @@ class RealCorgeApp(CorgeApp):
                     
                     go_back = False
                     while True:
-                        res_mem = ui.show_memory(bundle.scenario_memory)
-                        if res_mem == "new_spec":
-                            spec = None
-                            plan = None
-                            tech_plan = None
-                            proc_steps = ()
-                            controller.transition_to(LifecycleState.SPEC_ENTRY)
-                            go_back = True
-                            break
-                        elif res_mem == "back":
-                            if step_idx > 0:
-                                step_idx -= 1
-                                prev_step = updated_steps[step_idx]
-                                updated_steps[step_idx] = dataclasses.replace(prev_step, completed=False)
-                                assert plan is not None
-                                plan = dataclasses.replace(plan, steps=tuple(updated_steps))
+                        # Bug 5: Only show memory screen when there are actual
+                        # events — empty screen forces unnecessary dismiss clicks.
+                        if bundle.scenario_memory:
+                            res_mem = ui.show_memory(bundle.scenario_memory)
+                            if res_mem == "new_spec":
+                                spec = None
+                                plan = None
+                                tech_plan = None
+                                proc_steps = ()
+                                controller.transition_to(LifecycleState.SPEC_ENTRY)
                                 go_back = True
                                 break
-                            else:
-                                controller.transition_to(LifecycleState.PLAN_REVIEW)
-                                go_back = True
-                                break
-                        
+                            elif res_mem == "back":
+                                if step_idx > 0:
+                                    step_idx -= 1
+                                    prev_step = updated_steps[step_idx]
+                                    updated_steps[step_idx] = dataclasses.replace(prev_step, completed=False)
+                                    assert plan is not None
+                                    plan = dataclasses.replace(plan, steps=tuple(updated_steps))
+                                    go_back = True
+                                    break
+                                else:
+                                    controller.transition_to(LifecycleState.PLAN_REVIEW)
+                                    go_back = True
+                                    break
+
                         res_exec = ui.show_execution(bundle)
                         if res_exec is False:
                             if step_idx > 0:
@@ -381,12 +396,14 @@ class RealCorgeApp(CorgeApp):
                         controller.execute_step(step, bundle, on_token=ui.stream_token)
                         updated_steps[step_idx] = dataclasses.replace(step, completed=True)
                         step_idx += 1
-                    except ActionRejectedError as e:
-                        ui.hide_loading()
+                    except ActionRejectedError:
+                        # Gateway hid loading before requesting approval and
+                        # does NOT re-show it on rejection — nothing to hide.
                         if step_idx > 0:
                             step_idx -= 1
                             prev_step = updated_steps[step_idx]
                             updated_steps[step_idx] = dataclasses.replace(prev_step, completed=False)
+                            # Bug 3: sync plan with updated_steps before continue
                             assert plan is not None
                             plan = dataclasses.replace(plan, steps=tuple(updated_steps))
                             continue
@@ -402,18 +419,22 @@ class RealCorgeApp(CorgeApp):
                             )
                         )
                         ui.hide_loading()
-                        
+
                         retry = ui.show_confirm(
                             "Tool Execution Failed",
                             f"Step {step.identifier} failed with error:\n\n{e}\n\n"
-                            "Would you like to retry this step? (Make your manual code fixes first if needed. Select 'No' to suspend and exit.)"
+                            "Would you like to retry this step?\n"
+                            "(Make your manual code fixes first if needed.\n"
+                            "Select 'No' to return to Plan Review with your session saved.)"
                         )
                         if not retry:
-                            try:
-                                self.call_from_thread(self.exit)
-                            except Exception:
-                                pass
-                            return
+                            # Bug 1: Don't exit the app — send the user back to
+                            # Plan Review with the session intact. The main loop
+                            # saves session state at the top of each iteration.
+                            assert plan is not None
+                            plan = dataclasses.replace(plan, steps=tuple(updated_steps))
+                            controller.transition_to(LifecycleState.PLAN_REVIEW)
+                            break
                     finally:
                         if type(ui._app.screen).__name__ == "LoadingScreen":
                             ui.hide_loading()

@@ -21,9 +21,12 @@ class ApprovalGateway:
             decision = ApprovalDecision.APPROVED
         else:
             self._ui.hide_loading()
-            try:
-                decision = self._ui.request_approval(request)
-            finally:
+            decision = self._ui.request_approval(request)
+            # Only restore loading when approved — on rejection the caller
+            # raises ActionRejectedError immediately and will handle its own
+            # loading state. Pushing a new screen here causes a phantom
+            # LoadingScreen that the finally block would double-pop.
+            if decision == ApprovalDecision.APPROVED:
                 self._ui.show_loading("Resuming execution...")
 
         self._audit_logger.record_approval(request, decision)
