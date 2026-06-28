@@ -383,7 +383,13 @@ class DirectorySelectorApp(App[Path]):
         inp = Input(id="action_input")
         inp.styles.display = "none"
         yield inp
-        yield CorgeDirectoryTree(str(Path.cwd()))
+        start_path = Path.cwd()
+        # UX Improvement: If running from the Corge source/dev repository itself,
+        # start the selector at the parent directory to allow easy selection of sibling repos.
+        if (start_path / "src" / "corge").exists() or start_path.name.lower() == "corge":
+            start_path = start_path.parent
+
+        yield CorgeDirectoryTree(str(start_path.resolve()))
         with Horizontal(id="action_buttons"):
             yield Button("Select Highlighted Directory (s)", id="select_btn", variant="success")
             yield Button("Configure API (a)", id="api_btn", variant="primary")
