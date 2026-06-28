@@ -80,7 +80,7 @@ class SpecificationAgent:
             "- Direct Acceptance Criteria: Keep acceptance criteria concise and highly testable.\n\n"
             "If a field cannot be determined from the text, use an empty "
             "string or empty list.\n\n"
-            f"Brainstorming text:\n{canvas_text}"
+            f"<brainstorming_text>\n{canvas_text}\n</brainstorming_text>"
         )
         ctx_bundle = self._context_service.load_context(
             RepositoryContext(root=Path("."))
@@ -136,7 +136,7 @@ class SpecificationAgent:
             "Review the existing architecture via <relevant_files> and <repository_facts> to ensure the draft integrates logically.\n"
             "Ignore minor edge cases, standard library features, or non-blocking details.\n"
             "Return ONLY a JSON array of objects with a 'topic' key.\n\n"
-            f"Draft:\n{canvas_text}"
+            f"<draft_text>\n{canvas_text}\n</draft_text>"
         )
         ctx_bundle = self._context_service.load_context(
             RepositoryContext(root=Path("."))
@@ -303,10 +303,12 @@ class SpecificationAgent:
             '  "acceptance_criteria": list of strings — finalized verifiable criteria\n'
             '  "constraints": string — finalized constraints\n'
             '  "testing_expectations": string — finalized testing expectations\n\n'
+            f"<original_specification>\n"
             f"Original Title: {spec.title}\n"
             f"Original Constraints: {spec.constraints}\n"
-            f"Original Testing Expectations: {spec.testing_expectations}\n\n"
-            f"User's edited text:\n{edited_text}"
+            f"Original Testing Expectations: {spec.testing_expectations}\n"
+            f"</original_specification>\n\n"
+            f"<user_edited_text>\n{edited_text}\n</user_edited_text>"
         )
         ctx_bundle = self._context_service.load_context(
             RepositoryContext(root=Path("."))
@@ -361,14 +363,15 @@ class SpecificationAgent:
             '  "acceptance_criteria": list of strings — updated verifiable pass/fail criteria\n'
             '  "constraints": string — updated technical or business constraints\n'
             '  "testing_expectations": string — updated testing expectations\n\n'
-            f"Original Specification:\n"
+            f"<original_specification>\n"
             f"Title: {spec.title}\n"
             f"Body: {spec.body}\n"
-            f"Acceptance Criteria: {list(spec.acceptance_criteria.items)}\n"
+            f"Acceptance Criteria:\n" + "\n".join(f"- {c}" for c in spec.acceptance_criteria.items) + "\n"
             f"Constraints: {spec.constraints}\n"
-            f"Testing Expectations: {spec.testing_expectations}\n\n"
-            f"Clarifying Questions Asked:\n{questions}\n\n"
-            f"User's Answers:\n{answers}\n"
+            f"Testing Expectations: {spec.testing_expectations}\n"
+            f"</original_specification>\n\n"
+            f"<clarifying_questions>\n{questions}\n</clarifying_questions>\n\n"
+            f"<user_answers>\n{answers}\n</user_answers>"
         )
         ctx_bundle = self._context_service.load_context(
             RepositoryContext(root=Path("."))
@@ -410,9 +413,12 @@ class SpecificationAgent:
 
         topics = "\n".join(f"- {gap.topic}" for gap in gaps)
         instruction = (
-            f"The following specification has unresolved gaps:\n{topics}\n\n"
+            "The following specification has unresolved gaps:\n"
+            f"{topics}\n\n"
             f"Specification title: {spec.title}\n"
-            f"Specification body: {spec.body[:500]}\n\n"
+            "<specification_body_snippet>\n"
+            f"{spec.body[:500]}\n"
+            "</specification_body_snippet>\n\n"
             "Write a concise numbered list of clarifying questions to resolve these gaps. "
             "Formulate the questions to be concrete and specific to the detected framework (if provided in <framework_schema>). "
             "Return ONLY the questions, no preamble."

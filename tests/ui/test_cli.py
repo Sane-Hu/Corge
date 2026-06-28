@@ -25,7 +25,7 @@ def test_directory_selector_selects_highlighted(tmp_path: Path) -> None:
 
 def test_procedural_steps_editor_preserves_identifiers() -> None:
     """Verifies that the procedural steps editor preserves custom bracketed identifiers."""
-    from corge.contracts import ProceduralStep
+    from corge.contracts import ProceduralStep, TechnicalPlan
     from corge.ui.cli import CliUi
 
     app_mock = MagicMock()
@@ -39,7 +39,8 @@ def test_procedural_steps_editor_preserves_identifiers() -> None:
     original_steps = (
         ProceduralStep(identifier="step-1", description="Original step"),
     )
-    result = ui.show_procedural_steps_editor(original_steps)
+    tech_plan = TechnicalPlan(content="Technical plan text", specification_ref="spec")
+    result = ui.show_procedural_steps_editor(original_steps, tech_plan)
 
     assert result is not None
     assert len(result) == 3

@@ -334,9 +334,12 @@ class CodingAgent:
             "<execution_plan_status>\n"
             f"{plan_text}\n"
             "</execution_plan_status>\n\n"
-            "Acceptance Criteria to Verify:\n"
+            "<acceptance_criteria>\n"
             + "\n".join(f"- {c}" for c in criteria)
-            + f"\n\nExecution Trajectory (N-1 Markov history):\n{trajectory or '(no trajectory recorded)'}\n\n"
+            + "\n</acceptance_criteria>\n\n"
+            "<execution_trajectory>\n"
+            f"{trajectory or '(no trajectory recorded)'}\n"
+            "</execution_trajectory>\n\n"
             "Determine if ALL acceptance criteria are satisfied. "
             "Respond ONLY with a JSON object: {\"all_satisfied\": true} or {\"all_satisfied\": false}."
         )

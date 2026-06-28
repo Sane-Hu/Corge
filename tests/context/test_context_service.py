@@ -65,7 +65,7 @@ def test_retrieve_relevant_context_markov_chaining() -> None:
     bundle = svc.retrieve_relevant_context(spec, step)
 
     assert bundle.markov_context is not None
-    assert bundle.markov_context.agent_proposal == "Created database module"
+    assert bundle.markov_context.tool_result == "Created database module"
     assert (
         bundle.markov_context.user_correction
         == "Actually, use SQLite instead of Postgres"
@@ -77,7 +77,7 @@ def test_retrieve_relevant_context_markov_chaining() -> None:
     bundle2 = svc.retrieve_relevant_context(spec, step)
 
     assert "Created database module" in bundle2.markov_context.compressed_trajectory
-    assert bundle2.markov_context.agent_proposal == "Fixed SQLite import"
+    assert bundle2.markov_context.tool_result == "Fixed SQLite import"
 
 
 def test_context_service_query_caching() -> None:

@@ -77,15 +77,14 @@ class PlanningAgent:
             self._controller.advance_plan_state(PlanState.STEPS_REITERATION)
 
         instruction = (
-            "Break down the technical plan below into strict procedural steps.\n"
+            "Break down the technical plan into strict procedural steps.\n"
             "Each step must be an actionable, sequential chunk of work aligned with repository facts.\n"
             "Reference specific paths from <relevant_files> when proposing modifications.\n"
             "Output each step on a new line starting with STEP: \n\n"
             "Planning Rules for Cost & Time Efficiency:\n"
             "1. Grouping: Group related file changes into a single logical step to minimize agent transition overhead.\n"
             "2. Linearity: Order steps logically to avoid reading or editing the same file multiple times across different steps.\n"
-            "3. Conciseness: Keep the total number of steps minimal (aim for 3-7 steps). Fewer steps mean faster execution.\n\n"
-            f"Plan:\n{technical_plan.content}"
+            "3. Conciseness: Keep the total number of steps minimal (aim for 3-7 steps). Fewer steps mean faster execution."
         )
 
         ctx_bundle = self._context_service.refresh_context(

@@ -60,6 +60,7 @@ class PromptAssembler:
             self._render_repository_facts(context),
             self._render_specification(context),
             self._render_relevant_files(context),
+            self._render_technical_plan(context),
             f"<objective>\n{instruction}\n</objective>",
         ]
         return "\n\n".join(filter(bool, sections))
