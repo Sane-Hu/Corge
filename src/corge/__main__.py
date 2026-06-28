@@ -154,7 +154,9 @@ class RealCorgeApp(CorgeApp):
 
         import dataclasses
 
-        while controller.state != LifecycleState.DONE:
+        import dataclasses
+
+        while True:
             ui.update_journey_state(controller.active_agent_name, controller.state.name)
             
             current_session_state = SessionState(
@@ -458,6 +460,37 @@ class RealCorgeApp(CorgeApp):
                     if res_logs is False:
                         continue
                     controller.advance()
+                    continue
+
+            elif controller.state == LifecycleState.DONE:
+                choice = ui.show_post_completion_options()
+                if choice == "new_spec":
+                    controller.specification = None
+                    controller.plan = None
+                    controller.technical_plan = None
+                    controller.procedural_steps = ()
+                    controller.transition_to(LifecycleState.SPEC_ENTRY)
+                    
+                    current_session_state = SessionState(
+                        lifecycle_state=controller.state,
+                        master_phase=controller.phase,
+                        spec_state=controller.spec_state,
+                        plan_state=controller.plan_state,
+                        specification=controller.specification,
+                        plan=controller.plan,
+                        technical_plan=controller.technical_plan,
+                        procedural_steps=controller.procedural_steps,
+                        repo_root=self.target_repo,
+                    )
+                    save_session(agent_dir, current_session_state)
+                    continue
+                elif choice == "switch_repo":
+                    try:
+                        self.call_from_thread(self.exit, "switch_repo")
+                    except Exception as exc:
+                        print(f"Warning: error during app exit: {exc}")
+                    return
+                else:
                     break
 
             else:
@@ -547,52 +580,58 @@ class RealCorgeApp(CorgeApp):
 
 def main() -> None:
     """CLI entrypoint function."""
-    if len(sys.argv) > 1:
-        target_path = Path(sys.argv[1]).resolve()
-    else:
-        from corge.ui.cli import DirectorySelectorApp
-        selected = DirectorySelectorApp().run()
-        if not selected:
-            sys.exit(0)
-        target_path = selected
+    while True:
+        if len(sys.argv) > 1:
+            target_path = Path(sys.argv[1]).resolve()
+            # Clear sys.argv so if the user switches projects, we fall back to the directory selector
+            sys.argv = [sys.argv[0]]
+        else:
+            from corge.ui.cli import DirectorySelectorApp
+            selected = DirectorySelectorApp().run()
+            if not selected:
+                sys.exit(0)
+            target_path = selected
 
-    if not target_path.exists():
-        print(f"Error: Target path '{target_path}' does not exist.", file=sys.stderr)
-        sys.exit(1)
+        if not target_path.exists():
+            print(f"Error: Target path '{target_path}' does not exist.", file=sys.stderr)
+            sys.exit(1)
 
-    print("\nInitializing Corge Coding Agent...")
-    print(f"Loading repository: {target_path}")
+        print("\nInitializing Corge Coding Agent...")
+        print(f"Loading repository: {target_path}")
 
-    global_dir = Path.home() / ".config" / "corge"
+        global_dir = Path.home() / ".config" / "corge"
 
-    global_dir.mkdir(parents=True, exist_ok=True)
+        global_dir.mkdir(parents=True, exist_ok=True)
 
-    # Config resolution order:
-    # 1. target_path / ".agents" / "CorgeAPIConfig.toml"
-    # 2. target_path / "agents" / "CorgeAPIConfig.toml"
-    # 3. target_path / "CorgeAPIConfig.toml"
-    # 4. target_path / ".agent" / "CorgeAPIConfig.toml"
-    # Defaults to target_path / ".agents" / "CorgeAPIConfig.toml"
-    config_path = target_path / ".agents" / "CorgeAPIConfig.toml"
-    if not config_path.exists():
-        for path in [
-            target_path / "agents" / "CorgeAPIConfig.toml",
-            target_path / "CorgeAPIConfig.toml",
-            target_path / ".agent" / "CorgeAPIConfig.toml",
-        ]:
-            if path.exists():
-                config_path = path
-                break
+        # Config resolution order:
+        # 1. target_path / ".agents" / "CorgeAPIConfig.toml"
+        # 2. target_path / "agents" / "CorgeAPIConfig.toml"
+        # 3. target_path / "CorgeAPIConfig.toml"
+        # 4. target_path / ".agent" / "CorgeAPIConfig.toml"
+        # Defaults to target_path / ".agents" / "CorgeAPIConfig.toml"
+        config_path = target_path / ".agents" / "CorgeAPIConfig.toml"
+        if not config_path.exists():
+            for path in [
+                target_path / "agents" / "CorgeAPIConfig.toml",
+                target_path / "CorgeAPIConfig.toml",
+                target_path / ".agent" / "CorgeAPIConfig.toml",
+            ]:
+                if path.exists():
+                    config_path = path
+                    break
 
-    try:
-        app = RealCorgeApp(target_repo=target_path, config_path=config_path, global_dir=global_dir)
-        app.run()
-    except (FileNotFoundError, ValueError, ConnectionError) as e:
-        print(f"Configuration Error: {e}", file=sys.stderr)
-        sys.exit(1)
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+        try:
+            app = RealCorgeApp(target_repo=target_path, config_path=config_path, global_dir=global_dir)
+            result = app.run()
+            if result == "switch_repo":
+                continue
+            break
+        except (FileNotFoundError, ValueError, ConnectionError) as e:
+            print(f"Configuration Error: {e}", file=sys.stderr)
+            sys.exit(1)
+        except Exception as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
 
 
 if __name__ == "__main__":

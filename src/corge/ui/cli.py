@@ -155,6 +155,66 @@ class MessageScreen(Screen[str]):
             self.action_toggle_auto_advance()
 
 
+class PostCompletionScreen(Screen[str]):
+    """Menu shown when a specification is completely implemented."""
+
+    BINDINGS = [
+        ("n", "new_spec", "New Spec"),
+        ("s", "switch_repo", "Switch Project"),
+        ("q", "quit", "Quit"),
+        ("escape", "quit", "Quit"),
+    ]
+
+    CSS = """
+    PostCompletionScreen {
+        align: center middle;
+    }
+    PostCompletionScreen > Vertical {
+        width: 60%;
+        height: auto;
+        border: round $primary;
+        padding: 1 2;
+    }
+    .footer-buttons {
+        height: auto;
+        align: center middle;
+        margin-top: 1;
+    }
+    .footer-buttons Button {
+        margin: 0 2;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        with Vertical():
+            yield Static("Implementation Complete", classes="title")
+            yield Static(
+                "The specification has been successfully implemented and verified.\n\nWhat would you like to do next?",
+                id="message",
+            )
+            with Horizontal(classes="footer-buttons"):
+                yield Button("New Spec (n)", id="new_spec", variant="success")
+                yield Button("Switch Project (s)", id="switch_repo", variant="primary")
+                yield Button("Quit (q)", id="quit", variant="error")
+        yield Footer()
+
+    def on_mount(self) -> None:
+        self.query_one("#new_spec", Button).focus()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        self.dismiss(event.button.id)
+
+    def action_new_spec(self) -> None:
+        self.dismiss("new_spec")
+
+    def action_switch_repo(self) -> None:
+        self.dismiss("switch_repo")
+
+    def action_quit(self) -> None:
+        self.dismiss("quit")
+
+
 class LoadingScreen(Screen[None]):
     """Generic loading indicator screen."""
 
@@ -803,6 +863,10 @@ class CliUi(UiPort):
             lines.append(f"\n{pending} step(s) still pending.")
 
         return bool(self._run_screen(MessageScreen("Completion Review", "\n".join(lines), show_back=True)) == "continue")
+
+    def show_post_completion_options(self) -> str:
+        """Display options after completion (spec §5 item 3)."""
+        return str(self._run_screen(PostCompletionScreen()))
 
     # ------------------------------------------------------------------
     # Repository & profile display screens (finding 8.6)
