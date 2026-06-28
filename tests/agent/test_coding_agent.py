@@ -383,3 +383,35 @@ def test_evaluate_completion_returns_false_on_malformed_json(coding_agent, provi
     )
     res = coding_agent.evaluate_completion(step, bundle)
     assert res is False
+
+
+def test_execute_step_raises_action_rejected_error(
+    coding_agent, provider, tool_runtime, tmp_path, approval_gateway
+):
+    from corge.agent.coding_agent import ActionRejectedError
+    from corge.contracts import ChatResponse
+
+    provider.chat.return_value = ChatResponse(
+        content="""```json
+{
+  "actions": [
+    {
+      "action": "BASH",
+      "target": "rm -rf /"
+    }
+  ]
+}
+```""",
+        usage={},
+    )
+    from corge.contracts import ApprovalDecision, PlanStep
+
+    approval_gateway.approve.return_value = ApprovalDecision.REJECTED
+    step = PlanStep(identifier="1", description="test")
+
+    import pytest
+
+    with pytest.raises(ActionRejectedError) as exc:
+        coding_agent.execute_step(step, MagicMock())
+    assert "rejected" in str(exc.value).lower()
+

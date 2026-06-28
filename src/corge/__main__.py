@@ -375,12 +375,24 @@ class RealCorgeApp(CorgeApp):
                     ui.show_loading(f"Executing step: {step.identifier}...")
                     from datetime import datetime
 
-                    from corge.agent.coding_agent import ToolExecutionError
+                    from corge.agent.coding_agent import ToolExecutionError, ActionRejectedError
                     from corge.contracts import MemoryEvent
                     try:
                         controller.execute_step(step, bundle, on_token=ui.stream_token)
                         updated_steps[step_idx] = dataclasses.replace(step, completed=True)
                         step_idx += 1
+                    except ActionRejectedError as e:
+                        ui.hide_loading()
+                        if step_idx > 0:
+                            step_idx -= 1
+                            prev_step = updated_steps[step_idx]
+                            updated_steps[step_idx] = dataclasses.replace(prev_step, completed=False)
+                            assert plan is not None
+                            plan = dataclasses.replace(plan, steps=tuple(updated_steps))
+                            continue
+                        else:
+                            controller.transition_to(LifecycleState.PLAN_REVIEW)
+                            break
                     except ToolExecutionError as e:
                         memory_store.store_scenario(
                             MemoryEvent(

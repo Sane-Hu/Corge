@@ -44,6 +44,11 @@ class ToolExecutionError(Exception):
     """
 
 
+class ActionRejectedError(ToolExecutionError):
+    """Raised when the user rejects a proposed tool action during execution."""
+
+
+
 # ---------------------------------------------------------------------------
 # CodingAgent
 # ---------------------------------------------------------------------------
@@ -173,7 +178,7 @@ class CodingAgent:
                 )
                 decision = self._approval_gateway.approve(req)
                 if decision == ApprovalDecision.REJECTED:
-                    raise ToolExecutionError(
+                    raise ActionRejectedError(
                         f"Step {step.identifier!r}: action {action.value!r} "
                         f"on {target!r} was rejected."
                     )
