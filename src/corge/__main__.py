@@ -145,6 +145,7 @@ class RealCorgeApp(CorgeApp):
             audit_logger=audit_logger,
             artifact_store=artifact_store,
             prompt_assembler=prompt_assembler,
+            target_repo=self.target_repo,
         )
 
         from corge.agent.session import SessionState, load_session, save_session

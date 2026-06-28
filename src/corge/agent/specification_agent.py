@@ -86,7 +86,7 @@ class SpecificationAgent:
             f"<brainstorming_text>\n{canvas_text}\n</brainstorming_text>"
         )
         ctx_bundle = self._context_service.load_context(
-            RepositoryContext(root=Path("."))
+            RepositoryContext(root=self._controller.target_repo if self._controller else Path("."))
         )
         prompt = self._prompt_assembler.assemble_spec_prompt(ctx_bundle, instruction)
         msg = ProviderMessage(role="user", content=prompt)
@@ -147,7 +147,7 @@ class SpecificationAgent:
             f"<draft_text>\n{canvas_text}\n</draft_text>"
         )
         ctx_bundle = self._context_service.load_context(
-            RepositoryContext(root=Path("."))
+            RepositoryContext(root=self._controller.target_repo if self._controller else Path("."))
         )
         prompt = self._prompt_assembler.assemble_spec_prompt(ctx_bundle, instruction)
         msg = ProviderMessage(role="user", content=prompt)
@@ -333,7 +333,7 @@ class SpecificationAgent:
             f"<user_edited_text>\n{edited_text}\n</user_edited_text>"
         )
         ctx_bundle = self._context_service.load_context(
-            RepositoryContext(root=Path("."))
+            RepositoryContext(root=self._controller.target_repo if self._controller else Path("."))
         )
         prompt = self._prompt_assembler.assemble_spec_prompt(ctx_bundle, instruction)
         msg = ProviderMessage(role="user", content=prompt)
@@ -413,7 +413,7 @@ class SpecificationAgent:
             f"<user_answers>\n{answers}\n</user_answers>"
         )
         ctx_bundle = self._context_service.load_context(
-            RepositoryContext(root=Path("."))
+            RepositoryContext(root=self._controller.target_repo if self._controller else Path("."))
         )
         prompt = self._prompt_assembler.assemble_spec_prompt(ctx_bundle, instruction)
         msg = ProviderMessage(role="user", content=prompt)
@@ -463,7 +463,7 @@ class SpecificationAgent:
             "Return ONLY the questions, no preamble."
         )
         ctx_bundle = self._context_service.load_context(
-            RepositoryContext(root=Path("."))
+            RepositoryContext(root=self._controller.target_repo if self._controller else Path("."))
         )
         prompt = self._prompt_assembler.assemble_spec_prompt(ctx_bundle, instruction)
         msg = ProviderMessage(role="user", content=prompt)

@@ -56,7 +56,7 @@ class PlanningAgent:
         )
 
         ctx_bundle = self._context_service.refresh_context(
-            RepositoryContext(root=Path("."))
+            RepositoryContext(root=self._controller.target_repo if self._controller else Path("."))
         )
         ctx_bundle = replace(ctx_bundle, specification=specification)
         prompt = self._prompt_assembler.assemble_plan_prompt(ctx_bundle, instruction)
@@ -88,7 +88,7 @@ class PlanningAgent:
         )
 
         ctx_bundle = self._context_service.refresh_context(
-            RepositoryContext(root=Path(".")), technical_plan
+            RepositoryContext(root=self._controller.target_repo if self._controller else Path(".")), technical_plan
         )
         if self._controller and self._controller.specification:
             ctx_bundle = replace(ctx_bundle, specification=self._controller.specification)

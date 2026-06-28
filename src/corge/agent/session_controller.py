@@ -118,6 +118,7 @@ class SessionController:
         audit_logger: AuditLoggerPort,
         artifact_store: ArtifactStorePort,
         prompt_assembler: PromptAssemblerPort,
+        target_repo: Path = Path("."),
     ) -> None:
         # Sub-agents (intra-module wiring)
         self._prompt_assembler = prompt_assembler
@@ -160,10 +161,16 @@ class SessionController:
 
         # Repository bootstrapping flag (CC.2)
         self._is_empty_repo: bool = False
+        self._target_repo: Path = target_repo
 
     # ------------------------------------------------------------------
     # State machine accessors
     # ------------------------------------------------------------------
+
+    @property
+    def target_repo(self) -> Path:
+        """The active target repository directory."""
+        return self._target_repo
 
     @property
     def specification(self) -> Specification | None:
