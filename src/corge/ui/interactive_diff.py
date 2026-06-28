@@ -109,6 +109,11 @@ class InteractiveDiffScreen(Screen[str | None]):
                     variant="success",
                 )
                 yield Button(
+                    "Toggle Diff (ctrl+t)",
+                    id="toggle_diff",
+                    variant="default",
+                )
+                yield Button(
                     f"{self._reject_text} (esc)",
                     id="reject",
                     variant="error",
@@ -183,3 +188,5 @@ class InteractiveDiffScreen(Screen[str | None]):
             self.dismiss(self.right_area.text)
         elif event.button.id == "reject":
             self.dismiss(None)
+        elif event.button.id == "toggle_diff":
+            self.action_toggle_diff()

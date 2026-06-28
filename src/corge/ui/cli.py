@@ -864,7 +864,7 @@ class CliUi(UiPort):
                 left_title="Request Context",
                 left_text=(
                     "The agent requires authorization to perform an action.\n\n"
-                    "Press Ctrl+T to toggle live diff."
+                    "Press Ctrl+T or click 'Toggle Diff' below to toggle live diff."
                 ),
                 right_title="Approval Request",
                 right_text=detail,
