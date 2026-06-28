@@ -117,16 +117,18 @@ There are two ways to target a repository:
 **Option A: Launch with path argument**
 Provide the path directly as a command-line argument:
 ```bash
-uv run python -m corge /path/to/target/repository
+corge /path/to/target/repository
 ```
+*(Or `uv run corge /path/to/target/repository` if running from the source folder).*
 
 **Option B: Launch interactively**
 Run without arguments to launch the interactive directory explorer:
 ```bash
-uv run python -m corge
+corge
 ```
+*(Or `uv run corge` if running from the source folder).*
 
-> **Note**: Replace `python -m corge` with the actual entry-point command once the CLI entrypoint is finalized in `pyproject.toml`. The invocation may also be `uv run corge` if a `[project.scripts]` entry exists.
+> **Note**: To enable the global `corge` command, you can install the tool in editable mode via `uv tool install --editable <path-to-Corge>`.
 
 **Expected (Option B)**: A Textual `DirectorySelectorApp` is displayed in the terminal where you can:
 - Use the arrow keys to navigate the file system tree (automatically focused on mount).

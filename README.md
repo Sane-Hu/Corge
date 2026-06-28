@@ -70,6 +70,7 @@ Important boundaries:
 
 This project uses `uv`.
 
+### Development Checks
 ```bash
 uv run pytest
 uv run ruff check .
@@ -83,6 +84,25 @@ uv --cache-dir /tmp/corge-uv-cache run pytest
 uv --cache-dir /tmp/corge-uv-cache run ruff check .
 uv --cache-dir /tmp/corge-uv-cache run mypy src
 ```
+
+### Running Corge
+
+#### Option A: Run directly using `uv`
+Run the terminal app directly from the project directory:
+```bash
+uv run corge [path/to/target/repo]
+```
+
+#### Option B: Clean CLI install (Recommended)
+You can install Corge as a global/user tool using `uv tool`. By installing with `--editable`, any local code changes are immediately active:
+```bash
+uv tool install --editable /path/to/Corge
+```
+Once installed, simply run the **`corge`** command from any directory (including inside your operated-on repository):
+```bash
+corge [path/to/target/repo]
+```
+*(If no path argument is provided, Corge launches the interactive directory selector.)*
 
 ## Team Development For Beginners
 
