@@ -234,7 +234,7 @@ class CodingAgent:
             if data.get("done"):
                 return
             if not actions:
-                return
+                raise ToolExecutionError("Agent returned no actions but did not indicate completion. Ensure your JSON block includes a valid 'actions' array.")
 
         raise ToolExecutionError("Exceeded max actions per step")
 
@@ -257,7 +257,7 @@ class CodingAgent:
                     )
             return self._tool_runtime.read(path)
         if action == ToolAction.BASH:
-            return self._tool_runtime.bash(target, Path("."))
+            return self._tool_runtime.bash(target)
         if action == ToolAction.WRITE:
             content = action_dict.get("content", "")
             return self._tool_runtime.write(path, content)

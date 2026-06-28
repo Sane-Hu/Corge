@@ -35,10 +35,9 @@ def test_no_gaps_allows_transition() -> None:
         memory_store=MagicMock(),
         heuristic_updater=MagicMock(),
         knowledge_graph=MagicMock(),
-        schema_tailor=MagicMock(),
-        budget_manager=MagicMock(),
         audit_logger=MagicMock(),
         artifact_store=MagicMock(),
+        prompt_assembler=MagicMock(),
     )
     # No pending gaps, should allow transition to SPEC_APPROVAL
     controller.transition_to(LifecycleState.SPEC_APPROVAL)
@@ -54,10 +53,9 @@ def test_unresolved_gap_blocks_transition() -> None:
         memory_store=MagicMock(),
         heuristic_updater=MagicMock(),
         knowledge_graph=MagicMock(),
-        schema_tailor=MagicMock(),
-        budget_manager=MagicMock(),
         audit_logger=MagicMock(),
         artifact_store=MagicMock(),
+        prompt_assembler=MagicMock(),
     )
     # Set an unresolved gap
     controller._pending_gaps = (SemanticGap(topic="routing", resolved=False),)
@@ -115,10 +113,9 @@ def test_sync_nested_states_enters_argumentation_diff_when_gaps_present() -> Non
         memory_store=MagicMock(),
         heuristic_updater=MagicMock(),
         knowledge_graph=MagicMock(),
-        schema_tailor=MagicMock(),
-        budget_manager=MagicMock(),
         audit_logger=MagicMock(),
         artifact_store=MagicMock(),
+        prompt_assembler=MagicMock(),
     )
     # Mock the spec_agent to return gaps
     controller._spec_agent.analyze_specification_gaps = MagicMock(
@@ -145,10 +142,9 @@ def test_merge_templated_responses_resolves_gaps() -> None:
         memory_store=MagicMock(),
         heuristic_updater=MagicMock(),
         knowledge_graph=MagicMock(),
-        schema_tailor=MagicMock(),
-        budget_manager=MagicMock(),
         audit_logger=MagicMock(),
         artifact_store=MagicMock(),
+        prompt_assembler=MagicMock(),
     )
     
     # Mock SpecificationAgent merge to return a dummy specification

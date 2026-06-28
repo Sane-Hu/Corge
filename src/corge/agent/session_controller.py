@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import UTC
+from pathlib import Path
 
 from corge.agent.coding_agent import CodingAgent
 from corge.agent.planning_agent import PlanningAgent
@@ -43,8 +44,8 @@ from corge.contracts import (
     TechnicalPlan,
     ToolRuntimePort,
     UiPort,
+    PromptAssemblerPort,
 )
-from corge.prompt_assembler import PromptAssembler
 
 # ---------------------------------------------------------------------------
 # Valid lifecycle transitions (Tech-spec §3 state diagram)
@@ -102,8 +103,7 @@ class SessionController:
         context_service    — context hydration
         memory_store       — memory pyramid persistence
         heuristic_updater  — post-spec Bayesian batch learning
-        schema_tailor      — schema injection
-        budget_manager     — context budget enforcement
+        prompt_assembler   — context template rendering
     """
 
     def __init__(
@@ -115,17 +115,12 @@ class SessionController:
         memory_store: MemoryStorePort,
         heuristic_updater: HeuristicUpdaterPort,
         knowledge_graph: KnowledgeGraphPort,
-        schema_tailor: SchemaTailorPort,
-        budget_manager: BudgetManagerPort,
         audit_logger: AuditLoggerPort,
         artifact_store: ArtifactStorePort,
+        prompt_assembler: PromptAssemblerPort,
     ) -> None:
         # Sub-agents (intra-module wiring)
-        self._prompt_assembler = PromptAssembler(
-            context_port=context_service,
-            schema_tailor=schema_tailor,
-            budget_manager=budget_manager,
-        )
+        self._prompt_assembler = prompt_assembler
 
         self._spec_agent = SpecificationAgent(
             provider, context_service, self._prompt_assembler, controller=self
@@ -146,7 +141,8 @@ class SessionController:
             on_knowledge_extracted=self._handle_extracted_knowledge,
         )
 
-        # External port dependencies
+        self._context_service = context_service
+        self._knowledge_graph = knowledge_graph
         self._memory_store = memory_store
         self._heuristic_updater = heuristic_updater
 
@@ -174,20 +170,76 @@ class SessionController:
         """The active specification (FR-001)."""
         return self._specification
 
+    @specification.setter
+    def specification(self, value: Specification | None) -> None:
+        self._specification = value
+
     @property
     def plan(self) -> Plan | None:
         """The active execution plan (FR-008)."""
         return self._plan
 
     @property
+    def current_step_idx(self) -> int:
+        """Get the index of the first uncompleted step."""
+        if not self._plan:
+            return 0
+        for i, step in enumerate(self._plan.steps):
+            if not getattr(step, "completed", False):
+                return i
+        return len(self._plan.steps)
+
+    @property
+    def current_step(self) -> PlanStep | None:
+        """Get the current uncompleted step."""
+        if not self._plan:
+            return None
+        idx = self.current_step_idx
+        if idx < len(self._plan.steps):
+            return self._plan.steps[idx]
+        return None
+
+    def mark_step_completed(self) -> None:
+        """Mark the current step as completed."""
+        import dataclasses
+        if not self._plan:
+            return
+        idx = self.current_step_idx
+        if idx < len(self._plan.steps):
+            steps = list(self._plan.steps)
+            steps[idx] = dataclasses.replace(steps[idx], completed=True)
+            self._plan = dataclasses.replace(self._plan, steps=tuple(steps))
+
+    def uncomplete_previous_step(self) -> bool:
+        """Uncomplete the previous step to navigate back. Returns True if successful."""
+        import dataclasses
+        if not self._plan:
+            return False
+        idx = self.current_step_idx
+        if idx > 0:
+            steps = list(self._plan.steps)
+            steps[idx - 1] = dataclasses.replace(steps[idx - 1], completed=False)
+            self._plan = dataclasses.replace(self._plan, steps=tuple(steps))
+            return True
+        return False
+
+    @property
     def technical_plan(self) -> TechnicalPlan | None:
         """The active technical architecture plan."""
         return self._technical_plan
+
+    @technical_plan.setter
+    def technical_plan(self, value: TechnicalPlan | None) -> None:
+        self._technical_plan = value
 
     @property
     def procedural_steps(self) -> tuple[ProceduralStep, ...]:
         """The active procedural steps."""
         return self._procedural_steps
+
+    @procedural_steps.setter
+    def procedural_steps(self, value: tuple[ProceduralStep, ...]) -> None:
+        self._procedural_steps = value
 
     def set_approved_plan(self, plan: Plan) -> None:
         """Set the approved execution plan."""
@@ -250,17 +302,24 @@ class SessionController:
         if state.repo_root:
             pass  # Currently repo_root is handled elsewhere
 
-    def advance(self) -> LifecycleState:
-        """Advance to the next lifecycle state.
+    def advance(self) -> None:
+        """Move to the next logical phase in the lifecycle.
 
-        Raises:
-            InvalidTransitionError: If the current state has no defined
-                successor (e.g. already at DONE).
+        Raises InvalidTransitionError if the current state cannot advance.
         """
-        next_state = _TRANSITIONS.get(self._state)
-        if next_state is None:
-            raise InvalidTransitionError(f"No transition defined from {self._state!r}")
-        return self.transition_to(next_state)
+        if self._state not in _TRANSITIONS:
+            raise InvalidTransitionError(f"Cannot advance from terminal state {self._state}")
+        self.transition_to(_TRANSITIONS[self._state])
+
+    def analyze_repository(self, target_repo: Path) -> ContextBundle:
+        """Analyze repository structure and build knowledge graph."""
+        from corge.contracts.models import RepositoryContext
+        bundle = self._context_service.load_context(
+            RepositoryContext(root=target_repo)
+        )
+        if not self.is_empty_repo:
+            self._knowledge_graph.build_graph(bundle.repository_context)
+        return bundle
 
     def transition_to(self, target_state: LifecycleState) -> LifecycleState:
         """Manually transition to a specific state (supports backward transitions)."""

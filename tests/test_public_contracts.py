@@ -238,7 +238,7 @@ def test_artifact_store_lifecycle(tmp_path: Path) -> None:
 
 
 def test_tool_runtime_lifecycle(tmp_path: Path) -> None:
-    runtime = ToolRuntime()
+    runtime = ToolRuntime(repo_root=tmp_path)
     test_file = tmp_path / "tool_test.txt"
 
     # Test write

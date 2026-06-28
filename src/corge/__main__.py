@@ -125,11 +125,14 @@ class RealCorgeApp(CorgeApp):
         budget_manager = BudgetManager()
         audit_logger = AuditLogger(agent_dir, self.global_dir)
         argumentation_log = ArgumentationLog(agent_dir)
-        tool_runtime = ToolRuntime()
+        tool_runtime = ToolRuntime(repo_root=self.target_repo)
         artifact_store = ArtifactStore(agent_dir / "artifacts")
 
         approval_gateway = ApprovalGateway(ui, audit_logger)
         heuristic_updater = BayesianUpdater(self.global_dir, argumentation_log)
+
+        from corge.prompt_assembler import PromptAssembler
+        prompt_assembler = PromptAssembler(context_service, schema_tailor, budget_manager)
 
         controller = SessionController(
             provider=provider,
@@ -139,25 +142,17 @@ class RealCorgeApp(CorgeApp):
             memory_store=memory_store,
             heuristic_updater=heuristic_updater,
             knowledge_graph=knowledge_graph,
-            schema_tailor=schema_tailor,
-            budget_manager=budget_manager,
             audit_logger=audit_logger,
             artifact_store=artifact_store,
+            prompt_assembler=prompt_assembler,
         )
-
-        spec: Specification | None = None
-        tech_plan: TechnicalPlan | None = None
-        proc_steps: tuple[ProceduralStep, ...] = ()
-        plan: Plan | None = None
 
         from corge.agent.session import SessionState, load_session, save_session
         session_state = load_session(agent_dir)
         if session_state:
             controller.load_from_session(session_state)
-            spec = session_state.specification
-            tech_plan = session_state.technical_plan
-            proc_steps = session_state.procedural_steps
-            plan = session_state.plan
+
+        import dataclasses
 
         while controller.state != LifecycleState.DONE:
             ui.update_journey_state(controller.active_agent_name, controller.state.name)
@@ -167,10 +162,10 @@ class RealCorgeApp(CorgeApp):
                 master_phase=controller.phase,
                 spec_state=controller.spec_state,
                 plan_state=controller.plan_state,
-                specification=spec,
-                plan=plan,
-                technical_plan=tech_plan,
-                procedural_steps=proc_steps,
+                specification=controller.specification,
+                plan=controller.plan,
+                technical_plan=controller.technical_plan,
+                procedural_steps=controller.procedural_steps,
                 repo_root=self.target_repo,
             )
             save_session(agent_dir, current_session_state)
@@ -189,16 +184,13 @@ class RealCorgeApp(CorgeApp):
                 controller.advance()
 
             elif controller.state == LifecycleState.REPOSITORY_ANALYSIS:
-                bundle = context_service.load_context(
-                    RepositoryContext(root=self.target_repo)
-                )
                 if not controller.is_empty_repo:
                     ui.show_loading("Analyzing repository structure and building Knowledge Graph...")
-                    try:
-                        knowledge_graph.build_graph(bundle.repository_context)
-                    finally:
+                try:
+                    bundle = controller.analyze_repository(self.target_repo)
+                finally:
+                    if not controller.is_empty_repo:
                         ui.hide_loading()
-                
                 idx = 0
                 screens = [
                     lambda: ui.show_repository_understanding(bundle.repository_context),
@@ -219,23 +211,24 @@ class RealCorgeApp(CorgeApp):
                 controller.advance()
 
             elif controller.state == LifecycleState.SPEC_ENTRY:
-                spec = ui.show_spec_wizard()
-                if spec is None:
+                controller.specification = ui.show_spec_wizard()
+                if controller.specification is None:
                     controller.transition_to(LifecycleState.REPOSITORY_ANALYSIS)
                     continue
                 controller.advance()
 
             elif controller.state == LifecycleState.SPEC_VALIDATION:
+                spec = controller.specification
                 assert spec is not None
                 # Load configured max socratic questions
                 heuristics_cfg = controller.load_heuristic_config()
                 max_questions = getattr(provider._config, "max_socratic_questions", heuristics_cfg.max_socratic_questions)
 
                 # Run the iterative and capped Socratic wizard loop
-                new_spec_body, gaps = controller.run_socratic_loop(
+                spec, gaps = controller.run_socratic_loop(
                     spec.body, argumentation_log, ui, max_questions=max_questions
                 )
-                spec = new_spec_body
+                controller.specification = spec
 
                 # Always show the manual refinement editor (Choice 1.2 Option A)
                 controller.advance_spec_state(SpecState.ARGUMENTATION_DIFF)
@@ -250,14 +243,10 @@ class RealCorgeApp(CorgeApp):
                 # Merge user edited text back to Specification fields (Choice 1.1 Option A)
                 ui.show_loading("Processing specification edits...")
                 try:
-                    spec = controller.merge_templated_responses(spec, user_edited_spec)
+                    controller.specification = controller.merge_templated_responses(spec, user_edited_spec)
                 finally:
                     ui.hide_loading()
 
-                controller.advance()
-
-            elif controller.state == LifecycleState.SPEC_APPROVAL:
-                controller.finalize_spec_phase(abandoned=False)
                 from corge.agent.session_controller import InvalidTransitionError
                 try:
                     controller.advance()
@@ -272,181 +261,163 @@ class RealCorgeApp(CorgeApp):
                     controller.transition_to(LifecycleState.SPEC_VALIDATION)
                     continue
 
+            elif controller.state == LifecycleState.SPEC_APPROVAL:
+                controller.finalize_spec_phase(abandoned=False)
+                controller.advance()
+
             elif controller.state == LifecycleState.PLAN_GENERATION:
+                spec = controller.specification
                 assert spec is not None
+                tech_plan = controller.technical_plan
                 if tech_plan is None:
                     ui.show_loading("Generating technical plan...")
                     try:
                         tech_plan = controller.generate_technical_plan(spec, on_token=ui.stream_token)
+                        controller.technical_plan = tech_plan
                     finally:
                         ui.hide_loading()
                 
                 new_tech_plan = ui.show_tech_plan_editor(tech_plan)
                 if new_tech_plan is None:
-                    tech_plan = None
+                    controller.technical_plan = None
                     controller.transition_to(LifecycleState.SPEC_VALIDATION)
                     continue
-                tech_plan = new_tech_plan
+                controller.technical_plan = new_tech_plan
                 controller.advance()
 
             elif controller.state == LifecycleState.PLAN_REVIEW:
+                tech_plan = controller.technical_plan
+                spec = controller.specification
                 assert tech_plan is not None
                 assert spec is not None
+                
+                proc_steps = controller.procedural_steps
                 if not proc_steps:
                     ui.show_loading("Generating procedural steps...")
                     try:
                         proc_steps = controller.generate_procedural_steps(tech_plan, on_token=ui.stream_token)
+                        controller.procedural_steps = proc_steps
                     finally:
                         ui.hide_loading()
                 
                 new_proc_steps = ui.show_procedural_steps_editor(proc_steps)
                 if new_proc_steps is None:
-                    proc_steps = ()
+                    controller.procedural_steps = ()
                     controller.transition_to(LifecycleState.PLAN_GENERATION)
                     continue
-                proc_steps = new_proc_steps
+                controller.procedural_steps = new_proc_steps
 
-                plan = Plan(
-                    steps=tuple(
-                        PlanStep(identifier=s.identifier, description=s.description)
-                        for s in proc_steps
-                    ),
-                    specification_ref=spec.title,
+                controller.set_approved_plan(
+                    Plan(
+                        steps=tuple(
+                            PlanStep(identifier=s.identifier, description=s.description)
+                            for s in controller.procedural_steps
+                        ),
+                        specification_ref=spec.title,
+                    )
                 )
+                plan = controller.plan
+                assert plan is not None
                 res_plan = ui.show_plan(plan)
                 if res_plan is False:
                     continue
-                controller.set_approved_plan(plan)
                 controller.advance()
 
             elif controller.state == LifecycleState.PLAN_APPROVAL:
                 controller.advance()
 
             elif controller.state == LifecycleState.EXECUTION:
+                step = controller.current_step
+                if step is None:
+                    controller.advance()
+                    continue
+
+                spec = controller.specification
+                plan = controller.plan
                 assert spec is not None
                 assert plan is not None
-
-                import dataclasses
-
-                updated_steps = list(plan.steps)
-                step_idx = 0
-                while step_idx < len(updated_steps):
-                    step = updated_steps[step_idx]
-                    if getattr(step, "completed", False):
-                        step_idx += 1
-                        continue
-                    assert spec is not None
-                    bundle = controller.collect_context(step, spec)
-                    
-                    go_back = False
-                    while True:
-                        # Bug 5: Only show memory screen when there are actual
-                        # events — empty screen forces unnecessary dismiss clicks.
-                        if bundle.scenario_memory:
-                            res_mem = ui.show_memory(bundle.scenario_memory)
-                            if res_mem == "new_spec":
-                                spec = None
-                                plan = None
-                                tech_plan = None
-                                proc_steps = ()
-                                controller.transition_to(LifecycleState.SPEC_ENTRY)
-                                go_back = True
-                                break
-                            elif res_mem == "back":
-                                if step_idx > 0:
-                                    step_idx -= 1
-                                    prev_step = updated_steps[step_idx]
-                                    updated_steps[step_idx] = dataclasses.replace(prev_step, completed=False)
-                                    assert plan is not None
-                                    plan = dataclasses.replace(plan, steps=tuple(updated_steps))
-                                    go_back = True
-                                    break
-                                else:
-                                    controller.transition_to(LifecycleState.PLAN_REVIEW)
-                                    go_back = True
-                                    break
-
-                        res_exec = ui.show_execution(bundle)
-                        if res_exec is False:
-                            if step_idx > 0:
-                                step_idx -= 1
-                                prev_step = updated_steps[step_idx]
-                                updated_steps[step_idx] = dataclasses.replace(prev_step, completed=False)
-                                assert plan is not None
-                                plan = dataclasses.replace(plan, steps=tuple(updated_steps))
+                
+                bundle = controller.collect_context(step, spec)
+                
+                go_back = False
+                while True:
+                    if bundle.scenario_memory:
+                        res_mem = ui.show_memory(bundle.scenario_memory)
+                        if res_mem == "new_spec":
+                            controller.transition_to(LifecycleState.SPEC_ENTRY)
+                            go_back = True
+                            break
+                        elif res_mem == "back":
+                            if controller.uncomplete_previous_step():
                                 go_back = True
                                 break
                             else:
                                 controller.transition_to(LifecycleState.PLAN_REVIEW)
                                 go_back = True
                                 break
-                        break
-                    
-                    if go_back:
-                        if controller.state in (LifecycleState.PLAN_REVIEW, LifecycleState.SPEC_ENTRY):
+
+                    res_exec = ui.show_execution(spec.title, plan, controller.current_step_idx)
+                    if res_exec is False:
+                        if controller.uncomplete_previous_step():
+                            go_back = True
                             break
-                        continue
-
-                    ui.show_loading(f"Executing step: {step.identifier}...")
-                    from datetime import datetime
-
-                    from corge.agent.coding_agent import ToolExecutionError, ActionRejectedError
-                    from corge.contracts import MemoryEvent
-                    try:
-                        controller.execute_step(step, bundle, on_token=ui.stream_token)
-                        updated_steps[step_idx] = dataclasses.replace(step, completed=True)
-                        step_idx += 1
-                    except ActionRejectedError:
-                        # Gateway hid loading before requesting approval and
-                        # does NOT re-show it on rejection — nothing to hide.
-                        if step_idx > 0:
-                            step_idx -= 1
-                            prev_step = updated_steps[step_idx]
-                            updated_steps[step_idx] = dataclasses.replace(prev_step, completed=False)
-                            # Bug 3: sync plan with updated_steps before continue
-                            assert plan is not None
-                            plan = dataclasses.replace(plan, steps=tuple(updated_steps))
-                            continue
                         else:
                             controller.transition_to(LifecycleState.PLAN_REVIEW)
+                            go_back = True
                             break
-                    except ToolExecutionError as e:
-                        memory_store.store_scenario(
-                            MemoryEvent(
-                                kind=spec.title if spec else (plan.specification_ref if plan else "Unknown"),
-                                payload={"step": step.identifier, "error": str(e)},
-                                timestamp=datetime.now(UTC).isoformat(),
-                            )
-                        )
-                        ui.hide_loading()
-
-                        retry = ui.show_confirm(
-                            "Tool Execution Failed",
-                            f"Step {step.identifier} failed with error:\n\n{e}\n\n"
-                            "Would you like to retry this step?\n"
-                            "(Make your manual code fixes first if needed.\n"
-                            "Select 'No' to return to Plan Review with your session saved.)"
-                        )
-                        if not retry:
-                            # Bug 1: Don't exit the app — send the user back to
-                            # Plan Review with the session intact. The main loop
-                            # saves session state at the top of each iteration.
-                            assert plan is not None
-                            plan = dataclasses.replace(plan, steps=tuple(updated_steps))
-                            controller.transition_to(LifecycleState.PLAN_REVIEW)
-                            break
-                    finally:
-                        if type(ui._app.screen).__name__ == "LoadingScreen":
-                            ui.hide_loading()
-
-                if controller.state == LifecycleState.EXECUTION:
-                    assert plan is not None
-                    plan = dataclasses.replace(plan, steps=tuple(updated_steps))
-                    controller.advance()
-                else:
+                    break
+                
+                if go_back:
                     continue
 
+                ui.show_loading(f"Executing step: {step.identifier}...")
+                from datetime import datetime, UTC
+
+                from corge.agent.coding_agent import ToolExecutionError, ActionRejectedError
+                from corge.contracts import MemoryEvent
+                try:
+                    controller.execute_step(step, bundle, on_token=ui.stream_token)
+                    controller.mark_step_completed()
+                except ActionRejectedError:
+                    if not controller.uncomplete_previous_step():
+                        controller.transition_to(LifecycleState.PLAN_REVIEW)
+                except ToolExecutionError as e:
+                    memory_store.store_scenario(
+                        MemoryEvent(
+                            kind=spec.title,
+                            payload={"step": step.identifier, "error": str(e)},
+                            timestamp=datetime.now(UTC).isoformat(),
+                        )
+                    )
+
+                    retry = ui.show_confirm(
+                        "Tool Execution Failed",
+                        f"Step {step.identifier} failed with error:\n\n{e}\n\n"
+                        "Would you like to retry this step?\n"
+                        "(Make your manual code fixes first if needed.\n"
+                        "Select 'No' to save your progress and exit the application.)"
+                    )
+                    if not retry:
+                        current_session_state = SessionState(
+                            lifecycle_state=controller.state,
+                            master_phase=controller.phase,
+                            spec_state=controller.spec_state,
+                            plan_state=controller.plan_state,
+                            specification=controller.specification,
+                            plan=controller.plan,
+                            technical_plan=controller.technical_plan,
+                            procedural_steps=controller.procedural_steps,
+                            repo_root=self.target_repo,
+                        )
+                        save_session(agent_dir, current_session_state)
+                        import sys
+                        sys.exit(1)
+                finally:
+                    ui.hide_loading()
+
             elif controller.state == LifecycleState.VERIFICATION:
+                plan = controller.plan
+                spec = controller.specification
                 assert plan is not None
                 assert spec is not None
                 step = (
@@ -461,7 +432,7 @@ class RealCorgeApp(CorgeApp):
                 ui.show_loading("Verifying completion...")
                 try:
                     success = controller.evaluate_completion(plan, bundle, on_token=ui.stream_token)
-                    from datetime import datetime
+                    from datetime import datetime, UTC
 
                     from corge.contracts import AuditEvent
                     audit_logger.record_completion(
@@ -476,6 +447,7 @@ class RealCorgeApp(CorgeApp):
                 controller.advance()
 
             elif controller.state == LifecycleState.COMPLETION_REVIEW:
+                plan = controller.plan
                 assert plan is not None
                 while True:
                     res_review = ui.show_completion_review(plan)

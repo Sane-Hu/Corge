@@ -8,10 +8,27 @@ from corge.contracts import ToolAction, ToolResult
 class ToolRuntime:
     """Concrete tool runtime.  Satisfies ``contracts.ToolRuntimePort``."""
 
-    def read(self, path: Path) -> ToolResult:
+    def __init__(self, repo_root: Path | str | None = None) -> None:
+        self.repo_root = Path(repo_root).resolve() if repo_root else Path.cwd().resolve()
+
+    def _resolve_path(self, path: Path | str) -> Path:
+        target = (self.repo_root / path).resolve()
+        if not target.is_relative_to(self.repo_root):
+            raise ValueError(f"Path escapes repository root: {path}")
+        return target
+
+    def read(self, path: Path | str) -> ToolResult:
         try:
-            content = Path(path).read_text(encoding="utf-8")
+            target = self._resolve_path(path)
+            content = target.read_text(encoding="utf-8")
             return ToolResult(action=ToolAction.READ, output=content, success=True)
+        except ValueError as exc:
+            return ToolResult(
+                action=ToolAction.READ,
+                output="",
+                success=False,
+                stderr=str(exc),
+            )
         except FileNotFoundError:
             return ToolResult(
                 action=ToolAction.READ,
@@ -34,9 +51,9 @@ class ToolRuntime:
                 stderr=f"Failed to read {path}: {exc}",
             )
 
-    def write(self, path: Path, content: str) -> ToolResult:
+    def write(self, path: Path | str, content: str) -> ToolResult:
         try:
-            target = Path(path)
+            target = self._resolve_path(path)
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding="utf-8")
             return ToolResult(
@@ -51,10 +68,17 @@ class ToolRuntime:
                 success=False,
                 stderr=f"Failed to write {path}: {exc}",
             )
+        except ValueError as exc:
+            return ToolResult(
+                action=ToolAction.WRITE,
+                output="",
+                success=False,
+                stderr=str(exc),
+            )
 
-    def edit(self, path: Path, old: str, new: str) -> ToolResult:
+    def edit(self, path: Path | str, old: str, new: str) -> ToolResult:
         try:
-            target = Path(path)
+            target = self._resolve_path(path)
             original = target.read_text(encoding="utf-8")
         except FileNotFoundError:
             return ToolResult(
@@ -69,6 +93,13 @@ class ToolRuntime:
                 output="",
                 success=False,
                 stderr=f"Failed to read {path}: {exc}",
+            )
+        except ValueError as exc:
+            return ToolResult(
+                action=ToolAction.EDIT,
+                output="",
+                success=False,
+                stderr=str(exc),
             )
 
         occurrences = original.count(old)
@@ -152,8 +183,9 @@ class ToolRuntime:
 
         return True, ""
 
-    def bash(self, command: str, cwd: Path) -> ToolResult:
+    def bash(self, command: str) -> ToolResult:
         # Validate command safety
+        cwd = self.repo_root
         is_safe, error_msg = self._is_safe_command(command, cwd)
         if not is_safe:
             return ToolResult(

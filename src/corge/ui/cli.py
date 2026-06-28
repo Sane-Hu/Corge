@@ -713,19 +713,25 @@ class CliUi(UiPort):
     # Coding phase screens
     # ------------------------------------------------------------------
 
-    def show_execution(self, context: ContextBundle) -> bool:
+    def show_execution(self, spec_title: str, plan: Plan, current_step_idx: int) -> bool:
         """Display current execution state during the coding phase (finding 8.5).
 
         Shows the active plan step and spec title so the engineer can
         monitor progress while the agent is working.
         """
-        step_lines = "\n".join(
-            f"  {i}. [{s.identifier}] {s.description}"
-            for i, s in enumerate(context.plan.steps, 1)
-        )
+        step_lines = []
+        for i, s in enumerate(plan.steps):
+            if i < current_step_idx:
+                marker = "✓"
+            elif i == current_step_idx:
+                marker = "►"
+            else:
+                marker = "○"
+            step_lines.append(f"  {marker} {i + 1}. [{s.identifier}] {s.description}")
+
         msg = (
-            f"Specification: {context.specification.title}\n\n"
-            f"Executing plan steps:\n{step_lines or '  (none)'}"
+            f"Specification: {spec_title}\n\n"
+            f"Executing plan steps:\n" + ("\n".join(step_lines) if step_lines else "  (none)")
         )
         return bool(self._run_screen(MessageScreen("Execution in Progress", msg, show_back=True)) == "continue")
 
@@ -914,7 +920,12 @@ class CliUi(UiPort):
 
     def hide_loading(self) -> None:
         """Dismiss the active loading overlay."""
-        self._app.call_from_thread(self._app.pop_screen)
+
+        def _pop_if_loading() -> None:
+            if isinstance(self._app.screen, LoadingScreen):
+                self._app.pop_screen()
+
+        self._app.call_from_thread(_pop_if_loading)
 
     def stream_token(self, token: str) -> None:
         """Stream an LLM generation token directly to the UI."""
