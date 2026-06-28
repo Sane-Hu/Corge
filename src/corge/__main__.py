@@ -279,7 +279,7 @@ class RealCorgeApp(CorgeApp):
                     finally:
                         ui.hide_loading()
                 
-                new_tech_plan = ui.show_tech_plan_editor(tech_plan)
+                new_tech_plan = ui.show_tech_plan_editor(tech_plan, spec)
                 if new_tech_plan is None:
                     controller.technical_plan = None
                     controller.transition_to(LifecycleState.SPEC_VALIDATION)
@@ -302,7 +302,7 @@ class RealCorgeApp(CorgeApp):
                     finally:
                         ui.hide_loading()
                 
-                new_proc_steps = ui.show_procedural_steps_editor(proc_steps)
+                new_proc_steps = ui.show_procedural_steps_editor(proc_steps, tech_plan)
                 if new_proc_steps is None:
                     controller.procedural_steps = ()
                     controller.transition_to(LifecycleState.PLAN_GENERATION)

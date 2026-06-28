@@ -710,11 +710,11 @@ class CliUi(UiPort):
         )
         return bool(self._run_screen(MessageScreen("Execution Plan", msg or "(no steps)", show_back=True)) == "continue")
 
-    def show_tech_plan_editor(self, plan: TechnicalPlan) -> TechnicalPlan | None:
+    def show_tech_plan_editor(self, plan: TechnicalPlan, specification: Specification) -> TechnicalPlan | None:
         result_text = self._run_screen(
             InteractiveDiffScreen(
                 left_title="Approved Specification",
-                left_text="(See specification in session context)",
+                left_text=specification.body,
                 right_title="Technical Plan",
                 right_text=plan.content,
                 prompt_text=(
@@ -731,13 +731,13 @@ class CliUi(UiPort):
         )
 
     def show_procedural_steps_editor(
-        self, steps: tuple[ProceduralStep, ...]
+        self, steps: tuple[ProceduralStep, ...], technical_plan: TechnicalPlan
     ) -> tuple[ProceduralStep, ...] | None:
         steps_text = "\n".join(f"[{s.identifier}] {s.description}" for s in steps)
         result_text = self._run_screen(
             InteractiveDiffScreen(
                 left_title="Technical Plan",
-                left_text="(Refer to approved Technical Plan)",
+                left_text=technical_plan.content,
                 right_title="Procedural Steps",
                 right_text=steps_text,
                 prompt_text="Edit procedural steps. Each line becomes one step.",
