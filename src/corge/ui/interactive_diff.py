@@ -14,9 +14,9 @@ class InteractiveDiffScreen(Screen[str | None]):
     """Side-by-side diff for review and override."""
 
     BINDINGS = [
-        ("ctrl+a", "approve", "Approve"),
-        ("ctrl+d", "toggle_diff", "Toggle Diff"),
-        ("ctrl+y", "copy_right", "Copy Proposed"),
+        ("ctrl+s", "approve", "Approve"),
+        ("ctrl+t", "toggle_diff", "Toggle Diff"),
+        ("ctrl+g", "copy_right", "Copy Proposed"),
     ]
 
     CSS = """
@@ -69,6 +69,7 @@ class InteractiveDiffScreen(Screen[str | None]):
         reject_text: str = "Reject",
         override_diff_text: str | None = None,
         right_read_only: bool = False,
+        diff_title: str = "Diff vs Original Draft",
     ) -> None:
         super().__init__()
         self._left_title = left_title
@@ -81,6 +82,7 @@ class InteractiveDiffScreen(Screen[str | None]):
         self._override_diff_text = override_diff_text
         self._original_right_text = right_text
         self._showing_diff = False
+        self._diff_title = diff_title
 
         self.left_area = TextArea(self._left_text, id="left_area", read_only=True)
         self.diff_log = RichLog(id="diff_log", highlight=True, markup=True)
@@ -101,8 +103,16 @@ class InteractiveDiffScreen(Screen[str | None]):
         with Vertical(classes="footer"):
             yield Static(self._prompt_text, classes="footer-prompt")
             with Horizontal(classes="footer-buttons"):
-                yield Button(self._approve_text, id="approve", variant="success")
-                yield Button(self._reject_text, id="reject", variant="error")
+                yield Button(
+                    f"{self._approve_text} (ctrl+s)",
+                    id="approve",
+                    variant="success",
+                )
+                yield Button(
+                    f"{self._reject_text} (esc)",
+                    id="reject",
+                    variant="error",
+                )
         yield Footer()
 
     def action_approve(self) -> None:
@@ -120,7 +130,9 @@ class InteractiveDiffScreen(Screen[str | None]):
         if self._showing_diff:
             self.left_area.styles.display = "none"
             self.diff_log.styles.display = "block"
-            self.left_title_widget.update("Diff vs Original Draft")
+            self.left_title_widget.update(
+                f"{self._diff_title} [dim](ctrl+t to hide diff)[/dim]"
+            )
             self.update_diff()
         else:
             self.diff_log.styles.display = "none"

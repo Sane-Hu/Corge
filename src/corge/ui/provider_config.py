@@ -161,8 +161,16 @@ class ProviderConfigScreen(Screen[dict[str, str] | None]):
                 )
 
             with Horizontal(classes="buttons"):
-                yield Button("Save & Connect", id="save_btn", variant="success")
-                yield Button("Exit", id="exit_btn", variant="error")
+                yield Button(
+                    "Save & Connect (ctrl+s)",
+                    id="save_btn",
+                    variant="success",
+                )
+                yield Button(
+                    "Exit (esc)",
+                    id="exit_btn",
+                    variant="error",
+                )
         yield Footer()
 
     def on_mount(self) -> None:

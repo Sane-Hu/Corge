@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Footer, Header, Static, TextArea
+from textual.widgets import Button, Footer, Header, Static
 
 
 class ConfirmScreen(Screen[bool]):
@@ -27,6 +27,17 @@ class ConfirmScreen(Screen[bool]):
         border: round $primary;
         padding: 1 2;
         background: #2b0630;
+    }
+    #confirm_message_container {
+        height: 10;
+        border: solid $secondary;
+        background: #1a021d;
+        padding: 1 2;
+        margin-bottom: 1;
+    }
+    #confirm_message_text {
+        width: 100%;
+        height: auto;
     }
     .title {
         text-align: center;
@@ -53,7 +64,8 @@ class ConfirmScreen(Screen[bool]):
         yield Header()
         with Vertical():
             yield Static(self._title, classes="title")
-            yield TextArea(self._message, read_only=True)
+            with ScrollableContainer(id="confirm_message_container"):
+                yield Static(self._message, id="confirm_message_text", markup=False)
             with Horizontal(classes="footer-buttons"):
                 yield Button("Yes (y)", id="yes", variant="success")
                 yield Button("No (n/esc)", id="no", variant="error")

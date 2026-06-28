@@ -15,7 +15,7 @@ from typing import Any, cast
 
 from textual import on
 from textual.app import App, ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.screen import Screen
 from textual.widgets import (
     Button,
@@ -83,12 +83,13 @@ class MessageScreen(Screen[str]):
         yield Header()
         with Vertical():
             yield Static(self._title, classes="title")
-            yield TextArea(self._message, read_only=True)
+            with ScrollableContainer(id="message_container"):
+                yield Static(self._message, id="message_text", markup=False)
             with Horizontal(classes="footer-buttons"):
                 if self._show_back:
-                    yield Button("Back", id="back", variant="error")
+                    yield Button("Back (esc)", id="back", variant="error")
                 if self._show_new_spec:
-                    yield Button("New Spec", id="new_spec", variant="warning")
+                    yield Button("New Spec (n)", id="new_spec", variant="warning")
                 yield Button("Copy (c)", id="copy", variant="default")
                 auto_adv = getattr(self.app, "auto_advance", False)
                 yield Button(
@@ -96,7 +97,7 @@ class MessageScreen(Screen[str]):
                     id="auto_advance",
                     variant="success" if auto_adv else "default",
                 )
-                yield Button("Continue", id="continue", variant="primary")
+                yield Button("Continue (enter)", id="continue", variant="primary")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -196,7 +197,7 @@ class PostCompletionScreen(Screen[str]):
             with Horizontal(classes="footer-buttons"):
                 yield Button("New Spec (n)", id="new_spec", variant="success")
                 yield Button("Switch Project (s)", id="switch_repo", variant="primary")
-                yield Button("Quit (q)", id="quit", variant="error")
+                yield Button("Quit (q/esc)", id="quit", variant="error")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -280,6 +281,17 @@ class CorgeApp(App[None]):
         height: auto;
         border: round $primary;
         padding: 1 2;
+    }
+    #message_container {
+        height: 15;
+        border: solid $secondary;
+        background: #1a021d;
+        padding: 1 2;
+        margin-bottom: 1;
+    }
+    #message_text {
+        width: 100%;
+        height: auto;
     }
     .title {
         text-align: center;
@@ -669,6 +681,7 @@ class CliUi(UiPort):
                 right_text=right_text,
                 prompt_text="Resolve any gaps in the Specification.",
                 reject_text="Back",
+                diff_title="Diff (Canvas vs Spec)",
             )
         )
         return cast(str | None, result_text)
@@ -727,6 +740,7 @@ class CliUi(UiPort):
                     "Review and refine the Technical Plan. Click Approve when ready."
                 ),
                 reject_text="Back",
+                diff_title="Diff (Current Technical Plan vs Previous Draft)",
             )
         )
         if result_text is None:
@@ -748,6 +762,7 @@ class CliUi(UiPort):
                 right_text=steps_text,
                 prompt_text="Edit procedural steps. Each line becomes one step.",
                 reject_text="Back",
+                diff_title="Diff (Current Procedural Steps vs Previous Draft)",
             )
         )
         if result_text is None:
@@ -836,15 +851,27 @@ class CliUi(UiPort):
                 f"Executing bash command in current directory:\n$ {request.target}\n"
             )
 
+        diff_title = "Diff vs Original Draft"
+        if request.action == ToolAction.EDIT:
+            diff_title = f"Proposed File Edit Diff — {request.target}"
+        elif request.action == ToolAction.WRITE:
+            diff_title = f"Proposed New File Content — {request.target}"
+        elif request.action == ToolAction.BASH:
+            diff_title = f"Proposed Bash Command — {request.target}"
+
         result = self._run_screen(
             InteractiveDiffScreen(
                 left_title="Request Context",
-                left_text="The agent requires authorization to perform an action.\n\nPress Ctrl+D to toggle live diff.",
+                left_text=(
+                    "The agent requires authorization to perform an action.\n\n"
+                    "Press Ctrl+T to toggle live diff."
+                ),
                 right_title="Approval Request",
                 right_text=detail,
                 prompt_text="Review the requested action carefully.",
                 override_diff_text=override_diff,
                 right_read_only=True,
+                diff_title=diff_title,
             )
         )
         # InteractiveDiffScreen.dismiss(text) → APPROVED; dismiss(None) → REJECTED

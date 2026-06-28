@@ -213,8 +213,8 @@ class CanvasScreen(Screen[str | None]):
                     yield Button("Clear All Notes", id="clear-all-notes", variant="error")
 
         with Horizontal(classes="footer"):
-            yield Button("Back", id="back", variant="error")
-            yield Button("Submit to Concretization", id="submit", variant="primary")
+            yield Button("Back (esc)", id="back", variant="error")
+            yield Button("Submit (ctrl+s)", id="submit", variant="primary")
         yield Footer()
 
     def on_mount(self) -> None:

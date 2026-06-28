@@ -382,8 +382,17 @@ class RealCorgeApp(CorgeApp):
                     controller.execute_step(step, bundle, on_token=ui.stream_token)
                     controller.mark_step_completed()
                 except ActionRejectedError:
-                    if not controller.uncomplete_previous_step():
-                        controller.transition_to(LifecycleState.PLAN_REVIEW)
+                    proceed_next = ui.show_confirm(
+                        "Action Rejected",
+                        f"The action for step '{step.identifier}' was rejected.\n\n"
+                        "Would you like to skip this step and proceed to the next step?\n"
+                        "(Select 'No' to roll back to the previous step or plan review.)"
+                    )
+                    if proceed_next:
+                        controller.mark_step_completed()
+                    else:
+                        if not controller.uncomplete_previous_step():
+                            controller.transition_to(LifecycleState.PLAN_REVIEW)
                 except ToolExecutionError as e:
                     memory_store.store_scenario(
                         MemoryEvent(
