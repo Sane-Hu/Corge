@@ -173,184 +173,195 @@ class RealCorgeApp(CorgeApp):
             )
             save_session(agent_dir, current_session_state)
 
-            if controller.state == LifecycleState.START:
-                controller.advance()
+            try:
+                if controller.state == LifecycleState.START:
+                    controller.advance()
 
-            elif controller.state == LifecycleState.REPOSITORY_SELECTION:
-                is_empty = True
-                if self.target_repo.exists():
-                    for child in self.target_repo.iterdir():
-                        if child.name not in (".git", ".agent"):
-                            is_empty = False
-                            break
-                controller.set_empty_repo(is_empty)
-                controller.advance()
+                elif controller.state == LifecycleState.REPOSITORY_SELECTION:
+                    is_empty = True
+                    if self.target_repo.exists():
+                        for child in self.target_repo.iterdir():
+                            if child.name not in (".git", ".agent"):
+                                is_empty = False
+                                break
+                    controller.set_empty_repo(is_empty)
+                    controller.advance()
 
-            elif controller.state == LifecycleState.REPOSITORY_ANALYSIS:
-                if not controller.is_empty_repo:
-                    ui.show_loading("Analyzing repository structure and building Knowledge Graph...")
-                try:
-                    bundle = controller.analyze_repository(self.target_repo)
-                finally:
+                elif controller.state == LifecycleState.REPOSITORY_ANALYSIS:
                     if not controller.is_empty_repo:
-                        ui.hide_loading()
-                idx = 0
-                screens = [
-                    lambda: ui.show_repository_understanding(bundle.repository_context),
-                    lambda: ui.show_repository_analysis(bundle.repository_context),
-                    lambda: ui.show_engineering_profile(bundle.engineering_profile),
-                ]
-                while 0 <= idx < len(screens):
-                    res = screens[idx]()
-                    if res is False:
-                        idx -= 1
-                    else:
-                        idx += 1
-
-                if idx < 0:
-                    controller.transition_to(LifecycleState.REPOSITORY_SELECTION)
-                    continue
-
-                controller.advance()
-
-            elif controller.state == LifecycleState.SPEC_ENTRY:
-                controller.specification = ui.show_spec_wizard()
-                if controller.specification is None:
-                    controller.transition_to(LifecycleState.REPOSITORY_ANALYSIS)
-                    continue
-                controller.advance()
-
-            elif controller.state == LifecycleState.SPEC_VALIDATION:
-                spec = controller.specification
-                assert spec is not None
-                # Load configured max socratic questions
-                heuristics_cfg = controller.load_heuristic_config()
-                max_questions = getattr(provider._config, "max_socratic_questions", heuristics_cfg.max_socratic_questions)
-
-                # Run the iterative and capped Socratic wizard loop
-                spec, gaps = controller.run_socratic_loop(
-                    spec.body, argumentation_log, ui, max_questions=max_questions
-                )
-                controller.specification = spec
-
-                # Always show the manual refinement editor (Choice 1.2 Option A)
-                controller.advance_spec_state(SpecState.ARGUMENTATION_DIFF)
-                formatted_spec_text = controller.format_spec_to_text(spec, gaps)
-                
-                user_edited_spec = ui.show_argumentation_diff(spec.body, formatted_spec_text)
-                if user_edited_spec is None:
-                    # User clicked Reject or Escape, transition back to Spec Entry
-                    controller.transition_to(LifecycleState.SPEC_ENTRY)
-                    continue
-                
-                # Merge user edited text back to Specification fields (Choice 1.1 Option A)
-                ui.show_loading("Processing specification edits...")
-                try:
-                    controller.specification = controller.merge_templated_responses(spec, user_edited_spec, argumentation_log)
-                finally:
-                    ui.hide_loading()
-
-                from corge.agent.session_controller import InvalidTransitionError
-                try:
-                    controller.advance()
-                except InvalidTransitionError:
-                    # Unresolved semantic gaps still exist — tell the user and
-                    # loop back to the argumentation diff editor.
-                    ui.show_confirm(
-                        "Unresolved Specification Gaps",
-                        "Your specification still contains unresolved gap placeholders\n"
-                        "('[GAP: ...]' sections). Please fill them in before proceeding.",
-                    )
-                    controller.transition_to(LifecycleState.SPEC_VALIDATION)
-                    continue
-
-            elif controller.state == LifecycleState.SPEC_APPROVAL:
-                controller.finalize_spec_phase(abandoned=False)
-                controller.advance()
-
-            elif controller.state == LifecycleState.PLAN_GENERATION:
-                spec = controller.specification
-                assert spec is not None
-                tech_plan = controller.technical_plan
-                if tech_plan is None:
-                    ui.show_loading("Generating technical plan...")
+                        ui.show_loading("Analyzing repository structure and building Knowledge Graph...")
                     try:
-                        tech_plan = controller.generate_technical_plan(spec, on_token=ui.stream_token)
-                        controller.technical_plan = tech_plan
+                        bundle = controller.analyze_repository(self.target_repo)
+                    finally:
+                        if not controller.is_empty_repo:
+                            ui.hide_loading()
+                    idx = 0
+                    screens = [
+                        lambda: ui.show_repository_understanding(bundle.repository_context),
+                        lambda: ui.show_repository_analysis(bundle.repository_context),
+                        lambda: ui.show_engineering_profile(bundle.engineering_profile),
+                    ]
+                    while 0 <= idx < len(screens):
+                        res = screens[idx]()
+                        if res is False:
+                            idx -= 1
+                        else:
+                            idx += 1
+
+                    if idx < 0:
+                        controller.transition_to(LifecycleState.REPOSITORY_SELECTION)
+                        continue
+
+                    controller.advance()
+
+                elif controller.state == LifecycleState.SPEC_ENTRY:
+                    controller.specification = ui.show_spec_wizard()
+                    if controller.specification is None:
+                        controller.transition_to(LifecycleState.REPOSITORY_ANALYSIS)
+                        continue
+                    controller.advance()
+
+                elif controller.state == LifecycleState.SPEC_VALIDATION:
+                    spec = controller.specification
+                    assert spec is not None
+                    # Load configured max socratic questions
+                    heuristics_cfg = controller.load_heuristic_config()
+                    max_questions = getattr(provider._config, "max_socratic_questions", heuristics_cfg.max_socratic_questions)
+
+                    # Run the iterative and capped Socratic wizard loop
+                    spec, gaps = controller.run_socratic_loop(
+                        spec.body, argumentation_log, ui, max_questions=max_questions
+                    )
+                    controller.specification = spec
+
+                    # Always show the manual refinement editor (Choice 1.2 Option A)
+                    controller.advance_spec_state(SpecState.ARGUMENTATION_DIFF)
+                    formatted_spec_text = controller.format_spec_to_text(spec, gaps)
+                    
+                    user_edited_spec = ui.show_argumentation_diff(spec.body, formatted_spec_text)
+                    if user_edited_spec is None:
+                        # User clicked Reject or Escape, transition back to Spec Entry
+                        controller.transition_to(LifecycleState.SPEC_ENTRY)
+                        continue
+                    
+                    # Merge user edited text back to Specification fields (Choice 1.1 Option A)
+                    ui.show_loading("Processing specification edits...")
+                    try:
+                        controller.specification = controller.merge_templated_responses(spec, user_edited_spec, argumentation_log)
                     finally:
                         ui.hide_loading()
-                
-                new_tech_plan = ui.show_tech_plan_editor(tech_plan, spec)
-                if new_tech_plan is None:
-                    controller.technical_plan = None
-                    controller.transition_to(LifecycleState.SPEC_VALIDATION)
-                    continue
-                controller.technical_plan = new_tech_plan
-                controller.advance()
 
-            elif controller.state == LifecycleState.PLAN_REVIEW:
-                tech_plan = controller.technical_plan
-                spec = controller.specification
-                assert tech_plan is not None
-                assert spec is not None
-                
-                proc_steps = controller.procedural_steps
-                if not proc_steps:
-                    ui.show_loading("Generating procedural steps...")
+                    from corge.agent.session_controller import InvalidTransitionError
                     try:
-                        proc_steps = controller.generate_procedural_steps(tech_plan, on_token=ui.stream_token)
-                        controller.procedural_steps = proc_steps
-                    finally:
-                        ui.hide_loading()
-                
-                new_proc_steps = ui.show_procedural_steps_editor(proc_steps, tech_plan)
-                if new_proc_steps is None:
-                    controller.procedural_steps = ()
-                    controller.transition_to(LifecycleState.PLAN_GENERATION)
-                    continue
-                controller.procedural_steps = new_proc_steps
+                        controller.advance()
+                    except InvalidTransitionError:
+                        # Unresolved semantic gaps still exist — tell the user and
+                        # loop back to the argumentation diff editor.
+                        ui.show_confirm(
+                            "Unresolved Specification Gaps",
+                            "Your specification still contains unresolved gap placeholders\n"
+                            "('[GAP: ...]' sections). Please fill them in before proceeding.",
+                        )
+                        controller.transition_to(LifecycleState.SPEC_VALIDATION)
+                        continue
 
-                controller.set_approved_plan(
-                    Plan(
-                        steps=tuple(
-                            PlanStep(identifier=s.identifier, description=s.description)
-                            for s in controller.procedural_steps
-                        ),
-                        specification_ref=spec.title,
-                    )
-                )
-                plan = controller.plan
-                assert plan is not None
-                res_plan = ui.show_plan(plan)
-                if res_plan is False:
-                    continue
-                controller.advance()
-
-            elif controller.state == LifecycleState.PLAN_APPROVAL:
-                controller.advance()
-
-            elif controller.state == LifecycleState.EXECUTION:
-                step = controller.current_step
-                if step is None:
+                elif controller.state == LifecycleState.SPEC_APPROVAL:
+                    controller.finalize_spec_phase(abandoned=False)
                     controller.advance()
-                    continue
 
-                spec = controller.specification
-                plan = controller.plan
-                assert spec is not None
-                assert plan is not None
-                
-                bundle = controller.collect_context(step, spec)
-                
-                go_back = False
-                while True:
-                    if bundle.scenario_memory:
-                        res_mem = ui.show_memory(bundle.scenario_memory)
-                        if res_mem == "new_spec":
-                            controller.transition_to(LifecycleState.SPEC_ENTRY)
-                            go_back = True
-                            break
-                        elif res_mem == "back":
+                elif controller.state == LifecycleState.PLAN_GENERATION:
+                    spec = controller.specification
+                    assert spec is not None
+                    tech_plan = controller.technical_plan
+                    if tech_plan is None:
+                        ui.show_loading("Generating technical plan...")
+                        try:
+                            tech_plan = controller.generate_technical_plan(spec, on_token=ui.stream_token)
+                            controller.technical_plan = tech_plan
+                        finally:
+                            ui.hide_loading()
+                    
+                    new_tech_plan = ui.show_tech_plan_editor(tech_plan, spec)
+                    if new_tech_plan is None:
+                        controller.technical_plan = None
+                        controller.transition_to(LifecycleState.SPEC_VALIDATION)
+                        continue
+                    controller.technical_plan = new_tech_plan
+                    controller.advance()
+
+                elif controller.state == LifecycleState.PLAN_REVIEW:
+                    tech_plan = controller.technical_plan
+                    spec = controller.specification
+                    assert tech_plan is not None
+                    assert spec is not None
+                    
+                    proc_steps = controller.procedural_steps
+                    if not proc_steps:
+                        ui.show_loading("Generating procedural steps...")
+                        try:
+                            proc_steps = controller.generate_procedural_steps(tech_plan, on_token=ui.stream_token)
+                            controller.procedural_steps = proc_steps
+                        finally:
+                            ui.hide_loading()
+                    
+                    new_proc_steps = ui.show_procedural_steps_editor(proc_steps, tech_plan)
+                    if new_proc_steps is None:
+                        controller.procedural_steps = ()
+                        controller.transition_to(LifecycleState.PLAN_GENERATION)
+                        continue
+                    controller.procedural_steps = new_proc_steps
+
+                    controller.set_approved_plan(
+                        Plan(
+                            steps=tuple(
+                                PlanStep(identifier=s.identifier, description=s.description)
+                                for s in controller.procedural_steps
+                            ),
+                            specification_ref=spec.title,
+                        )
+                    )
+                    plan = controller.plan
+                    assert plan is not None
+                    res_plan = ui.show_plan(plan)
+                    if res_plan is False:
+                        continue
+                    controller.advance()
+
+                elif controller.state == LifecycleState.PLAN_APPROVAL:
+                    controller.advance()
+
+                elif controller.state == LifecycleState.EXECUTION:
+                    step = controller.current_step
+                    if step is None:
+                        controller.advance()
+                        continue
+
+                    spec = controller.specification
+                    plan = controller.plan
+                    assert spec is not None
+                    assert plan is not None
+                    
+                    bundle = controller.collect_context(step, spec)
+                    
+                    go_back = False
+                    while True:
+                        if bundle.scenario_memory:
+                            res_mem = ui.show_memory(bundle.scenario_memory)
+                            if res_mem == "new_spec":
+                                controller.transition_to(LifecycleState.SPEC_ENTRY)
+                                go_back = True
+                                break
+                            elif res_mem == "back":
+                                if controller.uncomplete_previous_step():
+                                    go_back = True
+                                    break
+                                else:
+                                    controller.transition_to(LifecycleState.PLAN_REVIEW)
+                                    go_back = True
+                                    break
+
+                        res_exec = ui.show_execution(spec.title, plan, controller.current_step_idx)
+                        if res_exec is False:
                             if controller.uncomplete_previous_step():
                                 go_back = True
                                 break
@@ -358,58 +369,119 @@ class RealCorgeApp(CorgeApp):
                                 controller.transition_to(LifecycleState.PLAN_REVIEW)
                                 go_back = True
                                 break
+                        break
+                    
+                    if go_back:
+                        continue
 
-                    res_exec = ui.show_execution(spec.title, plan, controller.current_step_idx)
-                    if res_exec is False:
-                        if controller.uncomplete_previous_step():
-                            go_back = True
-                            break
-                        else:
-                            controller.transition_to(LifecycleState.PLAN_REVIEW)
-                            go_back = True
-                            break
-                    break
-                
-                if go_back:
-                    continue
+                    ui.show_loading(f"Executing step: {step.identifier}...")
+                    from datetime import datetime, UTC
 
-                ui.show_loading(f"Executing step: {step.identifier}...")
-                from datetime import datetime, UTC
-
-                from corge.agent.coding_agent import ToolExecutionError, ActionRejectedError
-                from corge.contracts import MemoryEvent
-                try:
-                    controller.execute_step(step, bundle, on_token=ui.stream_token)
-                    controller.mark_step_completed()
-                except ActionRejectedError:
-                    proceed_next = ui.show_confirm(
-                        "Action Rejected",
-                        f"The action for step '{step.identifier}' was rejected.\n\n"
-                        "Would you like to skip this step and proceed to the next step?\n"
-                        "(Select 'No' to roll back to the previous step or plan review.)"
-                    )
-                    if proceed_next:
+                    from corge.agent.coding_agent import ToolExecutionError, ActionRejectedError
+                    from corge.contracts import MemoryEvent
+                    try:
+                        controller.execute_step(step, bundle, on_token=ui.stream_token)
                         controller.mark_step_completed()
-                    else:
-                        if not controller.uncomplete_previous_step():
-                            controller.transition_to(LifecycleState.PLAN_REVIEW)
-                except ToolExecutionError as e:
-                    memory_store.store_scenario(
-                        MemoryEvent(
-                            kind=spec.title,
-                            payload={"step": step.identifier, "error": str(e)},
-                            timestamp=datetime.now(UTC).isoformat(),
+                    except ActionRejectedError:
+                        proceed_next = ui.show_confirm(
+                            "Action Rejected",
+                            f"The action for step '{step.identifier}' was rejected.\n\n"
+                            "Would you like to skip this step and proceed to the next step?\n"
+                            "(Select 'No' to roll back to the previous step or plan review.)"
+                        )
+                        if proceed_next:
+                            controller.mark_step_completed()
+                        else:
+                            if not controller.uncomplete_previous_step():
+                                controller.transition_to(LifecycleState.PLAN_REVIEW)
+                    except ToolExecutionError as e:
+                        memory_store.store_scenario(
+                            MemoryEvent(
+                                kind=spec.title,
+                                payload={"step": step.identifier, "error": str(e)},
+                                timestamp=datetime.now(UTC).isoformat(),
+                            )
+                        )
+
+                        retry = ui.show_confirm(
+                            "Tool Execution Failed",
+                            f"Step {step.identifier} failed with error:\n\n{e}\n\n"
+                            "Would you like to retry this step?\n"
+                            "(Make your manual code fixes first if needed.\n"
+                            "Select 'No' to save your progress and exit the application.)"
+                        )
+                        if not retry:
+                            current_session_state = SessionState(
+                                lifecycle_state=controller.state,
+                                master_phase=controller.phase,
+                                spec_state=controller.spec_state,
+                                plan_state=controller.plan_state,
+                                specification=controller.specification,
+                                plan=controller.plan,
+                                technical_plan=controller.technical_plan,
+                                procedural_steps=controller.procedural_steps,
+                                repo_root=self.target_repo,
+                            )
+                            save_session(agent_dir, current_session_state)
+                            import sys
+                            sys.exit(1)
+                    finally:
+                        ui.hide_loading()
+
+                elif controller.state == LifecycleState.VERIFICATION:
+                    plan = controller.plan
+                    spec = controller.specification
+                    assert plan is not None
+                    assert spec is not None
+                    step = (
+                        plan.steps[-1]
+                        if plan.steps
+                        else PlanStep(
+                            identifier="verification",
+                            description="Verification of acceptance criteria",
                         )
                     )
+                    bundle = controller.collect_context(step, spec)
+                    ui.show_loading("Verifying completion...")
+                    try:
+                        success = controller.evaluate_completion(plan, bundle, on_token=ui.stream_token)
+                        from datetime import datetime, UTC
 
-                    retry = ui.show_confirm(
-                        "Tool Execution Failed",
-                        f"Step {step.identifier} failed with error:\n\n{e}\n\n"
-                        "Would you like to retry this step?\n"
-                        "(Make your manual code fixes first if needed.\n"
-                        "Select 'No' to save your progress and exit the application.)"
-                    )
-                    if not retry:
+                        from corge.contracts import AuditEvent
+                        audit_logger.record_completion(
+                            AuditEvent(
+                                kind="evaluate_completion",
+                                payload={"success": success, "step": step.identifier},
+                                timestamp=datetime.now(UTC).isoformat()
+                            )
+                        )
+                    finally:
+                        ui.hide_loading()
+                    controller.advance()
+
+                elif controller.state == LifecycleState.COMPLETION_REVIEW:
+                    plan = controller.plan
+                    assert plan is not None
+                    while True:
+                        res_review = ui.show_completion_review(plan)
+                        if res_review is False:
+                            controller.transition_to(LifecycleState.VERIFICATION)
+                            break
+                        res_logs = ui.show_logs()
+                        if res_logs is False:
+                            continue
+                        controller.advance()
+                        break
+
+                elif controller.state == LifecycleState.DONE:
+                    choice = ui.show_post_completion_options()
+                    if choice == "new_spec":
+                        controller.specification = None
+                        controller.plan = None
+                        controller.technical_plan = None
+                        controller.procedural_steps = ()
+                        controller.transition_to(LifecycleState.SPEC_ENTRY)
+                        
                         current_session_state = SessionState(
                             lifecycle_state=controller.state,
                             master_phase=controller.phase,
@@ -422,89 +494,39 @@ class RealCorgeApp(CorgeApp):
                             repo_root=self.target_repo,
                         )
                         save_session(agent_dir, current_session_state)
-                        import sys
-                        sys.exit(1)
-                finally:
-                    ui.hide_loading()
-
-            elif controller.state == LifecycleState.VERIFICATION:
-                plan = controller.plan
-                spec = controller.specification
-                assert plan is not None
-                assert spec is not None
-                step = (
-                    plan.steps[-1]
-                    if plan.steps
-                    else PlanStep(
-                        identifier="verification",
-                        description="Verification of acceptance criteria",
-                    )
-                )
-                bundle = controller.collect_context(step, spec)
-                ui.show_loading("Verifying completion...")
-                try:
-                    success = controller.evaluate_completion(plan, bundle, on_token=ui.stream_token)
-                    from datetime import datetime, UTC
-
-                    from corge.contracts import AuditEvent
-                    audit_logger.record_completion(
-                        AuditEvent(
-                            kind="evaluate_completion",
-                            payload={"success": success, "step": step.identifier},
-                            timestamp=datetime.now(UTC).isoformat()
-                        )
-                    )
-                finally:
-                    ui.hide_loading()
-                controller.advance()
-
-            elif controller.state == LifecycleState.COMPLETION_REVIEW:
-                plan = controller.plan
-                assert plan is not None
-                while True:
-                    res_review = ui.show_completion_review(plan)
-                    if res_review is False:
-                        controller.transition_to(LifecycleState.VERIFICATION)
-                        break
-                    res_logs = ui.show_logs()
-                    if res_logs is False:
                         continue
-                    controller.advance()
-                    break
+                    elif choice == "switch_repo":
+                        try:
+                            self.call_from_thread(self.exit, "switch_repo")
+                        except Exception as exc:
+                            print(f"Warning: error during app exit: {exc}")
+                        return
+                    else:
+                        break
 
-            elif controller.state == LifecycleState.DONE:
-                choice = ui.show_post_completion_options()
-                if choice == "new_spec":
-                    controller.specification = None
-                    controller.plan = None
-                    controller.technical_plan = None
-                    controller.procedural_steps = ()
-                    controller.transition_to(LifecycleState.SPEC_ENTRY)
-                    
-                    current_session_state = SessionState(
-                        lifecycle_state=controller.state,
-                        master_phase=controller.phase,
-                        spec_state=controller.spec_state,
-                        plan_state=controller.plan_state,
-                        specification=controller.specification,
-                        plan=controller.plan,
-                        technical_plan=controller.technical_plan,
-                        procedural_steps=controller.procedural_steps,
-                        repo_root=self.target_repo,
-                    )
-                    save_session(agent_dir, current_session_state)
-                    continue
-                elif choice == "switch_repo":
-                    try:
-                        self.call_from_thread(self.exit, "switch_repo")
-                    except Exception as exc:
-                        print(f"Warning: error during app exit: {exc}")
-                    return
                 else:
                     break
-
-            else:
-                break
+            except Exception as e:
+                import openai
+                import httpx
+                import httpcore
+                if isinstance(e, (openai.OpenAIError, httpx.HTTPError, httpcore.TimeoutException, httpcore.NetworkError, httpcore.ProtocolError, httpcore.ProxyError, TimeoutError, ConnectionError)) or "read operation timed out" in str(e).lower() or "timeout" in str(e).lower():
+                    retry = ui.show_confirm(
+                        "LLM API Error / Timeout",
+                        f"An error occurred while communicating with the LLM provider:\n\n{e}\n\n"
+                        "Would you like to retry the operation?\n"
+                        "(Select 'No' to exit the application.)"
+                    )
+                    if retry:
+                        continue
+                    else:
+                        try:
+                            self.call_from_thread(self.exit)
+                        except Exception as exc:
+                            print(f"Warning: error during app exit: {exc}")
+                        return
+                else:
+                    raise
 
         try:
             self.call_from_thread(self.exit)

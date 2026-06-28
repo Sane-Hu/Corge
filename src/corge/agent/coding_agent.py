@@ -107,6 +107,7 @@ class CodingAgent:
 
         read_dedup: set[str] = set()
 
+        consecutive_failures = 0
         for _ in range(self._MAX_ACTIONS_PER_STEP):
             if getattr(step, "completed", False):
                 return
@@ -147,6 +148,7 @@ class CodingAgent:
 
             actions = data.get("actions", [])
 
+            action_failed = False
             for action_dict in actions:
                 action_str = action_dict.get("action", "").lower()
                 try:
@@ -190,10 +192,22 @@ class CodingAgent:
 
                 # Step 7: Verify progress
                 if not result.success:
-                    raise ToolExecutionError(
-                        f"Step {step.identifier!r}: tool {action.value!r} failed.\n"
-                        f"stderr: {result.stderr}"
+                    consecutive_failures += 1
+                    err_msg = f"tool {action.value!r} failed.\nstderr: {result.stderr or result.output}"
+                    if consecutive_failures >= 3:
+                        raise ToolExecutionError(
+                            f"Step {step.identifier!r}: failed consecutively {consecutive_failures} times.\n"
+                            f"Last error: {err_msg}"
+                        )
+                    
+                    self._context_service.update_markov_state(
+                        result=f"Tool failed: {action.value!r} on {target!r}.\nError message: {result.stderr or result.output}",
+                        correction=""
                     )
+                    action_failed = True
+                    break
+                else:
+                    consecutive_failures = 0
 
                 # Step 8: Update Markov state for the next step's context
                 # Truncate output to prevent context window explosion or offload to artifact
@@ -225,6 +239,9 @@ class CodingAgent:
                     self._knowledge_graph.update_graph(
                         GraphUpdate(paths=(Path(target),))
                     )
+
+            if action_failed:
+                continue
 
             facts = data.get("facts_learned", [])
             rules = data.get("profile_rules_learned", [])

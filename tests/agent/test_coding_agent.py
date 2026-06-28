@@ -415,3 +415,45 @@ def test_execute_step_raises_action_rejected_error(
         coding_agent.execute_step(step, MagicMock())
     assert "rejected" in str(exc.value).lower()
 
+
+def test_execute_step_self_correction_loop(
+    coding_agent, provider, tool_runtime, tmp_path, approval_gateway
+):
+    from corge.agent.coding_agent import ToolExecutionError
+    from corge.contracts import ChatResponse, ToolResult, ToolAction, ApprovalDecision, PlanStep, ContextBundle, Plan
+    from unittest.mock import MagicMock
+
+    resp = ChatResponse(
+        content="""```json
+{
+  "actions": [
+    {
+      "action": "BASH",
+      "target": "pytest"
+    }
+  ]
+}
+```""",
+        usage={},
+    )
+    provider.chat.return_value = resp
+    
+    tool_runtime.bash.return_value = ToolResult(
+        action=ToolAction.BASH, output="pytest failure", success=False, stderr="Failing test case"
+    )
+    approval_gateway.approve.return_value = ApprovalDecision.APPROVED
+
+    step = PlanStep(identifier="1", description="run tests")
+    bundle = ContextBundle(
+        specification=MagicMock(),
+        plan=Plan(()),
+        repository_context=MagicMock(),
+        engineering_profile=MagicMock(),
+    )
+
+    import pytest
+    with pytest.raises(ToolExecutionError) as exc:
+        coding_agent.execute_step(step, bundle)
+
+    assert "failed consecutively 3 times" in str(exc.value).lower()
+    assert provider.chat.call_count == 3

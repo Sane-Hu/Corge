@@ -133,9 +133,7 @@ class PromptAssembler:
     def _enforce_budget(self, context: ContextBundle) -> ContextBundle:
         """Ensure context fits within the token limit."""
         context = self._budget_manager.rank_context(context)
-        if self._budget_manager.estimate_tokens(context) > _TOKEN_BUDGET:
-            return self._budget_manager.compact(context)
-        return context
+        return self._budget_manager.compact(context)
 
     def _render_specification(self, context: ContextBundle) -> str:
         spec = context.specification
