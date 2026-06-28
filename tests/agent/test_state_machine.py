@@ -175,8 +175,20 @@ def test_merge_templated_responses_resolves_gaps() -> None:
         "[GAP: routing]\n"
         "Resolution: Use fastapi router.\n"
     )
-    controller.merge_templated_responses(spec, edited_text)
+    # Reset gaps and check logging
+    controller._pending_gaps = (
+        SemanticGap(topic="routing", resolved=False),
+        SemanticGap(topic="database", resolved=False),
+    )
+    mock_log = MagicMock()
+    controller.merge_templated_responses(spec, edited_text, mock_log)
     # routing gap was resolved (the default Resolution template was modified)
     assert controller._pending_gaps[0].resolved
     # database gap was resolved because its placeholder is completely absent
     assert controller._pending_gaps[1].resolved
+
+    # Verify that overrides were recorded in the log
+    assert mock_log.record_entry.call_count == 2
+    calls = mock_log.record_entry.call_args_list
+    assert any(c[0][0].was_user_override and "routing" in c[0][0].question for c in calls)
+    assert any(c[0][0].was_user_override and "database" in c[0][0].question for c in calls)

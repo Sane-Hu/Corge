@@ -245,7 +245,7 @@ class RealCorgeApp(CorgeApp):
                 # Merge user edited text back to Specification fields (Choice 1.1 Option A)
                 ui.show_loading("Processing specification edits...")
                 try:
-                    controller.specification = controller.merge_templated_responses(spec, user_edited_spec)
+                    controller.specification = controller.merge_templated_responses(spec, user_edited_spec, argumentation_log)
                 finally:
                     ui.hide_loading()
 

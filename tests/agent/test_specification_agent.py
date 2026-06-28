@@ -124,6 +124,38 @@ def test_socratic_loop_opt_out():
     assert gaps[0].topic == "Auth"
     mock_ui.show_confirm.assert_called_once()
     mock_ui.show_question.assert_not_called()
+    mock_arg_log.record_entry.assert_called_once()
+    entry = mock_arg_log.record_entry.call_args[0][0]
+    assert entry.was_user_override is True
+    assert entry.answer == "Skipped/Opted out"
+
+
+def test_socratic_loop_skipped_questions():
+    from corge.contracts import ArgumentationLogPort, UiPort
+
+    mock_provider = Mock(spec=ProviderPort)
+    mock_provider.chat.side_effect = [
+        ChatResponse(content='{"title": "Title"}', usage={}),
+        ChatResponse(content='[{"topic": "Auth"}]', usage={}),
+        ChatResponse(content="Question 1?", usage={}),
+    ]
+
+    mock_ui = Mock(spec=UiPort)
+    mock_ui.show_confirm.return_value = True
+    mock_ui.show_question.return_value = ""
+
+    mock_arg_log = Mock(spec=ArgumentationLogPort)
+    mock_ctx = Mock(spec=ContextPort)
+    mock_pa = Mock(spec=PromptAssemblerPort)
+
+    agent = SpecificationAgent(mock_provider, mock_ctx, mock_pa)
+    spec, gaps = agent.run_socratic_loop("canvas", mock_arg_log, mock_ui)
+
+    mock_arg_log.record_entry.assert_called_once()
+    entry = mock_arg_log.record_entry.call_args[0][0]
+    assert entry.was_user_override is True
+    assert entry.answer == ""
+    assert entry.question == "Question 1?"
 
 
 def test_socratic_loop_cap():
@@ -192,7 +224,7 @@ def test_merge_templated_responses():
     mock_provider.chat.return_value = ChatResponse(
         content="""{
           "title": "Merged Title",
-          "body": "Merged Body",
+          "body": "Merged Body\\n=== UNRESOLVED SEMANTIC GAPS ===\\nPlease resolve the following gaps by editing the text below:\\n\\n[GAP: output string mismatch]\\nResolution: <Enter details here>",
           "acceptance_criteria": ["Merged Crit"],
           "constraints": "Merged Constraint",
           "testing_expectations": "Merged Test"

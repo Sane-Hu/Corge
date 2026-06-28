@@ -209,6 +209,16 @@ class SpecificationAgent:
                 prompt_msg
             )
             if not opt_in:
+                now = datetime.now(UTC).isoformat()
+                topics = ", ".join(gap.topic for gap in gaps_to_ask)
+                argumentation_log.record_entry(
+                    ArgumentationEntry(
+                        question=f"Socratic Spec Wizard for gaps: {topics}",
+                        answer="Skipped/Opted out",
+                        timestamp=now,
+                        was_user_override=True,
+                    )
+                )
                 break
 
             # Step 3: Formulate and log bulk Socratic questions
@@ -223,12 +233,13 @@ class SpecificationAgent:
 
             answers = ui.show_question(questions, canvas_text)
 
+            is_skipped = not answers.strip() or "<Enter answer here>" in answers
             argumentation_log.record_entry(
                 ArgumentationEntry(
                     question=questions,
                     answer=answers,
                     timestamp=now,
-                    was_user_override=False,
+                    was_user_override=is_skipped,
                 )
             )
 
@@ -297,6 +308,9 @@ class SpecificationAgent:
             "You are finalizing a structured specification. The user has filled in inline gap resolution templates "
             "and possibly edited the specification text. Merge their edits and any filled-in gap sections back into "
             "the structured specification fields.\n"
+            "Do NOT include the '=== UNRESOLVED SEMANTIC GAPS ===' section header, instructions, or any raw '[GAP: ...]' "
+            "or 'Resolution: ...' lines in the finalized fields (especially 'body'). Instead, integrate their details "
+            "cleanly into the requirements narrative.\n"
             "Return ONLY a JSON object with these exact keys:\n"
             '  "title": string — finalized business goal\n'
             '  "body": string — finalized narrative of user stories and requirements\n'
@@ -324,9 +338,17 @@ class SpecificationAgent:
                 criteria_items = tuple(
                     str(c) for c in data.get("acceptance_criteria", [])
                 )
+                body = str(data.get("body", spec.body)).strip()
+                if "=== UNRESOLVED SEMANTIC GAPS ===" in body:
+                    body = body.split("=== UNRESOLVED SEMANTIC GAPS ===")[0].strip()
+                import re
+                body = re.sub(r"\[GAP: [^\]]+\]", "", body)
+                body = re.sub(r"Resolution:.*", "", body)
+                body = re.sub(r"\n{3,}", "\n\n", body).strip()
+
                 return Specification(
                     title=str(data.get("title", spec.title)).strip(),
-                    body=str(data.get("body", spec.body)).strip(),
+                    body=body,
                     acceptance_criteria=AcceptanceCriteria(items=criteria_items),
                     constraints=str(data.get("constraints", spec.constraints)).strip(),
                     testing_expectations=str(
@@ -335,9 +357,18 @@ class SpecificationAgent:
                 )
             except Exception:
                 pass
+
+        body = edited_text
+        if "=== UNRESOLVED SEMANTIC GAPS ===" in body:
+            body = body.split("=== UNRESOLVED SEMANTIC GAPS ===")[0].strip()
+        import re
+        body = re.sub(r"\[GAP: [^\]]+\]", "", body)
+        body = re.sub(r"Resolution:.*", "", body)
+        body = re.sub(r"\n{3,}", "\n\n", body).strip()
+
         return Specification(
             title=spec.title,
-            body=edited_text,
+            body=body,
             acceptance_criteria=spec.acceptance_criteria,
             constraints=spec.constraints,
             testing_expectations=spec.testing_expectations,

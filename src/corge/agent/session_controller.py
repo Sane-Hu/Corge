@@ -425,7 +425,7 @@ class SessionController:
         return self._spec_agent.format_spec_to_text(spec, gaps)
 
     def merge_templated_responses(
-        self, spec: Specification, edited_text: str
+        self, spec: Specification, edited_text: str, argumentation_log: ArgumentationLogPort | None = None
     ) -> Specification:
         """Merge resolved gap templates back into structured specification fields."""
         updated_spec = self._spec_agent.merge_templated_responses(spec, edited_text)
@@ -433,6 +433,9 @@ class SessionController:
         
         # Check deterministically which of the pending gaps were resolved by looking for their placeholder in edited_text
         import dataclasses
+        from datetime import UTC, datetime
+        from corge.contracts import ArgumentationEntry
+
         resolved_gaps = []
         normalized_text = edited_text.replace("\r\n", "\n")
         for gap in self._pending_gaps:
@@ -440,16 +443,29 @@ class SessionController:
             default_res = "Resolution: <Enter details here>"
             
             # If the placeholder is completely removed, it is resolved
+            is_resolved = False
             if placeholder not in normalized_text:
-                resolved_gaps.append(dataclasses.replace(gap, resolved=True))
-                continue
-                
-            # If the placeholder is present, check if the default resolution line is still there
-            unresolved_block = f"{placeholder}\n{default_res}"
-            if unresolved_block in normalized_text:
-                resolved_gaps.append(gap)  # Still unresolved
+                is_resolved = True
             else:
+                unresolved_block = f"{placeholder}\n{default_res}"
+                if unresolved_block not in normalized_text:
+                    is_resolved = True
+            
+            if is_resolved:
                 resolved_gaps.append(dataclasses.replace(gap, resolved=True))
+                # Log the manual resolution as a user override if it was not already resolved
+                if not gap.resolved:
+                    if argumentation_log:
+                        argumentation_log.record_entry(
+                            ArgumentationEntry(
+                                question=f"Socratic Spec Wizard for gap: {gap.topic}",
+                                answer="Resolved manually in editor",
+                                timestamp=datetime.now(UTC).isoformat(),
+                                was_user_override=True,
+                            )
+                        )
+            else:
+                resolved_gaps.append(gap)
                 
         self._pending_gaps = tuple(resolved_gaps)
         return updated_spec
