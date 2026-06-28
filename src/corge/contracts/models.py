@@ -430,12 +430,12 @@ class ProceduralStep:
 class MarkovStepContext:
     """N-1 context payload for the Coding phase Markov chain.
 
-    Includes both the agent's original proposal and the user's manual
-    correction so the LLM can learn from inaccuracies.
+    Includes the tool result and the user's manual correction
+    so the LLM can learn from inaccuracies.
     ``compressed_trajectory`` summarises N-2 … N-Start.
     """
 
-    agent_proposal: str
+    tool_result: str
     user_correction: str
     compressed_trajectory: str = ""
 

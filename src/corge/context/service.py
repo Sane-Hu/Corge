@@ -147,7 +147,7 @@ class ContextService:
         self._last_step_id = step.identifier
 
         markov_ctx = MarkovStepContext(
-            agent_proposal=self._last_step_result,
+            tool_result=self._last_step_result,
             user_correction=self._last_user_correction,
             compressed_trajectory=" | ".join(self._compressed_history),
         )

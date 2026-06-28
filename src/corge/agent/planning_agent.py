@@ -51,7 +51,8 @@ class PlanningAgent:
             "Design Rules for Cost & Time Efficiency:\n"
             "1. YAGNI: Design the simplest, most direct architecture that satisfies requirements. Avoid speculative abstractions.\n"
             "2. Locality: Keep changes localized to the fewest files possible to minimize execution complexity and edit iterations.\n"
-            "3. Reuse: Reuse existing utilities, dependencies, and code patterns instead of introducing new ones."
+            "3. Reuse: Reuse existing utilities, dependencies, and code patterns instead of introducing new ones.\n"
+            "4. Naming: Use descriptive domain names for new files (e.g. main.py, app.py). Never name files after internal prompt terms like 'canvas', 'draft', or 'untitled'."
         )
 
         ctx_bundle = self._context_service.refresh_context(

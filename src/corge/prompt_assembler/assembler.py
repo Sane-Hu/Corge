@@ -214,7 +214,7 @@ class PromptAssembler:
         lines = []
         if context.markov_context:
             lines.append("<markov_context>")
-            lines.append(f"Agent proposal: {context.markov_context.agent_proposal}")
+            lines.append(f"Tool result: {context.markov_context.tool_result}")
             lines.append(f"User correction: {context.markov_context.user_correction}")
             lines.append(f"Prior trajectory: {context.markov_context.compressed_trajectory}")
             lines.append("</markov_context>")
