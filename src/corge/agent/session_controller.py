@@ -179,6 +179,10 @@ class SessionController:
         """The active execution plan (FR-008)."""
         return self._plan
 
+    @plan.setter
+    def plan(self, value: Plan | None) -> None:
+        self._plan = value
+
     @property
     def current_step_idx(self) -> int:
         """Get the index of the first uncompleted step."""

@@ -460,7 +460,7 @@ class RealCorgeApp(CorgeApp):
                     if res_logs is False:
                         continue
                     controller.advance()
-                    continue
+                    break
 
             elif controller.state == LifecycleState.DONE:
                 choice = ui.show_post_completion_options()
