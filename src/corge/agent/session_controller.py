@@ -312,6 +312,7 @@ class SessionController:
         self._plan = state.plan
         self._technical_plan = state.technical_plan
         self._procedural_steps = state.procedural_steps
+        self._is_empty_repo = state.is_empty_repo
         if state.repo_root:
             pass  # Currently repo_root is handled elsewhere
 
@@ -327,6 +328,7 @@ class SessionController:
     def analyze_repository(self, target_repo: Path) -> ContextBundle:
         """Analyze repository structure and build knowledge graph."""
         from corge.contracts.models import RepositoryContext
+        self._context_service.clear_cache()
         bundle = self._context_service.load_context(
             RepositoryContext(root=target_repo)
         )
@@ -352,6 +354,7 @@ class SessionController:
         if self._phase == MasterPhase.SPECIFICATION:
             if self._state == LifecycleState.SPEC_ENTRY:
                 self._spec_state = SpecState.CANVAS_FREESTYLE
+                self._pending_gaps = ()
             elif self._state == LifecycleState.SPEC_VALIDATION:
                 self._spec_state = SpecState.CONCRETIZATION
                 if self._pending_gaps:

@@ -147,6 +147,12 @@ class RealCorgeApp(CorgeApp):
         session_state = load_session(agent_dir)
         if session_state:
             controller.load_from_session(session_state)
+            if session_state.lifecycle_state in (
+                LifecycleState.EXECUTION,
+                LifecycleState.VERIFICATION,
+                LifecycleState.COMPLETION_REVIEW,
+            ):
+                controller.transition_to(LifecycleState.REPOSITORY_ANALYSIS)
 
 
 
@@ -309,6 +315,7 @@ class RealCorgeApp(CorgeApp):
                     new_proc_steps = ui.show_procedural_steps_editor(proc_steps, tech_plan)
                     if new_proc_steps is None:
                         controller.procedural_steps = ()
+                        controller.technical_plan = None
                         controller.transition_to(LifecycleState.PLAN_GENERATION)
                         continue
                     controller.procedural_steps = new_proc_steps
@@ -333,6 +340,7 @@ class RealCorgeApp(CorgeApp):
                     controller.advance()
 
                 elif controller.state == LifecycleState.EXECUTION:
+                    controller._context_service.clear_cache()
                     step = controller.current_step
                     if step is None:
                         controller.advance()
@@ -534,13 +542,9 @@ class RealCorgeApp(CorgeApp):
                     spec = controller.specification
                     assert plan is not None
                     assert spec is not None
-                    step = (
-                        plan.steps[-1]
-                        if plan.steps
-                        else PlanStep(
-                            identifier="verification",
-                            description="Verification of acceptance criteria",
-                        )
+                    step = PlanStep(
+                        identifier="verification",
+                        description="Verification of acceptance criteria",
                     )
                     bundle = controller.collect_context(step, spec)
                     ui.show_loading("Verifying completion...")

@@ -117,16 +117,20 @@ def test_sync_nested_states_enters_argumentation_diff_when_gaps_present() -> Non
         artifact_store=MagicMock(),
         prompt_assembler=MagicMock(),
     )
-    # Mock the spec_agent to return gaps
+    # Start -> REPOSITORY_SELECTION -> REPOSITORY_ANALYSIS -> SPEC_ENTRY
+    for _ in range(3):
+        controller.advance()
+
+    assert controller._state == LifecycleState.SPEC_ENTRY
+
+    # Mock the spec_agent to return gaps and call the analysis
     controller._spec_agent.analyze_specification_gaps = MagicMock(
         return_value=(SemanticGap("test"),)
     )
     controller.analyze_specification_gaps("canvas text")
 
     # Transition to SPEC_VALIDATION
-    # Start -> REPOSITORY_SELECTION -> REPOSITORY_ANALYSIS -> SPEC_ENTRY -> SPEC_VALIDATION
-    for _ in range(4):
-        controller.advance()
+    controller.advance()
 
     assert controller._state == LifecycleState.SPEC_VALIDATION
     assert controller._spec_state == SpecState.ARGUMENTATION_DIFF

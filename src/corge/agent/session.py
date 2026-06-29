@@ -54,6 +54,7 @@ class SessionState:
         technical_plan: TechnicalPlan | None = None,
         procedural_steps: tuple[ProceduralStep, ...] = (),
         repo_root: Path | None = None,
+        is_empty_repo: bool = False,
     ) -> None:
         self.lifecycle_state = lifecycle_state
         self.master_phase = master_phase
@@ -64,6 +65,7 @@ class SessionState:
         self.technical_plan = technical_plan
         self.procedural_steps = procedural_steps
         self.repo_root = repo_root
+        self.is_empty_repo = is_empty_repo
 
 
 def save_session(agent_dir: Path, state: SessionState) -> None:
@@ -99,6 +101,7 @@ def save_session(agent_dir: Path, state: SessionState) -> None:
         ),
         "procedural_steps": [dataclasses.asdict(s) for s in state.procedural_steps],
         "repo_root": str(state.repo_root) if state.repo_root else None,
+        "is_empty_repo": state.is_empty_repo,
     }
 
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -215,6 +218,8 @@ def load_session(agent_dir: Path) -> SessionState | None:
         except Exception as exc:
             print(f"Warning: failed to parse procedural steps from session: {exc}")
 
+    is_empty_repo: bool = raw.get("is_empty_repo", False)
+
     return SessionState(
         lifecycle_state=lifecycle_state,
         master_phase=master_phase,
@@ -225,4 +230,5 @@ def load_session(agent_dir: Path) -> SessionState | None:
         technical_plan=technical_plan,
         procedural_steps=procedural_steps,
         repo_root=repo_root,
+        is_empty_repo=is_empty_repo,
     )
