@@ -102,6 +102,7 @@ class PromptAssembler:
             "- Testing/Verification: Run verification tests (e.g. pytest or compile checks) immediately after editing/writing code, before completing the step.\n"
             "- Bash Safety: Ensure that bash commands you run return exit code 0. Running commands that return non-zero exit codes will trigger a ToolExecutionError and halt execution.\n"
             "- JSON Formatting: Respond strictly with the JSON block. Do not include verbose explanations or text outside the json block.\n"
+            "- Test Minimality: Keep new test files extremely concise, focused, and minimal. Do not write large test files with redundant boilerplate, heavy mock setups, or excessive coverage. Write only the minimum test cases required to verify the specific changes in this step.\n"
             "- Set 'done': true when the step is complete."
         )
         

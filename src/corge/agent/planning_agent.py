@@ -52,7 +52,8 @@ class PlanningAgent:
             "1. YAGNI: Design the simplest, most direct architecture that satisfies requirements. Avoid speculative abstractions.\n"
             "2. Locality: Keep changes localized to the fewest files possible to minimize execution complexity and edit iterations.\n"
             "3. Reuse: Reuse existing utilities, dependencies, and code patterns instead of introducing new ones.\n"
-            "4. Naming: Use descriptive domain names for new files (e.g. main.py, app.py). Never name files after internal prompt terms like 'canvas', 'draft', or 'untitled'."
+            "4. Naming: Use descriptive domain names for new files (e.g. main.py, app.py). Never name files after internal prompt terms like 'canvas', 'draft', or 'untitled'.\n"
+            "5. Test Minimality: Design test suites to be minimal and targeted. Do not propose large mock structures or redundant test coverages."
         )
 
         ctx_bundle = self._context_service.refresh_context(
@@ -84,7 +85,8 @@ class PlanningAgent:
             "Planning Rules for Cost & Time Efficiency:\n"
             "1. Grouping: Group related file changes into a single logical step to minimize agent transition overhead.\n"
             "2. Linearity: Order steps logically to avoid reading or editing the same file multiple times across different steps.\n"
-            "3. Conciseness: Keep the total number of steps minimal (aim for 3-7 steps). Fewer steps mean faster execution."
+            "3. Conciseness: Keep the total number of steps minimal (aim for 3-7 steps). Fewer steps mean faster execution.\n"
+            "4. Test Minimality: Propose only minimal and highly targeted unit tests for verification. Do not plan massive test suites or boilerplate files."
         )
 
         ctx_bundle = self._context_service.refresh_context(

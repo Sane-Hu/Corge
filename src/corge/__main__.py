@@ -435,12 +435,21 @@ class RealCorgeApp(CorgeApp):
                                     diff_lines.extend(file_diff)
                             diff_text = "".join(diff_lines)
                             
+                        modified_file_paths = []
+                        for target_path in tool_runtime.modified_files.keys():
+                            try:
+                                rel = str(target_path.relative_to(self.target_repo))
+                            except ValueError:
+                                rel = target_path.name
+                            modified_file_paths.append(rel)
+
                         keep_changes = True
                         if diff_text:
                             review_result = ui.show_step_diff(
                                 step_id=step.identifier,
                                 description=step.description,
                                 diff_text=diff_text,
+                                modified_files=tuple(sorted(modified_file_paths)),
                             )
                             if not review_result:
                                 # User rejected / discarded changes

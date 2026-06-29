@@ -88,6 +88,7 @@ class UiPort(Protocol):
         step_id: str,
         description: str,
         diff_text: str,
+        modified_files: tuple[str, ...] = (),
     ) -> bool:
         """Display the step completion diff review screen. Returns True to Keep, False to Discard."""
         ...

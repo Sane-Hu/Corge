@@ -881,9 +881,17 @@ class CliUi(UiPort):
         step_id: str,
         description: str,
         diff_text: str,
+        modified_files: tuple[str, ...] = (),
     ) -> bool:
         """Display step completion diff review screen using InteractiveDiffScreen."""
         from corge.ui.interactive_diff import InteractiveDiffScreen
+
+        files_list = "\n".join(f"  • {f}" for f in modified_files) if modified_files else "  (none)"
+        right_text = (
+            "The following files were modified in this step:\n\n"
+            f"{files_list}\n\n"
+            "Select 'Keep Changes' to accept the modifications, or 'Discard Changes' to revert them."
+        )
 
         result = self._run_screen(
             InteractiveDiffScreen(
@@ -894,7 +902,7 @@ class CliUi(UiPort):
                     "Please review the changes made to your repository."
                 ),
                 right_title="Files Modified",
-                right_text="Select 'Keep Changes' to accept the modifications, or 'Discard Changes' to revert them.",
+                right_text=right_text,
                 prompt_text="Review the modifications before proceeding.",
                 approve_text="Keep Changes",
                 reject_text="Discard Changes",
