@@ -334,6 +334,40 @@ class TestL3EngineeringProfile:
         profile = store.get_profile()
         assert profile.rules == ()
 
+
+# ---------------------------------------------------------------------------
+# L1 — Fact Invalidation (P4 harness enforcement)
+# ---------------------------------------------------------------------------
+
+
+class TestL1FactInvalidation:
+    def test_invalidate_removes_matching_facts(self, store: MemoryStore) -> None:
+        store.store_fact("canvas_draft.py exists and contains I love Corge")
+        store.store_fact("unrelated fact about project structure")
+        store.invalidate_fact_containing("canvas_draft.py")
+        remaining = store.get_facts()
+        assert all("canvas_draft.py" not in f for f in remaining)
+        assert any("unrelated fact" in f for f in remaining)
+
+    def test_invalidate_no_match_is_noop(self, store: MemoryStore) -> None:
+        store.store_fact("some fact about the repo")
+        store.invalidate_fact_containing("nonexistent_file.py")
+        assert store.get_facts() == ["some fact about the repo"]
+
+    def test_invalidate_empty_db_is_safe(self, store: MemoryStore) -> None:
+        # Should not raise even if DB has never been written to
+        store.invalidate_fact_containing("anything.py")
+
+    def test_invalidate_removes_multiple_matching_facts(self, store: MemoryStore) -> None:
+        store.store_fact("ghost.py exists")
+        store.store_fact("ghost.py was created in step-1")
+        store.store_fact("other.py is unrelated")
+        store.invalidate_fact_containing("ghost.py")
+        remaining = store.get_facts()
+        assert len(remaining) == 1
+        assert "other.py" in remaining[0]
+
+
     def test_get_profile_returns_parsed_content(self, store: MemoryStore) -> None:
         store.update_profile(
             EngineeringProfile(

@@ -182,6 +182,14 @@ class ContextPort(Protocol):
 
     def record_action(self, action_summary: str) -> None: ...
 
+    def invalidate_context_for_path(self, path: str) -> None:
+        """Discard cached facts and memory entries asserting existence of `path`.
+
+        Called by CodingAgent when a READ fails with File-not-found.
+        Enforces context boundary freshness across session resumes.
+        """
+        ...
+
 
 # ---------------------------------------------------------------------------
 # Prompt assembler (04-module-contracts § prompt_assembler)
@@ -200,7 +208,9 @@ class PromptAssemblerPort(Protocol):
 
     def assemble_plan_prompt(self, context: ContextBundle, instruction: str) -> str: ...
 
-    def assemble_coding_prompt(self, context: ContextBundle) -> str: ...
+    def assemble_coding_prompt(
+        self, context: ContextBundle, include_static: bool = True
+    ) -> str: ...
 
 
 # ---------------------------------------------------------------------------
@@ -263,6 +273,14 @@ class MemoryStorePort(Protocol):
     def get_profile(self) -> EngineeringProfile: ...
 
     def get_facts(self, limit: int = 200) -> list[str]: ...
+
+    def invalidate_fact_containing(self, substring: str) -> None:
+        """Remove all stored facts whose text contains `substring`.
+
+        Called by the harness when a READ returns File-not-found, to
+        prevent stale file-existence facts from polluting future sessions.
+        """
+        ...
 
     def get_scenario(self, kind: str, limit: int = 5) -> list[dict[str, Any]]: ...
 

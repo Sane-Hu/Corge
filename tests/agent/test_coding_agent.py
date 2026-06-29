@@ -457,3 +457,134 @@ def test_execute_step_self_correction_loop(
 
     assert "failed consecutively 3 times" in str(exc.value).lower()
     assert provider.chat.call_count == 3
+
+
+def test_no_action_streak_raises_after_two_dead_loops(
+    coding_agent, provider, tool_runtime, tmp_path
+):
+    """Agent returns empty actions list twice → ToolExecutionError after streak=2."""
+    resp_empty = MagicMock()
+    resp_empty.content = (
+        "```json\n" + json.dumps({"done": False, "actions": []}) + "\n```"
+    )
+    provider.chat.return_value = resp_empty
+
+    step = PlanStep(identifier="step-1", description="No-op step")
+    bundle = ContextBundle(
+        specification=MagicMock(),
+        plan=Plan(()),
+        repository_context=MagicMock(),
+        engineering_profile=MagicMock(),
+    )
+
+    with pytest.raises(ToolExecutionError, match="no effective tool actions"):
+        coding_agent.execute_step(step, bundle)
+
+    # Streak fires after exactly 2 consecutive dead iterations (3rd call raises)
+    assert provider.chat.call_count <= 3
+
+
+def test_dedup_read_injects_harness_block_message(
+    coding_agent, provider, tool_runtime, tmp_path
+):
+    """Dedup guard must inject an imperative HARNESS BLOCK correction, not a hint."""
+    resp_dedup = MagicMock()
+    resp_dedup.content = (
+        "```json\n"
+        + json.dumps({
+            "done": False,
+            "actions": [
+                {"action": "READ", "target": "file.py"},
+                {"action": "READ", "target": "file.py"},  # duplicate
+            ],
+        })
+        + "\n```"
+    )
+    resp_done = MagicMock()
+    resp_done.content = "```json\n" + json.dumps({"done": True, "actions": []}) + "\n```"
+    provider.chat.side_effect = [resp_dedup, resp_done]
+    tool_runtime.read.return_value = ToolResult(
+        action=ToolAction.READ, output="content", success=True
+    )
+
+    step = PlanStep(identifier="step-1", description="dedup test")
+    bundle = ContextBundle(
+        specification=MagicMock(),
+        plan=Plan(()),
+        repository_context=MagicMock(),
+        engineering_profile=MagicMock(),
+    )
+    coding_agent.execute_step(step, bundle)
+
+    calls = coding_agent._context_service.update_markov_state.call_args_list
+    harness_calls = [c for c in calls if "HARNESS BLOCK" in str(c)]
+    assert len(harness_calls) >= 1
+
+
+def test_post_write_self_assessment_injected_into_markov(
+    coding_agent, provider, tool_runtime, tmp_path
+):
+    """After a successful WRITE, harness must inject MANDATORY SELF-ASSESSMENT message."""
+    resp = MagicMock()
+    resp.content = (
+        "```json\n"
+        + json.dumps({
+            "done": True,
+            "actions": [
+                {"action": "WRITE", "target": "output.py", "content": "print('hi')"},
+            ],
+        })
+        + "\n```"
+    )
+    provider.chat.return_value = resp
+    tool_runtime.write.return_value = ToolResult(
+        action=ToolAction.WRITE, output="ok", success=True
+    )
+
+    step = PlanStep(identifier="step-1", description="write check")
+    bundle = ContextBundle(
+        specification=MagicMock(),
+        plan=Plan(()),
+        repository_context=MagicMock(),
+        engineering_profile=MagicMock(),
+    )
+    coding_agent.execute_step(step, bundle)
+
+    calls = coding_agent._context_service.update_markov_state.call_args_list
+    harness_calls = [c for c in calls if "MANDATORY SELF-ASSESSMENT" in str(c)]
+    assert len(harness_calls) == 1
+
+
+def test_file_not_found_evicts_stale_facts(
+    coding_agent, provider, tool_runtime, tmp_path
+):
+    """When READ returns File-not-found, harness must call invalidate_context_for_path."""
+    resp_read = MagicMock()
+    resp_read.content = (
+        "```json\n"
+        + json.dumps({
+            "done": False,
+            "actions": [{"action": "READ", "target": "ghost.py"}],
+        })
+        + "\n```"
+    )
+    resp_done = MagicMock()
+    resp_done.content = "```json\n" + json.dumps({"done": True, "actions": []}) + "\n```"
+    provider.chat.side_effect = [resp_read, resp_done]
+    tool_runtime.read.return_value = ToolResult(
+        action=ToolAction.READ, output="", success=False, stderr="File not found: ghost.py"
+    )
+
+    step = PlanStep(identifier="step-1", description="read ghost file")
+    bundle = ContextBundle(
+        specification=MagicMock(),
+        plan=Plan(()),
+        repository_context=MagicMock(),
+        engineering_profile=MagicMock(),
+    )
+    coding_agent.execute_step(step, bundle)
+
+    coding_agent._context_service.invalidate_context_for_path.assert_called_once_with(
+        "ghost.py"
+    )
+

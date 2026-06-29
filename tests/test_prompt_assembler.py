@@ -196,3 +196,42 @@ def test_render_specification_requirements_and_user_stories() -> None:
     bundle = _make_bundle()
     prompt = assembler.assemble_coding_prompt(bundle)
     assert "Requirements & User Stories:\nImplement POST /login with JWT response." in prompt
+
+
+def test_assemble_coding_prompt_includes_repo_root() -> None:
+    """P1: repo root must appear in the current_step section so agent knows its working dir."""
+    assembler = _make_assembler()
+    bundle = _make_bundle(
+        repository_context=RepositoryContext(root=Path("/srv/myproject")),
+        current_step_id="1",
+    )
+    prompt = assembler.assemble_coding_prompt(bundle)
+    assert "/srv/myproject" in prompt
+    assert "Repository root" in prompt
+
+
+def test_assemble_coding_prompt_omits_spec_when_include_static_false() -> None:
+    """P5: subsequent iterations must not re-send the full specification."""
+    assembler = _make_assembler()
+    bundle = _make_bundle()
+    prompt = assembler.assemble_coding_prompt(bundle, include_static=False)
+    assert "<specification>" not in prompt
+    assert "<technical_plan>" not in prompt
+    assert "<context_ref>" in prompt
+
+
+def test_assemble_coding_prompt_includes_spec_when_include_static_true() -> None:
+    """P5: first iteration must include the full spec."""
+    assembler = _make_assembler()
+    bundle = _make_bundle()
+    prompt = assembler.assemble_coding_prompt(bundle, include_static=True)
+    assert "<specification>" in prompt
+
+
+def test_assemble_coding_prompt_default_include_static_is_true() -> None:
+    """P5: default behaviour (no second arg) must include the full spec."""
+    assembler = _make_assembler()
+    bundle = _make_bundle()
+    prompt = assembler.assemble_coding_prompt(bundle)
+    assert "<specification>" in prompt
+

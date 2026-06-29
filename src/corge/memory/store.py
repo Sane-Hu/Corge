@@ -155,6 +155,22 @@ class MemoryStore:
             ).fetchall()
             return [r[0] for r in rows]
 
+    def invalidate_fact_containing(self, substring: str) -> None:
+        """Delete all L1 facts whose text contains ``substring`` (case-sensitive).
+
+        Used by the harness to evict stale file-existence facts when a
+        READ operation fails with File-not-found.  Safe to call even if
+        the database does not yet exist.
+        """
+        if not self._l1_path.exists():
+            return
+        with self._l1_connect() as conn:
+            conn.execute(
+                "DELETE FROM facts WHERE fact LIKE ?",
+                (f"%{substring}%",),
+            )
+            conn.commit()
+
     @contextmanager
     def _l1_connect(self) -> Generator[sqlite3.Connection, None, None]:
         if self._conn is None:

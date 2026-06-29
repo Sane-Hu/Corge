@@ -106,8 +106,10 @@ class CodingAgent:
         import json
 
         read_dedup: set[str] = set()
-
+        write_targets_this_step: set[str] = set()
         consecutive_failures = 0
+        no_action_streak = 0
+        first_action_in_step = True
         for _ in range(self._MAX_ACTIONS_PER_STEP):
             if getattr(step, "completed", False):
                 return
@@ -115,7 +117,10 @@ class CodingAgent:
             context = self._context_service.retrieve_relevant_context(
                 context.specification, step, context.technical_plan, rotate=False
             )
-            prompt = self._prompt_assembler.assemble_coding_prompt(context)
+            prompt = self._prompt_assembler.assemble_coding_prompt(
+                context, include_static=first_action_in_step
+            )
+            first_action_in_step = False
 
             # Step 4: Reason & action selection
             msg = ProviderMessage(role="user", content=prompt)
@@ -149,6 +154,7 @@ class CodingAgent:
             actions = data.get("actions", [])
 
             action_failed = False
+            effective_actions_this_iter = 0  # counts real dispatched actions (not dedup skips)
             for action_dict in actions:
                 action_str = action_dict.get("action", "").lower()
                 try:
@@ -162,10 +168,13 @@ class CodingAgent:
                     if target in read_dedup:
                         self._context_service.update_markov_state(
                             result=(
-                                f"Note: {target} was already read this step. "
-                                "Its content is in your context."
+                                f"HARNESS BLOCK: {target!r} was already read this step "
+                                "and its full content is already in your context window. "
+                                "You MUST NOT issue another READ for this file. "
+                                "Use the content already provided, complete the step, "
+                                "and set 'done': true."
                             ),
-                            correction="",
+                            correction=f"Duplicate READ of {target!r} suppressed by harness.",
                         )
                         continue
                     read_dedup.add(target)
@@ -189,6 +198,7 @@ class CodingAgent:
                 result = self._dispatch(action_dict)
                 self._audit_logger.record_tool_call(result)
                 self._context_service.record_action(f"{action.value} {target}")
+                effective_actions_this_iter += 1  # real work dispatched
 
                 # Step 7: Verify progress
                 if not result.success:
@@ -199,11 +209,31 @@ class CodingAgent:
                             f"Step {step.identifier!r}: failed consecutively {consecutive_failures} times.\n"
                             f"Last error: {err_msg}"
                         )
-                    
-                    self._context_service.update_markov_state(
-                        result=f"Tool failed: {action.value!r} on {target!r}.\nError message: {result.stderr or result.output}",
-                        correction=""
+
+                    # Harness: File-not-found → evict stale facts from context boundary.
+                    # This prevents the agent from re-reading a phantom file and overrides
+                    # any cross-session fact claiming the file exists.
+                    is_file_not_found = (
+                        action == ToolAction.READ
+                        and result.stderr
+                        and "File not found" in result.stderr
                     )
+                    if is_file_not_found:
+                        self._context_service.invalidate_context_for_path(target)
+                        self._context_service.update_markov_state(
+                            result=(
+                                f"HARNESS CORRECTION: {target!r} does not exist on disk. "
+                                "Any prior repository facts or session memory claiming this "
+                                "file exists are now invalidated and must be ignored. "
+                                "You must WRITE the file before you can read it."
+                            ),
+                            correction=f"Stale existence fact for {target!r} evicted.",
+                        )
+                    else:
+                        self._context_service.update_markov_state(
+                            result=f"Tool failed: {action.value!r} on {target!r}.\nError message: {result.stderr or result.output}",
+                            correction=""
+                        )
                     action_failed = True
                     break
                 else:
@@ -245,8 +275,35 @@ class CodingAgent:
                     self._knowledge_graph.update_graph(
                         GraphUpdate(paths=(Path(target),))
                     )
+                    # Harness protocol: after every successful mutation, the agent MUST
+                    # self-assess before issuing another action. This prevents re-write loops.
+                    self._context_service.update_markov_state(
+                        result=(
+                            f"HARNESS: {action.value.upper()} to {target!r} succeeded. "
+                            "MANDATORY SELF-ASSESSMENT: Verify now whether all acceptance "
+                            "criteria for this step are satisfied by the current file state. "
+                            "If ALL criteria are met → set 'done': true immediately. "
+                            "Do NOT re-write the same file unless you can explicitly state "
+                            "which criterion remains unmet and why."
+                        ),
+                        correction="",
+                    )
+                    # In-agent heuristic: flag redundant writes to the same file.
+                    if target in write_targets_this_step:
+                        self._context_service.update_markov_state(
+                            result=(
+                                f"AGENT NOTICE: {target!r} has already been written "
+                                "in this step. Writing the same file multiple times is "
+                                "almost always a sign the step is complete. "
+                                "Set 'done': true unless you can explicitly identify "
+                                "a remaining unmet acceptance criterion."
+                            ),
+                            correction=f"Redundant write to {target!r} detected.",
+                        )
+                    write_targets_this_step.add(target)
 
             if action_failed:
+                no_action_streak = 0
                 continue
 
             facts = data.get("facts_learned", [])
@@ -256,8 +313,20 @@ class CodingAgent:
 
             if data.get("done"):
                 return
-            if not actions:
-                raise ToolExecutionError("Agent returned no actions but did not indicate completion. Ensure your JSON block includes a valid 'actions' array.")
+
+            # Harness: enforce no-op streak limit. If the agent produced zero
+            # effective tool actions and did not declare done, it is stuck.
+            if effective_actions_this_iter == 0:
+                no_action_streak += 1
+                if no_action_streak >= 2:
+                    raise ToolExecutionError(
+                        f"Step {step.identifier!r}: agent produced no effective tool actions "
+                        f"for {no_action_streak} consecutive iterations. "
+                        "Possible infinite loop — halting to prevent runaway token spend."
+                    )
+            else:
+                no_action_streak = 0
+
 
         raise ToolExecutionError("Exceeded max actions per step")
 

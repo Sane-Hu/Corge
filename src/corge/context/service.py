@@ -170,6 +170,23 @@ class ContextService:
         self._last_user_correction = correction
         self.clear_cache()
 
+    def invalidate_context_for_path(self, path: str) -> None:
+        """Discard in-memory fact cache entries and L1 memory facts for ``path``.
+
+        Enforces the context boundary rule: a File-not-found error is
+        authoritative evidence that any prior fact asserting the file
+        exists is stale and must be evicted before the next prompt assembly.
+
+        Spec traceability: Tech-spec §4 §Context Service & Isolation Policies
+            — facts freshness enforcement across session boundaries.
+        """
+        if self._cached_facts:
+            self._cached_facts = tuple(
+                f for f in self._cached_facts if path not in f
+            )
+        self._memory.invalidate_fact_containing(path)
+        self.clear_cache()
+
     # ------------------------------------------------------------------
     # Internal bundle builder
     # ------------------------------------------------------------------

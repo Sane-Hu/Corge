@@ -52,7 +52,7 @@ class PlanningAgent:
             "1. YAGNI: Design the simplest, most direct architecture that satisfies requirements. Avoid speculative abstractions.\n"
             "2. Locality: Keep changes localized to the fewest files possible to minimize execution complexity and edit iterations.\n"
             "3. Reuse: Reuse existing utilities, dependencies, and code patterns instead of introducing new ones.\n"
-            "4. Naming: Use descriptive domain names for new files (e.g. main.py, app.py). Never name files after internal prompt terms like 'canvas', 'draft', or 'untitled'.\n"
+            "4. Naming: Use descriptive domain names for new files that match the problem domain (e.g. main.py, app.py, server.py, cli.py). NEVER name files after Corge-internal workflow terms (canvas, draft, untitled, spec, plan, blueprint). These are system artefact names and MUST NOT appear in product file paths.\n"
             "5. Test Minimality: Design test suites to be minimal and targeted. Do not propose large mock structures or redundant test coverages."
         )
 

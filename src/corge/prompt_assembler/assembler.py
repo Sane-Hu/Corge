@@ -65,7 +65,9 @@ class PromptAssembler:
         ]
         return "\n\n".join(filter(bool, sections))
 
-    def assemble_coding_prompt(self, context: ContextBundle) -> str:
+    def assemble_coding_prompt(
+        self, context: ContextBundle, include_static: bool = True
+    ) -> str:
         """Assemble the semantic prompt for the Coding phase (9-step execution)."""
         context = self._enforce_budget(context)
         
@@ -109,18 +111,38 @@ class PromptAssembler:
         # Prevent noise: do not include reasoning logs in coding phase,
         # but the approved architectural blueprint (TechnicalPlan) is highly useful.
         
+        repo_root = ""
+        if context.repository_context and context.repository_context.root:
+            repo_root = str(context.repository_context.root)
+
         dynamic_step = (
             f"Current step: {step_desc}\n"
-            f"Step identifier: {step_id}"
+            f"Step identifier: {step_id}\n"
+            + (
+                f"Repository root (all file paths MUST be relative to this directory): {repo_root}"
+                if repo_root
+                else ""
+            )
         )
 
+        if include_static:
+            static_sections: list[str] = [
+                self._render_schema(context),
+                self._render_engineering_profile(context),
+                self._render_repository_facts(context),
+                self._render_specification(context),
+                self._render_technical_plan(context),
+                self._render_relevant_files(context),
+            ]
+        else:
+            static_sections = [
+                "<context_ref>Specification, technical plan, schema, engineering profile, "
+                "and relevant files were injected on the first action of this step "
+                "and remain authoritative. Do not request them again.</context_ref>"
+            ]
+
         sections = [
-            self._render_schema(context),
-            self._render_engineering_profile(context),
-            self._render_repository_facts(context),
-            self._render_specification(context),
-            self._render_technical_plan(context),
-            self._render_relevant_files(context),
+            *static_sections,
             f"<coding_instructions>\n{static_instruction}\n</coding_instructions>",
             f"<current_step>\n{dynamic_step}\n</current_step>",
             self._render_scenario_memory(context),
