@@ -301,8 +301,8 @@ class CanvasScreen(Screen[str | None]):
                 for node in result.nodes:
                     label = f"[{node.kind.upper()}] {node.node_id}"
                     self._search_results.append(SearchResultItem(node.node_id, label))
-        except Exception:
-            pass
+        except Exception as e:
+            self._search_results.append(ListItem(Label(f"Error: {e}")))
 
     @on(Input.Submitted, "#search-input")
     def handle_search_submitted(self) -> None:

@@ -582,6 +582,7 @@ class RealCorgeApp(CorgeApp):
                         controller.plan = None
                         controller.technical_plan = None
                         controller.procedural_steps = ()
+                        knowledge_graph.close()
                         controller.transition_to(LifecycleState.SPEC_ENTRY)
                         
                         current_session_state = SessionState(

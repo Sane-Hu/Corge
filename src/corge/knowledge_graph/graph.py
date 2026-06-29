@@ -236,16 +236,16 @@ class KnowledgeGraph:
             self._db_path = db_dir / "repo_graph.db"
 
         with self._get_conn() as conn:
-            conn.execute("DELETE FROM nodes")
-            conn.execute("DELETE FROM edges")
-            conn.execute(
-                "INSERT OR REPLACE INTO meta VALUES ('root', ?)",
-                (str(root),),
-            )
+            with conn:
+                conn.execute("DELETE FROM nodes")
+                conn.execute("DELETE FROM edges")
+                conn.execute(
+                    "INSERT OR REPLACE INTO meta VALUES ('root', ?)",
+                    (str(root),),
+                )
 
-            for item in _walk(root):
-                self._ingest_path(root, item, conn)
-            conn.commit()
+                for item in _walk(root):
+                    self._ingest_path(root, item, conn)
 
     def update_graph(self, update: GraphUpdate) -> None:
         """Reprocess only the supplied paths (FR-004 incremental updates)."""
@@ -263,15 +263,15 @@ class KnowledgeGraph:
         root = Path(row[0])
 
         with self._get_conn() as conn:
-            for path in update.paths:
-                try:
-                    rel = str(path.relative_to(root))
-                except ValueError:
-                    continue
-                self._delete_path(rel, conn)
-                if path.exists():
-                    self._ingest_path(root, path, conn)
-            conn.commit()
+            with conn:
+                for path in update.paths:
+                    try:
+                        rel = str(path.relative_to(root))
+                    except ValueError:
+                        continue
+                    self._delete_path(rel, conn)
+                    if path.exists():
+                        self._ingest_path(root, path, conn)
 
     def query_graph(self, query: GraphQuery) -> GraphResult:
         """Return nodes matching a simple text expression (FR-005).
