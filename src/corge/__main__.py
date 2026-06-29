@@ -346,32 +346,17 @@ class RealCorgeApp(CorgeApp):
                     bundle = controller.collect_context(step, spec)
                     
                     go_back = False
-                    while True:
-                        if bundle.scenario_memory:
-                            res_mem = ui.show_memory(bundle.scenario_memory)
-                            if res_mem == "new_spec":
-                                controller.transition_to(LifecycleState.SPEC_ENTRY)
-                                go_back = True
-                                break
-                            elif res_mem == "back":
-                                if controller.uncomplete_previous_step():
-                                    go_back = True
-                                    break
-                                else:
-                                    controller.transition_to(LifecycleState.PLAN_REVIEW)
-                                    go_back = True
-                                    break
-
-                        res_exec = ui.show_execution(spec.title, plan, controller.current_step_idx)
-                        if res_exec is False:
+                    if bundle.scenario_memory:
+                        res_mem = ui.show_memory(bundle.scenario_memory)
+                        if res_mem == "new_spec":
+                            controller.transition_to(LifecycleState.SPEC_ENTRY)
+                            go_back = True
+                        elif res_mem == "back":
                             if controller.uncomplete_previous_step():
                                 go_back = True
-                                break
                             else:
                                 controller.transition_to(LifecycleState.PLAN_REVIEW)
                                 go_back = True
-                                break
-                        break
                     
                     if go_back:
                         continue

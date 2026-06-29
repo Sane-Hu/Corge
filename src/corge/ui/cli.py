@@ -812,28 +812,6 @@ class CliUi(UiPort):
     # Coding phase screens
     # ------------------------------------------------------------------
 
-    def show_execution(self, spec_title: str, plan: Plan, current_step_idx: int) -> bool:
-        """Display current execution state during the coding phase (finding 8.5).
-
-        Shows the active plan step and spec title so the engineer can
-        monitor progress while the agent is working.
-        """
-        step_lines = []
-        for i, s in enumerate(plan.steps):
-            if i < current_step_idx:
-                marker = "✓"
-            elif i == current_step_idx:
-                marker = "►"
-            else:
-                marker = "○"
-            step_lines.append(f"  {marker} {i + 1}. [{s.identifier}] {s.description}")
-
-        msg = (
-            f"Specification: {spec_title}\n\n"
-            f"Executing plan steps:\n" + ("\n".join(step_lines) if step_lines else "  (none)")
-        )
-        return bool(self._run_screen(MessageScreen("Execution in Progress", msg, show_back=True)) == "continue")
-
     def request_approval(self, request: ApprovalRequest) -> ApprovalDecision:
         """Show approval request via split pane (finding 8.7 — has Reject button)."""
         detail = (

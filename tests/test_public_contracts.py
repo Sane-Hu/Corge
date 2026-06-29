@@ -167,7 +167,6 @@ def test_documented_public_classes_exist() -> None:
         CliUi: {
             "show_spec_wizard",
             "show_plan",
-            "show_execution",
             "show_logs",
             "request_approval",
             "show_repository_analysis",
