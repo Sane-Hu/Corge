@@ -582,8 +582,12 @@ class RealCorgeApp(CorgeApp):
                         controller.technical_plan = None
                         controller.procedural_steps = ()
                         knowledge_graph.close()
-                        controller.transition_to(LifecycleState.SPEC_ENTRY)
-                        
+                        # Route through REPOSITORY_ANALYSIS so the KG is rebuilt
+                        # from current disk state — picks up all files created by
+                        # previous specs. Jumping straight to SPEC_ENTRY leaves
+                        # the KG stale and the planning agent blind to prior work.
+                        controller.transition_to(LifecycleState.REPOSITORY_ANALYSIS)
+
                         current_session_state = SessionState(
                             lifecycle_state=controller.state,
                             master_phase=controller.phase,
@@ -597,6 +601,7 @@ class RealCorgeApp(CorgeApp):
                         )
                         save_session(agent_dir, current_session_state)
                         continue
+
                     elif choice == "switch_repo":
                         try:
                             self.call_from_thread(self.exit, "switch_repo")
