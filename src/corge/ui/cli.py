@@ -70,12 +70,13 @@ class MessageScreen(Screen[str]):
     }
     """
 
-    def __init__(self, title: str, message: str, show_back: bool = False, show_new_spec: bool = False) -> None:
+    def __init__(self, title: str, message: str, show_back: bool = False, show_new_spec: bool = False, show_quit: bool = False) -> None:
         super().__init__()
         self._title = title
         self._message = message
         self._show_back = show_back
         self._show_new_spec = show_new_spec
+        self._show_quit = show_quit
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -95,6 +96,8 @@ class MessageScreen(Screen[str]):
                     id="auto_advance",
                     variant="success" if auto_adv else "default",
                 )
+                if self._show_quit:
+                    yield Button("Quit (q)", id="quit", variant="error")
                 yield Button("Continue (enter)", id="continue", variant="primary")
         yield Footer()
 
@@ -108,6 +111,8 @@ class MessageScreen(Screen[str]):
             self._bindings.bind("escape", "continue", "Continue")
         if self._show_new_spec:
             self._bindings.bind("n", "new_spec", "New Spec")
+        if self._show_quit:
+            self._bindings.bind("q", "quit", "Quit")
         self._bindings.bind("c", "copy_text", "Copy")
         self._bindings.bind("a", "toggle_auto_advance", "Auto-advance")
         self.query_one("#continue", Button).focus()
@@ -120,6 +125,9 @@ class MessageScreen(Screen[str]):
 
     def action_new_spec(self) -> None:
         self.dismiss("new_spec")
+
+    def action_quit(self) -> None:
+        self.dismiss("quit")
 
     def action_copy_text(self) -> None:
         self.app.copy_to_clipboard(self._message)
@@ -149,6 +157,8 @@ class MessageScreen(Screen[str]):
             self.dismiss("back")
         elif event.button.id == "new_spec":
             self.dismiss("new_spec")
+        elif event.button.id == "quit":
+            self.action_quit()
         elif event.button.id == "copy":
             self.action_copy_text()
         elif event.button.id == "auto_advance":
@@ -643,7 +653,11 @@ class CliUi(UiPort):
             future.set_result(result)
 
         self._app.call_from_thread(self._app.push_screen, screen, callback)
-        return future.result()
+        res = future.result()
+        if res == "quit":
+            self._app.call_from_thread(self._app.exit)
+            raise SystemExit()
+        return res
 
     def update_journey_state(self, agent_name: str, state_name: str) -> None:
         def do_update() -> None:
@@ -941,7 +955,7 @@ class CliUi(UiPort):
             f"Files ({len(repository_context.tree)}):\n{tree_lines or '  (empty)'}\n\n"
             f"Config files:\n{config_lines or '  (none)'}"
         )
-        return bool(self._run_screen(MessageScreen("Repository Analysis", msg, show_back=True)) == "continue")
+        return bool(self._run_screen(MessageScreen("Repository Analysis", msg, show_back=True, show_quit=True)) == "continue")
 
     def show_repository_understanding(
         self, repository_context: RepositoryContext
@@ -951,7 +965,7 @@ class CliUi(UiPort):
             f"Total tracked paths: {len(repository_context.tree)}\n"
             f"Config/build files: {len(repository_context.config_files)}"
         )
-        return bool(self._run_screen(MessageScreen("Repository Understanding", msg, show_back=True)) == "continue")
+        return bool(self._run_screen(MessageScreen("Repository Understanding", msg, show_back=True, show_quit=True)) == "continue")
 
     def show_engineering_profile(self, profile: EngineeringProfile) -> bool:
         if profile.rules:
@@ -965,7 +979,7 @@ class CliUi(UiPort):
             )
         else:
             msg = "No engineering conventions recorded yet."
-        return bool(self._run_screen(MessageScreen("Engineering Profile", msg, show_back=True)) == "continue")
+        return bool(self._run_screen(MessageScreen("Engineering Profile", msg, show_back=True, show_quit=True)) == "continue")
 
     def show_memory(self, events: tuple[MemoryEvent, ...]) -> str:
         if events:

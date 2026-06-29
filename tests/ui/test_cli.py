@@ -85,6 +85,14 @@ def test_message_screen_copy_button() -> None:
         active_app.reset(token)
 
 
+def test_message_screen_quit_button() -> None:
+    from corge.ui.cli import MessageScreen
+    screen = MessageScreen("Title", "Message", show_back=True, show_quit=True)
+    screen.dismiss = MagicMock()
+    screen.action_quit()
+    screen.dismiss.assert_called_once_with("quit")
+
+
 def test_show_repository_understanding_has_back_button() -> None:
     from corge.contracts import RepositoryContext
     from corge.ui.cli import CliUi
