@@ -334,6 +334,23 @@ def test_provider_config_parses_auto_advance() -> None:
     assert config.auto_advance_informational_screens is True
 
 
+def test_show_step_diff() -> None:
+    from corge.ui.cli import CliUi
+
+    app_mock = MagicMock()
+    ui = CliUi(app_mock)
+
+    ui._run_screen = MagicMock(return_value="approved text")
+    res = ui.show_step_diff("1", "test description", "diff text")
+    assert res is True
+    ui._run_screen.assert_called_once()
+
+    ui._run_screen = MagicMock(return_value=None)
+    res = ui.show_step_diff("1", "test description", "diff text")
+    assert res is False
+
+
+
 
 
 

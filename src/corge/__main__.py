@@ -380,8 +380,110 @@ class RealCorgeApp(CorgeApp):
                     from corge.agent.coding_agent import ToolExecutionError, ActionRejectedError
                     from corge.contracts import MemoryEvent
                     try:
+                        tool_runtime.reset_modified_files()
                         controller.execute_step(step, bundle, on_token=ui.stream_token)
-                        controller.mark_step_completed()
+                        
+                        # Post-execution review of changes (diff)
+                        import shutil
+                        import subprocess
+                        import difflib
+                        
+                        git_avail = shutil.which("git") is not None
+                        is_git_repo = (self.target_repo / ".git").exists()
+                        
+                        diff_text = ""
+                        git_active = False
+                        
+                        if git_avail and is_git_repo:
+                            git_active = True
+                            subprocess.run(["git", "add", "-N", "."], cwd=self.target_repo, capture_output=True)
+                            diff_res = subprocess.run(["git", "diff"], cwd=self.target_repo, capture_output=True, text=True)
+                            diff_text = diff_res.stdout.strip()
+                            subprocess.run(["git", "reset", "."], cwd=self.target_repo, capture_output=True)
+                        else:
+                            diff_lines = []
+                            for target_path, original_content in tool_runtime.modified_files.items():
+                                try:
+                                    rel_path = str(target_path.relative_to(self.target_repo))
+                                except ValueError:
+                                    rel_path = target_path.name
+                                    
+                                if target_path.exists():
+                                    try:
+                                        current_content = target_path.read_text(encoding="utf-8")
+                                    except Exception:
+                                        current_content = ""
+                                else:
+                                    current_content = ""
+                                    
+                                if original_content is None:
+                                    from_lines = []
+                                    to_lines = current_content.splitlines(keepends=True)
+                                    from_file = "/dev/null"
+                                    to_file = rel_path
+                                elif not target_path.exists():
+                                    from_lines = original_content.splitlines(keepends=True)
+                                    to_lines = []
+                                    from_file = rel_path
+                                    to_file = "/dev/null"
+                                else:
+                                    from_lines = original_content.splitlines(keepends=True)
+                                    to_lines = current_content.splitlines(keepends=True)
+                                    from_file = f"{rel_path} (Old)"
+                                    to_file = f"{rel_path} (New)"
+                                    
+                                file_diff = list(
+                                    difflib.unified_diff(
+                                        from_lines,
+                                        to_lines,
+                                        fromfile=from_file,
+                                        tofile=to_file,
+                                        n=3,
+                                    )
+                                )
+                                if file_diff:
+                                    diff_lines.extend(file_diff)
+                            diff_text = "".join(diff_lines)
+                            
+                        keep_changes = True
+                        if diff_text:
+                            review_result = ui.show_step_diff(
+                                step_id=step.identifier,
+                                description=step.description,
+                                diff_text=diff_text,
+                            )
+                            if not review_result:
+                                # User rejected / discarded changes
+                                revert_confirm = ui.show_confirm(
+                                    "Discard Modifications?",
+                                    "Are you sure you want to discard all file modifications made in this step?\n"
+                                    "This will revert the workspace to its pre-step state."
+                                )
+                                if revert_confirm:
+                                    keep_changes = False
+                                    if git_active:
+                                        subprocess.run(["git", "--no-pager", "checkout", "--", "."], cwd=self.target_repo, capture_output=True)
+                                        subprocess.run(["git", "--no-pager", "clean", "-fd", "."], cwd=self.target_repo, capture_output=True)
+                                    else:
+                                        # Restore files natively
+                                        for target_path, original_content in tool_runtime.modified_files.items():
+                                            try:
+                                                if original_content is None:
+                                                    if target_path.exists():
+                                                        target_path.unlink()
+                                                else:
+                                                    target_path.parent.mkdir(parents=True, exist_ok=True)
+                                                    target_path.write_text(original_content, encoding="utf-8")
+                                            except Exception:
+                                                pass
+                                else:
+                                    keep_changes = True
+                                    
+                        if keep_changes:
+                            controller.mark_step_completed()
+                        else:
+                            if not controller.uncomplete_previous_step():
+                                controller.transition_to(LifecycleState.PLAN_REVIEW)
                     except ActionRejectedError:
                         proceed_next = ui.show_confirm(
                             "Action Rejected",

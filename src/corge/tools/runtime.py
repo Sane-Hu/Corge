@@ -10,6 +10,10 @@ class ToolRuntime:
 
     def __init__(self, repo_root: Path | str | None = None) -> None:
         self.repo_root = Path(repo_root).resolve() if repo_root else Path.cwd().resolve()
+        self.modified_files: dict[Path, str | None] = {}
+
+    def reset_modified_files(self) -> None:
+        self.modified_files.clear()
 
     def _resolve_path(self, path: Path | str) -> Path:
         target = (self.repo_root / path).resolve()
@@ -54,6 +58,11 @@ class ToolRuntime:
     def write(self, path: Path | str, content: str) -> ToolResult:
         try:
             target = self._resolve_path(path)
+            if target not in self.modified_files:
+                if target.exists():
+                    self.modified_files[target] = target.read_text(encoding="utf-8")
+                else:
+                    self.modified_files[target] = None
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding="utf-8")
             return ToolResult(
@@ -80,6 +89,8 @@ class ToolRuntime:
         try:
             target = self._resolve_path(path)
             original = target.read_text(encoding="utf-8")
+            if target not in self.modified_files:
+                self.modified_files[target] = original
         except FileNotFoundError:
             return ToolResult(
                 action=ToolAction.EDIT,

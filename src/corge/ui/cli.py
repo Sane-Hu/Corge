@@ -879,6 +879,35 @@ class CliUi(UiPort):
             return ApprovalDecision.APPROVED
         return ApprovalDecision.REJECTED
 
+    def show_step_diff(
+        self,
+        step_id: str,
+        description: str,
+        diff_text: str,
+    ) -> bool:
+        """Display step completion diff review screen using InteractiveDiffScreen."""
+        from corge.ui.interactive_diff import InteractiveDiffScreen
+
+        result = self._run_screen(
+            InteractiveDiffScreen(
+                left_title="Step Context",
+                left_text=(
+                    f"Step '{step_id}' executed successfully.\n\n"
+                    f"Description: {description}\n\n"
+                    "Please review the changes made to your repository."
+                ),
+                right_title="Files Modified",
+                right_text="Select 'Keep Changes' to accept the modifications, or 'Discard Changes' to revert them.",
+                prompt_text="Review the modifications before proceeding.",
+                approve_text="Keep Changes",
+                reject_text="Discard Changes",
+                override_diff_text=diff_text,
+                right_read_only=True,
+                diff_title=f"Step Completion Diff — {step_id}",
+            )
+        )
+        return result is not None
+
     def show_completion_review(self, plan: Plan) -> bool:
         """Display per-step completion status (spec §5 item 3, finding 8.9)."""
         lines = ["Completion Review\n"]

@@ -81,6 +81,15 @@ class UiPort(Protocol):
 
     def request_approval(self, request: ApprovalRequest) -> ApprovalDecision: ...
 
+    def show_step_diff(
+        self,
+        step_id: str,
+        description: str,
+        diff_text: str,
+    ) -> bool:
+        """Display the step completion diff review screen. Returns True to Keep, False to Discard."""
+        ...
+
     def show_repository_analysis(
         self, repository_context: RepositoryContext
     ) -> bool: ...
