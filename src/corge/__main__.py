@@ -146,30 +146,33 @@ class RealCorgeApp(CorgeApp):
         from corge.agent.session import SessionState, load_session, save_session
         session_state = load_session(agent_dir)
         if session_state:
-            resume = ui.show_confirm(
-                title="Resume Previous Session?",
-                message=(
-                    f"An incomplete session was found (currently in phase: {session_state.master_phase.name}).\n\n"
-                    "Would you like to resume where you left off?\n"
-                    "(Select 'No' to discard the saved session and start fresh.)"
-                )
-            )
-            if resume:
+            if session_state.lifecycle_state in (LifecycleState.START, LifecycleState.REPOSITORY_SELECTION):
                 controller.load_from_session(session_state)
-                if session_state.lifecycle_state in (
-                    LifecycleState.EXECUTION,
-                    LifecycleState.VERIFICATION,
-                    LifecycleState.COMPLETION_REVIEW,
-                ):
-                    ui.show_loading("Analyzing repository structure and building Knowledge Graph...")
-                    try:
-                        controller.analyze_repository(self.target_repo)
-                    finally:
-                        ui.hide_loading()
             else:
-                session_file = agent_dir / "session.json"
-                if session_file.exists():
-                    session_file.unlink()
+                resume = ui.show_confirm(
+                    title="Resume Previous Session?",
+                    message=(
+                        f"An incomplete session was found (currently in phase: {session_state.master_phase.name}).\n\n"
+                        "Would you like to resume where you left off?\n"
+                        "(Select 'No' to discard the saved session and start fresh.)"
+                    )
+                )
+                if resume:
+                    controller.load_from_session(session_state)
+                    if session_state.lifecycle_state in (
+                        LifecycleState.EXECUTION,
+                        LifecycleState.VERIFICATION,
+                        LifecycleState.COMPLETION_REVIEW,
+                    ):
+                        ui.show_loading("Analyzing repository structure and building Knowledge Graph...")
+                        try:
+                            controller.analyze_repository(self.target_repo)
+                        finally:
+                            ui.hide_loading()
+                else:
+                    session_file = agent_dir / "session.json"
+                    if session_file.exists():
+                        session_file.unlink()
 
 
 
