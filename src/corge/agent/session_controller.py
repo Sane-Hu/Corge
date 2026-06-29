@@ -86,6 +86,10 @@ class InvalidTransitionError(Exception):
     """Raised when a requested state transition is not permitted."""
 
 
+class GoBackSignal(Exception):
+    """Raised to request transitioning back to the previous state."""
+
+
 class SessionController:
     """Coordinates master phases: Specification, Planning, and Coding.
 

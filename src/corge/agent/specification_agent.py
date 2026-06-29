@@ -185,6 +185,18 @@ class SpecificationAgent:
             if self._controller.phase != MasterPhase.SPECIFICATION:
                 raise ValueError("SpecificationAgent operations are only allowed in SPECIFICATION phase.")
 
+        # Socratic Spec Wizard opt-in prompt
+        prompt_msg = (
+            "Would you like to run the Socratic Spec Wizard to answer clarifying questions for detected semantic gaps?\n\n"
+            "• Yes: Analyze gaps and run the Q&A wizard.\n"
+            "• No: Skip Q&A and proceed directly to manual refinement.\n"
+            "• Back: Go back to edit the brainstorming canvas."
+        )
+        opt_in = ui.show_socratic_opt_in(prompt_msg)
+        if opt_in == "back":
+            from corge.agent.session_controller import GoBackSignal
+            raise GoBackSignal()
+
         # Step 1 & 2: Concretize canvas and identify gaps
         ui.show_loading("Concretizing specification...")
         try:
@@ -195,74 +207,60 @@ class SpecificationAgent:
         finally:
             ui.hide_loading()
 
-        while gaps:
-            if self._controller:
-                self._controller.advance_spec_state(SpecState.ARGUMENTATION_DIFF)
-            # Enforce max_questions cap
-            gaps_to_ask = gaps[:max_questions]
-            remaining_gaps_count = len(gaps) - len(gaps_to_ask)
+        if opt_in == "yes" and gaps:
+            while gaps:
+                if self._controller:
+                    self._controller.advance_spec_state(SpecState.ARGUMENTATION_DIFF)
+                # Enforce max_questions cap
+                gaps_to_ask = gaps[:max_questions]
 
-            # UX-002: Make Socratic questions opt-in rather than mandatory
-            prompt_msg = (
-                f"The agent detected {len(gaps)} potential semantic gap(s) in your specification.\n\n"
-                f"Would you like to run the Socratic Spec Wizard to answer clarifying questions for the top {len(gaps_to_ask)} gap(s)?"
-            )
-            if remaining_gaps_count > 0:
-                prompt_msg += f" (The remaining {remaining_gaps_count} gap(s) will be refined manually later.)"
-            prompt_msg += "\n\n(Select 'No' to skip and proceed directly to manual refinement.)"
-
-            opt_in = ui.show_confirm(
-                "Socratic Spec Wizard",
-                prompt_msg
-            )
-            if not opt_in:
+                # Step 3: Formulate and log bulk Socratic questions
                 now = datetime.now(UTC).isoformat()
-                topics = ", ".join(gap.topic for gap in gaps_to_ask)
-                argumentation_log.record_entry(
-                    ArgumentationEntry(
-                        question=f"Socratic Spec Wizard for gaps: {topics}",
-                        answer="Skipped/Opted out",
-                        timestamp=now,
-                        was_user_override=True,
-                    )
-                )
-                break
-
-            # Step 3: Formulate and log bulk Socratic questions
-            now = datetime.now(UTC).isoformat()
-            ui.show_loading("Formulating clarifying questions...")
-            try:
-                questions = self._formulate_bulk_questions(
-                    gaps_to_ask, spec, on_token=ui.stream_token
-                )
-            finally:
-                ui.hide_loading()
-
-            answers = ui.show_question(questions, canvas_text)
-
-            is_skipped = not answers.strip() or "<Enter answer here>" in answers
-            argumentation_log.record_entry(
-                ArgumentationEntry(
-                    question=questions,
-                    answer=answers,
-                    timestamp=now,
-                    was_user_override=is_skipped,
-                )
-            )
-
-            if answers.strip():
-                ui.show_loading("Refining specification with answers...")
+                ui.show_loading("Formulating clarifying questions...")
                 try:
-                    spec = self.refine_spec_with_answers(
-                        spec, questions, answers, on_token=ui.stream_token
-                    )
-                    gaps = self.analyze_specification_gaps(
-                        spec.body, on_token=ui.stream_token
+                    questions = self._formulate_bulk_questions(
+                        gaps_to_ask, spec, on_token=ui.stream_token
                     )
                 finally:
                     ui.hide_loading()
-            else:
-                break
+
+                answers = ui.show_question(questions, canvas_text)
+
+                is_skipped = not answers.strip() or "<Enter answer here>" in answers
+                argumentation_log.record_entry(
+                    ArgumentationEntry(
+                        question=questions,
+                        answer=answers,
+                        timestamp=now,
+                        was_user_override=is_skipped,
+                    )
+                )
+
+                if answers.strip():
+                    ui.show_loading("Refining specification with answers...")
+                    try:
+                        spec = self.refine_spec_with_answers(
+                            spec, questions, answers, on_token=ui.stream_token
+                        )
+                        gaps = self.analyze_specification_gaps(
+                            spec.body, on_token=ui.stream_token
+                        )
+                    finally:
+                        ui.hide_loading()
+                else:
+                    break
+        elif opt_in == "no" and gaps:
+            # User opted out of clarifying questions, log this preference
+            now = datetime.now(UTC).isoformat()
+            topics = ", ".join(gap.topic for gap in gaps[:max_questions])
+            argumentation_log.record_entry(
+                ArgumentationEntry(
+                    question=f"Socratic Spec Wizard for gaps: {topics}",
+                    answer="Skipped/Opted out",
+                    timestamp=now,
+                    was_user_override=True,
+                )
+            )
 
         return spec, gaps
 

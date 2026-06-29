@@ -51,7 +51,7 @@ from corge.contracts.models import (
 class UiPort(Protocol):
     """Presentation layer boundary."""
 
-    def show_spec_wizard(self) -> Specification | None: ...
+    def show_spec_wizard(self, prefill: str = "") -> Specification | None: ...
 
     def show_argumentation_diff(
         self, canvas_text: str, right_text: str
@@ -63,6 +63,10 @@ class UiPort(Protocol):
 
     def show_confirm(self, title: str, message: str) -> bool:
         """Display a confirmation dialog returning True (Yes) or False (No)."""
+        ...
+
+    def show_socratic_opt_in(self, message: str) -> str:
+        """Display Socratic Spec Wizard opt-in dialog returning 'yes', 'no', or 'back'."""
         ...
 
     def show_plan(self, plan: Plan) -> bool: ...

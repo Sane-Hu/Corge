@@ -84,7 +84,7 @@ def test_socratic_loop_records_real_answer():
     ]
 
     mock_ui = Mock(spec=UiPort)
-    mock_ui.show_confirm.return_value = True
+    mock_ui.show_socratic_opt_in.return_value = "yes"
     mock_ui.show_question.return_value = "My answer"
 
     mock_arg_log = Mock(spec=ArgumentationLogPort)
@@ -110,7 +110,7 @@ def test_socratic_loop_opt_out():
     ]
 
     mock_ui = Mock(spec=UiPort)
-    mock_ui.show_confirm.return_value = False
+    mock_ui.show_socratic_opt_in.return_value = "no"
 
     mock_arg_log = Mock(spec=ArgumentationLogPort)
     mock_ctx = Mock(spec=ContextPort)
@@ -122,12 +122,30 @@ def test_socratic_loop_opt_out():
     assert spec.title == "Title"
     assert len(gaps) == 1
     assert gaps[0].topic == "Auth"
-    mock_ui.show_confirm.assert_called_once()
+    mock_ui.show_socratic_opt_in.assert_called_once()
     mock_ui.show_question.assert_not_called()
     mock_arg_log.record_entry.assert_called_once()
     entry = mock_arg_log.record_entry.call_args[0][0]
     assert entry.was_user_override is True
     assert entry.answer == "Skipped/Opted out"
+
+
+def test_socratic_loop_go_back():
+    import pytest
+    from corge.agent.session_controller import GoBackSignal
+    from corge.contracts import ArgumentationLogPort, UiPort
+
+    mock_provider = Mock(spec=ProviderPort)
+    mock_ui = Mock(spec=UiPort)
+    mock_ui.show_socratic_opt_in.return_value = "back"
+
+    mock_arg_log = Mock(spec=ArgumentationLogPort)
+    mock_ctx = Mock(spec=ContextPort)
+    mock_pa = Mock(spec=PromptAssemblerPort)
+
+    agent = SpecificationAgent(mock_provider, mock_ctx, mock_pa)
+    with pytest.raises(GoBackSignal):
+        agent.run_socratic_loop("canvas", mock_arg_log, mock_ui)
 
 
 def test_socratic_loop_skipped_questions():
@@ -141,7 +159,7 @@ def test_socratic_loop_skipped_questions():
     ]
 
     mock_ui = Mock(spec=UiPort)
-    mock_ui.show_confirm.return_value = True
+    mock_ui.show_socratic_opt_in.return_value = "yes"
     mock_ui.show_question.return_value = ""
 
     mock_arg_log = Mock(spec=ArgumentationLogPort)
@@ -171,7 +189,7 @@ def test_socratic_loop_cap():
     ]
 
     mock_ui = Mock(spec=UiPort)
-    mock_ui.show_confirm.return_value = True
+    mock_ui.show_socratic_opt_in.return_value = "yes"
     mock_ui.show_question.return_value = "Answers"
 
     mock_arg_log = Mock(spec=ArgumentationLogPort)

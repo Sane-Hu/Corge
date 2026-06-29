@@ -43,7 +43,7 @@ from corge.contracts import (
     ToolAction,
     UiPort,
 )
-from corge.ui.confirm_screen import ConfirmScreen
+from corge.ui.confirm_screen import ConfirmScreen, SocraticOptInScreen
 from corge.ui.freestyle_canvas import CanvasScreen
 from corge.ui.interactive_diff import InteractiveDiffScreen
 from corge.ui.provider_config import ProviderConfigScreen
@@ -670,9 +670,9 @@ class CliUi(UiPort):
     # Specification phase screens
     # ------------------------------------------------------------------
 
-    def show_spec_wizard(self) -> Specification | None:
+    def show_spec_wizard(self, prefill: str = "") -> Specification | None:
         """Present a freestyle brainstorming canvas to the user."""
-        text = self._run_screen(CanvasScreen(validator=self._validator))
+        text = self._run_screen(CanvasScreen(validator=self._validator, initial_text=prefill))
         if text is None:
             return None
         # Wrap raw canvas text; SpecificationAgent.concretize() will structure it.
@@ -729,6 +729,11 @@ class CliUi(UiPort):
         """Display a confirmation dialog returning True (Yes) or False (No)."""
         result = self._run_screen(ConfirmScreen(title, message))
         return bool(result)
+
+    def show_socratic_opt_in(self, message: str) -> str:
+        """Display Socratic Spec Wizard opt-in dialog returning 'yes', 'no', or 'back'."""
+        result = self._run_screen(SocraticOptInScreen(message))
+        return str(result or "no")
 
     # ------------------------------------------------------------------
     # Planning phase screens

@@ -202,13 +202,17 @@ class RealCorgeApp(CorgeApp):
                             idx += 1
 
                     if idx < 0:
-                        controller.transition_to(LifecycleState.REPOSITORY_SELECTION)
-                        continue
+                        try:
+                            self.call_from_thread(self.exit, "switch_repo")
+                        except Exception as exc:
+                            print(f"Warning: error during app exit: {exc}")
+                        return
 
                     controller.advance()
 
                 elif controller.state == LifecycleState.SPEC_ENTRY:
-                    controller.specification = ui.show_spec_wizard()
+                    spec_prefill = controller.specification.body if controller.specification else ""
+                    controller.specification = ui.show_spec_wizard(spec_prefill)
                     if controller.specification is None:
                         controller.transition_to(LifecycleState.REPOSITORY_ANALYSIS)
                         continue
@@ -222,9 +226,14 @@ class RealCorgeApp(CorgeApp):
                     max_questions = getattr(provider._config, "max_socratic_questions", heuristics_cfg.max_socratic_questions)
 
                     # Run the iterative and capped Socratic wizard loop
-                    spec, gaps = controller.run_socratic_loop(
-                        spec.body, argumentation_log, ui, max_questions=max_questions
-                    )
+                    from corge.agent.session_controller import GoBackSignal
+                    try:
+                        spec, gaps = controller.run_socratic_loop(
+                            spec.body, argumentation_log, ui, max_questions=max_questions
+                        )
+                    except GoBackSignal:
+                        controller.transition_to(LifecycleState.SPEC_ENTRY)
+                        continue
                     controller.specification = spec
 
                     # Always show the manual refinement editor (Choice 1.2 Option A)
