@@ -166,14 +166,14 @@ class InteractiveDiffScreen(Screen[str | None]):
             )
             return
 
-        left_lines = self._original_right_text.splitlines(keepends=True)
+        left_lines = self.left_area.text.splitlines(keepends=True)
         right_lines = self.right_area.text.splitlines(keepends=True)
         diff = "".join(
             difflib.unified_diff(
                 left_lines,
                 right_lines,
-                fromfile="Original",
-                tofile="Proposed",
+                fromfile=self._left_title,
+                tofile=self._right_title,
                 n=3,
             )
         )

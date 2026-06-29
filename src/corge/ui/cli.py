@@ -753,7 +753,7 @@ class CliUi(UiPort):
                     "Review and refine the Technical Plan. Click Approve when ready."
                 ),
                 reject_text="Back",
-                diff_title="Diff (Current Technical Plan vs Previous Draft)",
+                diff_title="Diff (Technical Plan vs Approved Specification)",
             )
         )
         if result_text is None:
