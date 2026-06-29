@@ -70,6 +70,7 @@ class InteractiveDiffScreen(Screen[str | None]):
         override_diff_text: str | None = None,
         right_read_only: bool = False,
         diff_title: str = "Diff vs Original Draft",
+        start_showing_diff: bool = False,
     ) -> None:
         super().__init__()
         self._left_title = left_title
@@ -81,7 +82,7 @@ class InteractiveDiffScreen(Screen[str | None]):
         self._reject_text = reject_text
         self._override_diff_text = override_diff_text
         self._original_right_text = right_text
-        self._showing_diff = False
+        self._showing_diff = start_showing_diff
         self._diff_title = diff_title
 
         self.left_area = TextArea(self._left_text, id="left_area", read_only=True)
@@ -146,11 +147,20 @@ class InteractiveDiffScreen(Screen[str | None]):
 
     def on_mount(self) -> None:
         self._bindings.bind("escape", "reject", self._reject_text)
+        if self._showing_diff:
+            self.left_area.styles.display = "none"
+            self.diff_log.styles.display = "block"
+            self.left_title_widget.update(
+                f"{self._diff_title} [dim](ctrl+t to hide diff)[/dim]"
+            )
         self.update_diff()
         if not self.right_area.read_only:
             self.right_area.focus()
         else:
-            self.left_area.focus()
+            if self._showing_diff:
+                self.diff_log.focus()
+            else:
+                self.left_area.focus()
 
     @on(TextArea.Changed, "#right_area")
     def update_diff(self) -> None:

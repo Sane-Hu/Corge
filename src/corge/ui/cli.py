@@ -868,6 +868,7 @@ class CliUi(UiPort):
                 override_diff_text=override_diff,
                 right_read_only=True,
                 diff_title=diff_title,
+                start_showing_diff=True,
             )
         )
         # InteractiveDiffScreen.dismiss(text) → APPROVED; dismiss(None) → REJECTED
@@ -900,6 +901,7 @@ class CliUi(UiPort):
                 override_diff_text=diff_text,
                 right_read_only=True,
                 diff_title=f"Step Completion Diff — {step_id}",
+                start_showing_diff=True,
             )
         )
         return result is not None
