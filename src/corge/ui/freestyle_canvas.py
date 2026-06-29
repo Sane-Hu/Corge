@@ -38,23 +38,22 @@ from corge.ui.confirm_screen import ConfirmScreen
 # Ghost text shown in the canvas before the user starts typing.
 # Per review finding 8.4: guides brainstorming without being prescriptive.
 _GHOST_TEXT = """\
-# Freestyle Canvas — Brainstorming Space
-# (Replace this text with your own — nothing is too rough here)
-#
-# Think about:
-#   • What is the feature or change you need?          (business goal)
-#   • Who benefits from it and how?                    (user story)
-#   • What must the system do differently?             (functional requirements)
-#   • What should NOT be changed or broken?            (constraints)
-#   • How will you know it works?                      (acceptance criteria)
-#   • What tests are required?                         (testing expectations)
-#
-# You can also anchor sticky notes to Knowledge Graph nodes:
-#   @node:<node_id>  your note text here
-#   e.g. @node:src/corge/agent/coding_agent.py  needs to handle EDIT actions
-#
-# Or add notes for later (backlog):
-#   @later  refactor this method when database is migrated
+[bold yellow]💡 Brainstorming Guidelines[/bold yellow]
+[dim]Feel free to write your ideas below. There's no wrong way to brainstorm![/dim]
+
+[bold cyan]Think About:[/bold cyan]
+  [bold]• Business Goal:[/bold] What is the feature or change you need?
+  [bold]• User Story:[/bold] Who benefits from it and how?
+  [bold]• Requirements:[/bold] What must the system do differently?
+  [bold]• Constraints:[/bold] What should NOT be changed or broken?
+  [bold]• Acceptance:[/bold] How will you know it works?
+  [bold]• Testing:[/bold] What tests are required?
+
+[bold green]Sticky Note Syntax:[/bold green]
+  [bold]• KG Node Anchor:[/bold] [cyan]@node:<node_id>[/cyan] [dim]your note here[/dim]
+    [italic dim]e.g. @node:src/corge/agent/coding_agent.py needs to handle EDIT actions[/italic dim]
+  [bold]• Backlog Note:[/bold]  [magenta]@later[/magenta] [dim]your note here[/dim]
+    [italic dim]e.g. @later refactor this method when database is migrated[/italic dim]
 """
 
 
@@ -116,8 +115,14 @@ class CanvasScreen(Screen[str | None]):
         overflow-y: auto;
     }
     .ghost-text {
-        color: $text-muted;
+        background: $boost;
+        border: tall $accent 40%;
+        padding: 1 2;
         margin-bottom: 1;
+        height: auto;
+    }
+    .left-column TextArea {
+        height: 1fr;
     }
     .canvas-header {
         text-align: center;
@@ -181,8 +186,7 @@ class CanvasScreen(Screen[str | None]):
             with Vertical(classes="left-column"):
                 yield Static("Freestyle Canvas — Brainstorming", classes="canvas-header")
                 self._ghost_static = Static(_GHOST_TEXT, classes="ghost-text")
-                if not self._initial_text:
-                    yield self._ghost_static
+                yield self._ghost_static
                 self._text_area = TextArea(self._initial_text)
                 yield self._text_area
                 self._error_label = Label("", id="error-message", classes="error-label")
@@ -271,15 +275,6 @@ class CanvasScreen(Screen[str | None]):
     @on(TextArea.Changed)
     def handle_text_changed(self) -> None:
         text = self._text_area.text
-        if (
-            text.strip()
-            and hasattr(self, "_ghost_static")
-            and self._ghost_static.styles.display != "none"
-        ):
-            self._ghost_static.styles.display = "none"
-        elif not text.strip() and hasattr(self, "_ghost_static"):
-            self._ghost_static.styles.display = "block"
-
         self._sticky_notes = self._parse_sticky_notes(text)
         self._refresh_draft_notes_display()
 
