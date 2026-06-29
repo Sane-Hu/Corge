@@ -247,6 +247,9 @@ class RealCorgeApp(CorgeApp):
                 elif controller.state == LifecycleState.SPEC_VALIDATION:
                     spec = controller.specification
                     assert spec is not None
+                    
+                    original_canvas_text = spec.body
+
                     # Load configured max socratic questions
                     heuristics_cfg = controller.load_heuristic_config()
                     max_questions = getattr(provider._config, "max_socratic_questions", heuristics_cfg.max_socratic_questions)
@@ -255,7 +258,7 @@ class RealCorgeApp(CorgeApp):
                     from corge.agent.session_controller import GoBackSignal
                     try:
                         spec, gaps = controller.run_socratic_loop(
-                            spec.body, argumentation_log, ui, max_questions=max_questions
+                            original_canvas_text, argumentation_log, ui, max_questions=max_questions
                         )
                     except GoBackSignal:
                         controller.transition_to(LifecycleState.SPEC_ENTRY)
@@ -266,7 +269,7 @@ class RealCorgeApp(CorgeApp):
                     controller.advance_spec_state(SpecState.ARGUMENTATION_DIFF)
                     formatted_spec_text = controller.format_spec_to_text(spec, gaps)
                     
-                    user_edited_spec = ui.show_argumentation_diff(spec.body, formatted_spec_text)
+                    user_edited_spec = ui.show_argumentation_diff(original_canvas_text, formatted_spec_text)
                     if user_edited_spec is None:
                         # User clicked Reject or Escape, transition back to Spec Entry
                         controller.transition_to(LifecycleState.SPEC_ENTRY)
