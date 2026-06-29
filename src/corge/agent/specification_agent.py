@@ -10,7 +10,6 @@ Spec traceability:
 from __future__ import annotations
 
 import json
-import re
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path

@@ -6,7 +6,6 @@ Traces to docs/02-technical-spec.md and docs/04-functional_testing.md.
 from __future__ import annotations
 
 import sys
-from datetime import UTC
 from pathlib import Path
 
 from textual import work
@@ -23,11 +22,7 @@ from corge.contracts import (
     LifecycleState,
     Plan,
     PlanStep,
-    ProceduralStep,
-    RepositoryContext,
-    Specification,
     SpecState,
-    TechnicalPlan,
 )
 from corge.knowledge_graph.graph import KnowledgeGraph
 from corge.logging.argumentation_log import ArgumentationLog
@@ -153,9 +148,7 @@ class RealCorgeApp(CorgeApp):
         if session_state:
             controller.load_from_session(session_state)
 
-        import dataclasses
 
-        import dataclasses
 
         while True:
             ui.update_journey_state(controller.active_agent_name, controller.state.name)
@@ -197,9 +190,9 @@ class RealCorgeApp(CorgeApp):
                             ui.hide_loading()
                     idx = 0
                     screens = [
-                        lambda: ui.show_repository_understanding(bundle.repository_context),
-                        lambda: ui.show_repository_analysis(bundle.repository_context),
-                        lambda: ui.show_engineering_profile(bundle.engineering_profile),
+                        lambda b=bundle: ui.show_repository_understanding(b.repository_context),
+                        lambda b=bundle: ui.show_repository_analysis(b.repository_context),
+                        lambda b=bundle: ui.show_engineering_profile(b.engineering_profile),
                     ]
                     while 0 <= idx < len(screens):
                         res = screens[idx]()
@@ -375,18 +368,21 @@ class RealCorgeApp(CorgeApp):
                         continue
 
                     ui.show_loading(f"Executing step: {step.identifier}...")
-                    from datetime import datetime, UTC
+                    from datetime import UTC, datetime
 
-                    from corge.agent.coding_agent import ToolExecutionError, ActionRejectedError
+                    from corge.agent.coding_agent import (
+                        ActionRejectedError,
+                        ToolExecutionError,
+                    )
                     from corge.contracts import MemoryEvent
                     try:
                         tool_runtime.reset_modified_files()
                         controller.execute_step(step, bundle, on_token=ui.stream_token)
                         
                         # Post-execution review of changes (diff)
+                        import difflib
                         import shutil
                         import subprocess
-                        import difflib
                         
                         git_avail = shutil.which("git") is not None
                         is_git_repo = (self.target_repo / ".git").exists()
@@ -547,7 +543,7 @@ class RealCorgeApp(CorgeApp):
                     ui.show_loading("Verifying completion...")
                     try:
                         success = controller.evaluate_completion(plan, bundle, on_token=ui.stream_token)
-                        from datetime import datetime, UTC
+                        from datetime import UTC, datetime
 
                         from corge.contracts import AuditEvent
                         audit_logger.record_completion(
@@ -610,9 +606,9 @@ class RealCorgeApp(CorgeApp):
                 else:
                     break
             except Exception as e:
-                import openai
-                import httpx
                 import httpcore
+                import httpx
+                import openai
                 if isinstance(e, (openai.OpenAIError, httpx.HTTPError, httpcore.TimeoutException, httpcore.NetworkError, httpcore.ProtocolError, httpcore.ProxyError, TimeoutError, ConnectionError)) or "read operation timed out" in str(e).lower() or "timeout" in str(e).lower():
                     retry = ui.show_confirm(
                         "LLM API Error / Timeout",

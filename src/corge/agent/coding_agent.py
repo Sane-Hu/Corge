@@ -213,12 +213,18 @@ class CodingAgent:
                 # Truncate output to prevent context window explosion or offload to artifact
                 if len(result.output) > 3000:
                     try:
-                        # Path structure for artifacts: use step identifier
-                        artifact_path = Path(f"{step.identifier}_{action.value}.out")
+                        import tempfile
                         summary = f"Truncated output from {action.value} on {target}"
-                        ref = self._artifact_store.store_artifact(
-                            artifact_path, result.output
-                        )
+                        with tempfile.NamedTemporaryFile(mode="w", suffix=".out", delete=False, encoding="utf-8") as temp_file:
+                            temp_file.write(result.output)
+                            temp_path = Path(temp_file.name)
+                        try:
+                            ref = self._artifact_store.store_artifact(
+                                temp_path, summary
+                            )
+                        finally:
+                            if temp_path.exists():
+                                temp_path.unlink()
                         safe_output = (
                             result.output[:3000]
                             + f"\n...[output truncated, see artifact: {ref.uri}]"

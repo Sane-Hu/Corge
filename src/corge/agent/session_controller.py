@@ -22,7 +22,6 @@ from corge.contracts import (
     ArgumentationLogPort,
     ArtifactStorePort,
     AuditLoggerPort,
-    BudgetManagerPort,
     ContextBundle,
     ContextPort,
     HeuristicConfig,
@@ -36,15 +35,14 @@ from corge.contracts import (
     PlanState,
     PlanStep,
     ProceduralStep,
+    PromptAssemblerPort,
     ProviderPort,
-    SchemaTailorPort,
     SemanticGap,
     Specification,
     SpecState,
     TechnicalPlan,
     ToolRuntimePort,
     UiPort,
-    PromptAssemblerPort,
 )
 
 # ---------------------------------------------------------------------------
@@ -441,6 +439,7 @@ class SessionController:
         # Check deterministically which of the pending gaps were resolved by looking for their placeholder in edited_text
         import dataclasses
         from datetime import UTC, datetime
+
         from corge.contracts import ArgumentationEntry
 
         resolved_gaps = []

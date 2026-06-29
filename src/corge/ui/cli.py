@@ -26,14 +26,12 @@ from textual.widgets import (
     LoadingIndicator,
     RichLog,
     Static,
-    TextArea,
 )
 
 from corge.contracts import (
     AcceptanceCriteria,
     ApprovalDecision,
     ApprovalRequest,
-    ContextBundle,
     EngineeringProfile,
     MemoryEvent,
     Plan,
@@ -130,7 +128,8 @@ class MessageScreen(Screen[str]):
     def action_toggle_auto_advance(self) -> None:
         current = getattr(self.app, "auto_advance", False)
         new_val = not current
-        setattr(self.app, "auto_advance", new_val)
+        self.app: CorgeApp
+        cast(CorgeApp, self.app).auto_advance = new_val
         status = "ENABLED" if new_val else "DISABLED"
         self.notify(f"Auto-advance: {status}")
         if new_val:
