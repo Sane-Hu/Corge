@@ -125,6 +125,33 @@ class RepositoryContext:
     tree: tuple[str, ...] = ()
     config_files: tuple[str, ...] = ()
 
+    def __post_init__(self) -> None:
+        if not self.tree and isinstance(self.root, Path) and self.root.exists() and self.root.is_dir():
+            tree_list: list[str] = []
+            config_list: list[str] = []
+            config_suffixes = {".toml", ".cfg", ".ini", ".yaml", ".yml", ".json", ".env", ".lock"}
+
+            from collections import deque
+            queue = deque([self.root])
+            while queue:
+                curr = queue.popleft()
+                try:
+                    for child in sorted(curr.iterdir(), key=lambda p: p.name):
+                        if child.name.startswith(".") or child.name == "__pycache__":
+                            continue
+                        rel_path = str(child.relative_to(self.root))
+                        tree_list.append(rel_path)
+                        if child.is_file():
+                            if child.suffix.lower() in config_suffixes:
+                                config_list.append(rel_path)
+                        elif child.is_dir():
+                            queue.append(child)
+                except OSError:
+                    pass
+            
+            object.__setattr__(self, "tree", tuple(tree_list))
+            object.__setattr__(self, "config_files", tuple(config_list))
+
 
 @dataclass(frozen=True, slots=True)
 class EngineeringProfile:
