@@ -843,67 +843,52 @@
       </section>
 
       <section>
-        <h2>Modularity Serves the Business</h2>
-        <div class="cols-2">
-          <div>
-            <div class="card compact">
-              <h4>Swappable UI</h4>
-              <ul>
-                <li>Replace Textual TUI with Web UI or IDE plugin &mdash; zero business logic changes</li>
-                <li>UI module only depends on <code>UiPort</code> protocol; swap it out freely</li>
-              </ul>
-            </div>
-            <div class="card compact">
-              <h4>Swappable Providers</h4>
-              <ul>
-                <li>Swap DeepSeek for Ollama or OpenAI with zero code changes</li>
-                <li>Single <code>Provider</code> protocol adapter handles all model backends</li>
-              </ul>
-            </div>
-            <div class="card compact">
-              <h4>Contracts Layer</h4>
-              <ul>
-                <li><code>typing.Protocol</code> defines every module boundary via port interfaces</li>
-                <li>Enables the numbered execution flow from the module map</li>
-              </ul>
-            </div>
-          </div>
-          <div>
-            <div class="card compact">
-              <h4>Testable in Isolation</h4>
-              <ul>
-                <li>Every module exposes a Protocol; mock the port, test the logic</li>
-                <li>Integration tests verify contract compliance across boundaries</li>
-              </ul>
-            </div>
-            <div class="card compact">
-              <h4>No Tight Coupling</h4>
-              <ul>
-                <li>UI has zero <code>import</code> from <code>agent</code> module</li>
-                <li>Agents have zero <code>import</code> from <code>tools</code> or <code>providers</code></li>
-                <li>Compile-time safety via Protocol structural subtyping</li>
-                <li>No dependencies on other modules, only on Protocols</li>
-              </ul>
-            </div>
-            <div class="card compact">
-              <h4>Parallel Development</h4>
-              <ul>
-                <li>UI team, agent team, and tooling team work independently behind protocol interfaces</li>
-                <li>Contracts serve as the shared agreement &mdash; no coordination overhead per change</li>
-              </ul>
-            </div>
-          </div>
+        <h2>5-Layer Modular Monolith</h2>
+        <div class="svg-container">
+          <svg viewBox="0 0 760 400">
+            <rect x="60" y="5" width="640" height="65" rx="4" fill="#efbbff" stroke="#be29ec" stroke-width="1.5" />
+            <text x="200" y="30" text-anchor="middle" fill="#660066" font-size="13" font-weight="700">1. UI &amp; UX
+              Layer</text>
+            <text x="200" y="50" text-anchor="middle" fill="#800080" font-size="10">Textual TUI &middot; Spec Wizard
+              &middot; Canvas &middot; Diff Screens</text>
+            <text x="500" y="40" text-anchor="middle" fill="#660066" font-size="10">Presentation only</text>
+
+            <rect x="60" y="78" width="640" height="65" rx="4" fill="#d896ff" stroke="#be29ec" stroke-width="1.5" />
+            <text x="200" y="103" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">2. Middleware
+              Layer</text>
+            <text x="200" y="123" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-size="10">SessionController
+              &middot; ApprovalGateway &middot; AuditLogger</text>
+            <text x="500" y="113" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-size="10">Orchestration &amp;
+              safety gates</text>
+
+            <rect x="60" y="151" width="640" height="65" rx="4" fill="#be29ec" stroke="#660066" stroke-width="1.5" />
+            <text x="200" y="176" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">3. Logic
+              Layer</text>
+            <text x="200" y="196" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-size="10">SpecAgent &middot;
+              PlanAgent &middot; CodingAgent &middot; SchemaTailor</text>
+            <text x="500" y="186" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-size="10">Three agents +
+              heuristics</text>
+
+            <rect x="60" y="224" width="640" height="65" rx="4" fill="#800080" stroke="#4a004a" stroke-width="1.5" />
+            <text x="200" y="249" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">4. Data Layer</text>
+            <text x="200" y="269" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-size="10">Knowledge Graph
+              &middot; Memory Pyramid &middot; Artifact Store</text>
+            <text x="500" y="259" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-size="10">Queryable repo +
+              tiered memory</text>
+
+            <rect x="60" y="297" width="640" height="65" rx="4" fill="#660066" stroke="#4a004a" stroke-width="1.5" />
+            <text x="200" y="322" text-anchor="middle" fill="#efbbff" font-size="13" font-weight="700">5. Infrastructure
+              Layer</text>
+            <text x="200" y="342" text-anchor="middle" fill="rgba(239,187,255,0.85)" font-size="10">Provider Adapter
+              &middot; ToolRuntime &middot; Budget Manager</text>
+            <text x="500" y="332" text-anchor="middle" fill="rgba(239,187,255,0.8)" font-size="10">LLM access + safe
+              exec + context limits</text>
+
+            <text x="380" y="385" text-anchor="middle" fill="#800080" font-size="19" opacity="0.45">
+              Protocol interfaces between every layer
+            </text>
+          </svg>
         </div>
-      </section>
-
-      <!-- ════════════════════════════════════════════════ -->
-      <!-- PART 4 — LAYER & MODULE DEEP DIVE             -->
-      <!-- ════════════════════════════════════════════════ -->
-
-      <section class="section-slide" data-background="#660066">
-        <div class="part-number">04</div>
-        <h2>Layer &amp; Module Deep Dive</h2>
-        <p style="font-size:1em; opacity:0.85; margin-top:0.3em;">From the TUI to the Tool Runtime</p>
       </section>
 
       <section>
@@ -1011,6 +996,70 @@
           class SharedModels contractStyle;
           class PRV_ADAPT providerStyle;
         </div>
+      </section>
+
+      <section>
+        <h2>Modularity Serves the Business</h2>
+        <div class="cols-2">
+          <div>
+            <div class="card compact">
+              <h4>Swappable UI</h4>
+              <ul>
+                <li>Replace Textual TUI with Web UI or IDE plugin &mdash; zero business logic changes</li>
+                <li>UI module only depends on <code>UiPort</code> protocol; swap it out freely</li>
+              </ul>
+            </div>
+            <div class="card compact">
+              <h4>Swappable Providers</h4>
+              <ul>
+                <li>Swap DeepSeek for Ollama or OpenAI with zero code changes</li>
+                <li>Single <code>Provider</code> protocol adapter handles all model backends</li>
+              </ul>
+            </div>
+            <div class="card compact">
+              <h4>Contracts Layer</h4>
+              <ul>
+                <li><code>typing.Protocol</code> defines every module boundary via port interfaces</li>
+                <li>Enables the numbered execution flow from the module map</li>
+              </ul>
+            </div>
+          </div>
+          <div>
+            <div class="card compact">
+              <h4>Testable in Isolation</h4>
+              <ul>
+                <li>Every module exposes a Protocol; mock the port, test the logic</li>
+                <li>Integration tests verify contract compliance across boundaries</li>
+              </ul>
+            </div>
+            <div class="card compact">
+              <h4>No Tight Coupling</h4>
+              <ul>
+                <li>UI has zero <code>import</code> from <code>agent</code> module</li>
+                <li>Agents have zero <code>import</code> from <code>tools</code> or <code>providers</code></li>
+                <li>Compile-time safety via Protocol structural subtyping</li>
+                <li>No dependencies on other modules, only on Protocols</li>
+              </ul>
+            </div>
+            <div class="card compact">
+              <h4>Parallel Development</h4>
+              <ul>
+                <li>UI team, agent team, and tooling team work independently behind protocol interfaces</li>
+                <li>Contracts serve as the shared agreement &mdash; no coordination overhead per change</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════ -->
+      <!-- PART 4 — LAYER & MODULE DEEP DIVE             -->
+      <!-- ════════════════════════════════════════════════ -->
+
+      <section class="section-slide" data-background="#660066">
+        <div class="part-number">04</div>
+        <h2>Layer &amp; Module Deep Dive</h2>
+        <p style="font-size:1em; opacity:0.85; margin-top:0.3em;">From the TUI to the Tool Runtime</p>
       </section>
 
       <section>
@@ -1271,6 +1320,54 @@ class CliUi:
         </div>
       </section>
 
+      <!-- SLIDE 25 — SELF-IMPROVING AGENTS -->
+      <section>
+        <h2>Self-Improving Agents</h2>
+        <p style="font-size:0.55em; text-align:left;">
+          The system learns from every session. After each project, a <strong>batch-phase heuristic updater</strong>
+          analyzes the argumentation log and adjusts the spec wizard&rsquo;s behavior for future sessions.
+        </p>
+        <div class="cols-2" style="margin-top:0.1em;">
+          <div>
+            <div class="card compact">
+              <h4>How It Works</h4>
+              <ul>
+                <li>Records every Socratic Q&amp;A interaction</li>
+                <li>Tracks which questions users override or skip</li>
+                <li>Adjusts question priority for next session</li>
+                <li>No manual tuning &mdash; self-calibrating</li>
+              </ul>
+            </div>
+            <div class="card compact">
+              <h4>Abandonment Protection</h4>
+              <ul>
+                <li>If a user quits mid-spec, the system penalizes its engagement prior</li>
+                <li>Prevents over-asking in future sessions</li>
+                <li>Single bad session can only degrade the model slightly</li>
+              </ul>
+            </div>
+          </div>
+          <div>
+            <div class="card compact">
+              <h4>Conservative Drift Protection</h4>
+              <ul>
+                <li>A single session can only shift behavior by a limited amount</li>
+                <li>Overrides require multiple consistent sessions to shift behavior</li>
+                <li>After 20 successful sessions with zero overrides, the wizard converges to a stable,
+                  minimal-intervention cadence</li>
+              </ul>
+            </div>
+            <div class="card success">
+              <h4>Key Takeaway</h4>
+              <ul>
+                <li>The spec wizard gets <strong>better over time</strong> without human reconfiguration</li>
+                <li>Self-improvement through usage data, not hardcoded rules</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section>
         <h2>Layer 3: Logic &mdash; The Three Agents</h2>
         <div class="cols-3" style="gap:0.5em;">
@@ -1352,54 +1449,6 @@ step_state = {
                 </tr>
               </tbody>
             </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- SLIDE 25 — SELF-IMPROVING AGENTS -->
-      <section>
-        <h2>Self-Improving Agents</h2>
-        <p style="font-size:0.55em; text-align:left;">
-          The system learns from every session. After each project, a <strong>batch-phase heuristic updater</strong>
-          analyzes the argumentation log and adjusts the spec wizard&rsquo;s behavior for future sessions.
-        </p>
-        <div class="cols-2" style="margin-top:0.1em;">
-          <div>
-            <div class="card compact">
-              <h4>How It Works</h4>
-              <ul>
-                <li>Records every Socratic Q&amp;A interaction</li>
-                <li>Tracks which questions users override or skip</li>
-                <li>Adjusts question priority for next session</li>
-                <li>No manual tuning &mdash; self-calibrating</li>
-              </ul>
-            </div>
-            <div class="card compact">
-              <h4>Abandonment Protection</h4>
-              <ul>
-                <li>If a user quits mid-spec, the system penalizes its engagement prior</li>
-                <li>Prevents over-asking in future sessions</li>
-                <li>Single bad session can only degrade the model slightly</li>
-              </ul>
-            </div>
-          </div>
-          <div>
-            <div class="card compact">
-              <h4>Conservative Drift Protection</h4>
-              <ul>
-                <li>A single session can only shift behavior by a limited amount</li>
-                <li>Overrides require multiple consistent sessions to shift behavior</li>
-                <li>After 20 successful sessions with zero overrides, the wizard converges to a stable,
-                  minimal-intervention cadence</li>
-              </ul>
-            </div>
-            <div class="card success">
-              <h4>Key Takeaway</h4>
-              <ul>
-                <li>The spec wizard gets <strong>better over time</strong> without human reconfiguration</li>
-                <li>Self-improvement through usage data, not hardcoded rules</li>
-              </ul>
-            </div>
           </div>
         </div>
       </section>
