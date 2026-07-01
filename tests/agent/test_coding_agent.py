@@ -419,9 +419,18 @@ def test_execute_step_raises_action_rejected_error(
 def test_execute_step_self_correction_loop(
     coding_agent, provider, tool_runtime, tmp_path, approval_gateway
 ):
-    from corge.agent.coding_agent import ToolExecutionError
-    from corge.contracts import ChatResponse, ToolResult, ToolAction, ApprovalDecision, PlanStep, ContextBundle, Plan
     from unittest.mock import MagicMock
+
+    from corge.agent.coding_agent import ToolExecutionError
+    from corge.contracts import (
+        ApprovalDecision,
+        ChatResponse,
+        ContextBundle,
+        Plan,
+        PlanStep,
+        ToolAction,
+        ToolResult,
+    )
 
     resp = ChatResponse(
         content="""```json

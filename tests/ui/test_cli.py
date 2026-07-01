@@ -285,6 +285,7 @@ def test_directory_selector_configure_api_resolution_order(tmp_path: Path) -> No
 
 def test_message_screen_auto_advance_on_mount() -> None:
     from textual._context import active_app
+
     from corge.ui.cli import MessageScreen
 
     screen = MessageScreen("Title", "Message text")
@@ -302,6 +303,7 @@ def test_message_screen_auto_advance_on_mount() -> None:
 
 def test_message_screen_toggle_auto_advance() -> None:
     from textual._context import active_app
+
     from corge.ui.cli import MessageScreen
 
     screen = MessageScreen("Title", "Message text")

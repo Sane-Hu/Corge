@@ -132,6 +132,7 @@ def test_socratic_loop_opt_out():
 
 def test_socratic_loop_go_back():
     import pytest
+
     from corge.agent.session_controller import GoBackSignal
     from corge.contracts import ArgumentationLogPort, UiPort
 
