@@ -11,23 +11,6 @@ The current codebase is a modular monolith skeleton. The packages under
 intentionally raise `NotImplementedError` until their behavior is specified,
 planned, implemented, and verified.
 
-## Read This First
-
-Before contributing, read the project documents in this order:
-
-1. `AGENTS.md`
-2. `docs/01-prd.md`
-3. `docs/02-technical-spec.md`
-
-If documents conflict, higher-priority documents win:
-
-```text
-PRD -> Technical Spec -> Implementation
-```
-
-Do not resolve unclear requirements by guessing. Open an issue or discussion and
-name the conflicting or missing requirement.
-
 ## Architecture
 
 The system is organized as a modular monolith:
